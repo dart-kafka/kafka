@@ -1,0 +1,7 @@
+.pub/
+bin/
+doc/
+packages/
+test/packages
+test/api/packages
+.packages
