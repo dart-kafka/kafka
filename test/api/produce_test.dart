@@ -1,4 +1,4 @@
-library kafka.test.api.produce_request;
+library kafka.test.api.produce;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';

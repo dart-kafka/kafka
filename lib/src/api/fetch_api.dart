@@ -2,7 +2,7 @@ part of kafka;
 
 /// FetchRequest as defined in Kafka protocol spec.
 ///
-/// This is a low-level API object and requires good knowledge of Kafka protocol.
+/// This is a low-level API object and requires extensive knowledge of Kafka protocol.
 /// Consider using high-level [KafkaConsumer] class instead.
 ///
 /// It is responsibility of the user of this class to make sure that this request
@@ -90,6 +90,9 @@ class _FetchPartitionInfo {
 }
 
 /// Result of [FetchRequest] as defined in Kafka protocol spec.
+///
+/// This is a low-level API object and requires extensive knowledge of Kafka
+/// protocol.
 class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 
