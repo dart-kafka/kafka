@@ -30,5 +30,6 @@ part 'src/api/messages.dart';
 part 'src/api/metadata_api.dart';
 part 'src/api/produce_api.dart';
 part 'src/api/fetch_api.dart';
+part 'src/api/offset_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';

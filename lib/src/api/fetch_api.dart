@@ -5,12 +5,9 @@ part of kafka;
 /// This is a low-level API object and requires good knowledge of Kafka protocol.
 /// Consider using high-level [KafkaConsumer] class instead.
 ///
-/// ### Some important information extracted from Kafka protocol spec:
-///
-/// * Fetch requests follow a long poll model so they can be made to block for
-///   a period of time if sufficient data is not immediately available.
-/// * As an optimization the server is allowed to return a partial message at
-///   the end of the message set. Clients should handle this case.
+/// It is responsibility of the user of this class to make sure that this request
+/// will be send to the host which actually manages all topics and partitions in
+/// question.
 class FetchRequest extends KafkaRequest {
   /// API key of [FetchRequest]
   final int apiKey = 1;
@@ -97,7 +94,6 @@ class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 
   FetchResponse.fromData(List<int> data) {
-    print(data.length);
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
