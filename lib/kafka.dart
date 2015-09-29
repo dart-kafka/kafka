@@ -1,4 +1,4 @@
-/// Kafka Client library
+/// ## Kafka Client library
 ///
 /// Provides interface for implementing Kafka producers and consumers in Dart.
 ///
@@ -25,9 +25,10 @@ part 'src/config.dart';
 part 'src/bytes_builder.dart';
 part 'src/bytes_reader.dart';
 part 'src/client.dart';
+part 'src/api/errors.dart';
 part 'src/api/messages.dart';
-part 'src/api/metadata_request.dart';
-part 'src/api/produce_request.dart';
-part 'src/api/fetch_request.dart';
+part 'src/api/metadata_api.dart';
+part 'src/api/produce_api.dart';
+part 'src/api/fetch_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
