@@ -28,4 +28,6 @@ part 'src/client.dart';
 part 'src/api/messages.dart';
 part 'src/api/metadata_request.dart';
 part 'src/api/produce_request.dart';
+part 'src/api/fetch_request.dart';
 part 'src/producer.dart';
+part 'src/consumer.dart';

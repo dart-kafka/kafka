@@ -57,10 +57,13 @@ class KafkaBytesReader {
 
   List<int> readBytes() {
     var length = readInt32();
-    var value = _data.buffer.asInt8List(_offset, length).toList();
-    _offset += length;
-
-    return value;
+    if (length == -1) {
+      return null;
+    } else {
+      var value = _data.buffer.asInt8List(_offset, length).toList();
+      _offset += length;
+      return value;
+    }
   }
 
   List readArray(KafkaType itemType,
@@ -97,5 +100,13 @@ class KafkaBytesReader {
     }
 
     return items;
+  }
+
+  /// Reads raw bytes from this buffer.
+  List<int> readRaw(int length) {
+    var value = _data.buffer.asInt8List(_offset, length).toList();
+    _offset += length;
+
+    return value;
   }
 }

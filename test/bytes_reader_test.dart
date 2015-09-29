@@ -28,4 +28,11 @@ void main() {
     expect(_reader.readBytes(), equals([12, 43, 83]));
     expect(_reader.readArray(KafkaType.string), equals(['one', 'two']));
   });
+
+  test('it supports null for bytes type', () {
+    var builder = new KafkaBytesBuilder();
+    builder.addBytes(null);
+    var reader = new KafkaBytesReader.fromBytes(builder.takeBytes());
+    expect(reader.readBytes(), equals(null));
+  });
 }

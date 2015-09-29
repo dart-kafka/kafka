@@ -35,7 +35,20 @@ class KafkaClient {
   Future<List<int>> send(KafkaHost host, KafkaRequest request) async {
     var socket = await _getSocketForHost(host);
     Completer completer = new Completer();
-    subscriptions[host].onData((data) => completer.complete(data));
+    List<int> _data = new List();
+    int size = -1;
+    subscriptions[host].onData((d) {
+      _data.addAll(d);
+      if (_data.length >= 4) {
+        var sizeBytes = _data.sublist(0, 4);
+        var reader = new KafkaBytesReader.fromBytes(sizeBytes);
+        size = reader.readInt32();
+      }
+
+      if (size == _data.length - 4) {
+        completer.complete(_data);
+      }
+    });
     socket.add(request.toBytes());
 
     return completer.future;
@@ -55,6 +68,7 @@ class KafkaClient {
       var s = await Socket.connect(host.host, host.port);
       subscriptions[host] = s.listen(null);
       sockets[host] = s;
+      sockets[host].setOption(SocketOption.TCP_NODELAY, true);
     }
 
     return sockets[host];

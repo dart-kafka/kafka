@@ -46,4 +46,11 @@ void main() {
     var result = _builder.toBytes();
     expect(result, hasLength(equals(7))); // 4 bytes = size, 3 bytes = values
   });
+
+  test('it supports null for bytes type', () {
+    _builder.addBytes(null);
+    var result = _builder.toBytes();
+    expect(result, hasLength(4));
+    expect(result, equals([255, 255, 255, 255]));
+  });
 }

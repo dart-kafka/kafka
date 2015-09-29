@@ -71,6 +71,10 @@ class MessageSet {
   /// Collection of messages. Keys in the map are message offsets.
   Map<int, Message> messages = new Map();
 
+  /// Number of messages in this message set.
+  int get length => messages.length;
+
+  /// Creates new empty message set.
   MessageSet();
 
   /// Creates new MessageSet from provided data.
