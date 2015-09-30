@@ -1,6 +1,5 @@
 library kafka.test.api.fetch;
 
-import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
 
@@ -21,7 +20,7 @@ void main() {
     produce.addMessages(_topicName, 0, [_message]);
     var response = await produce.send();
     _offset = response.topics.first.partitions.first.offset;
-    _request = new FetchRequest(_client, host, 100, 1);
+    _request = new FetchRequest(_client, host, 1, 1);
   });
 
   test('it fetches message from Kafka topic', () async {
@@ -29,10 +28,10 @@ void main() {
     var response = await _request.send();
 
     expect(response.topics, hasLength(1));
-    expect(response.topics[_topicName].first.messages, hasLength(1));
+    expect(response.topics[_topicName].first.messages,
+        hasLength(greaterThanOrEqualTo(1)));
     var value =
-        response.topics[_topicName].first.messages.messages[_offset].value;
-    var text = UTF8.decode(value);
-    expect(text, equals(_message));
+        response.topics[_topicName].first.messages.messages[_offset].asString();
+    expect(value, equals(_message));
   });
 }

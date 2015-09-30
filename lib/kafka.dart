@@ -16,6 +16,7 @@ library kafka;
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:collection';
 import 'dart:typed_data';
 import 'package:crc32/crc32.dart';
@@ -33,3 +34,5 @@ part 'src/api/fetch_api.dart';
 part 'src/api/offset_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
+
+const String kafkaClientId = 'dart-kafka-v1.0.0-dev';

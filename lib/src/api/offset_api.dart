@@ -10,12 +10,6 @@ class OffsetRequest extends KafkaRequest {
   /// API version of [OffsetRequest].
   final int apiVersion = 0;
 
-  /// Instance of [KafkaClient].
-  final KafkaClient client;
-
-  /// Kafka server to which this request will be directed.
-  final KafkaHost host;
-
   /// Unique ID assigned to the [host] within Kafka cluster.
   final int replicaId;
 
@@ -25,7 +19,8 @@ class OffsetRequest extends KafkaRequest {
   ///
   /// The [replicaId] argument indicates unique ID assigned to the [host] within
   /// Kafka cluster. One can obtain this information via [MetadataRequest].
-  OffsetRequest(this.client, this.host, this.replicaId);
+  OffsetRequest(KafkaClient client, KafkaHost host, this.replicaId)
+      : super(client, host);
 
   /// Adds topic and partition to this requests.
   ///
@@ -48,14 +43,14 @@ class OffsetRequest extends KafkaRequest {
   /// Sends this request to the server specified in the [host] property.
   Future<OffsetResponse> send() async {
     var data = await client.send(host, this);
-    return new OffsetResponse.fromData(data);
+    return new OffsetResponse.fromData(data, correlationId);
   }
 
   /// Converts this request into a byte array.
   @override
   List<int> toBytes() {
-    var builder = new KafkaBytesBuilder();
-    _writeHeader(builder, apiKey, apiVersion, 0);
+    var builder = new KafkaBytesBuilder.withRequestHeader(
+        apiKey, apiVersion, correlationId);
     builder.addInt32(replicaId);
 
     builder.addInt32(_topics.length);
@@ -104,12 +99,13 @@ class OffsetResponse {
   final Map<String, List<PartitionOffsetsInfo>> topics = new Map();
 
   /// Creates OffsetResponse from the provided byte array.
-  OffsetResponse.fromData(List<int> data) {
+  OffsetResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var correlationId = reader.readInt32(); // TODO: verify correlationId
+    var receivedCorrelationId = reader.readInt32();
+    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
 
     var count = reader.readInt32();
     while (count > 0) {

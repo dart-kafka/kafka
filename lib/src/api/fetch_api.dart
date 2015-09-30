@@ -27,17 +27,12 @@ class FetchRequest extends KafkaRequest {
   /// to give a response.
   final int minBytes;
 
-  KafkaClient _client;
-  KafkaHost _host;
-
   Map<String, List<_FetchPartitionInfo>> _topics = new Map();
 
   /// Creates new instance of FetchRequest.
   FetchRequest(
-      KafkaClient client, KafkaHost host, this.maxWaitTime, this.minBytes) {
-    this._client = client;
-    this._host = host;
-  }
+      KafkaClient client, KafkaHost host, this.maxWaitTime, this.minBytes)
+      : super(client, host);
 
   /// Adds [topicName] with [paritionId] to this FetchRequest. [fetchOffset]
   /// defines the offset to begin this fetch from.
@@ -52,14 +47,15 @@ class FetchRequest extends KafkaRequest {
   }
 
   Future<FetchResponse> send() async {
-    var data = await _client.send(_host, this);
-    return new FetchResponse.fromData(data);
+    var data = await client.send(host, this);
+    return new FetchResponse.fromData(data, correlationId);
   }
 
   @override
   List<int> toBytes() {
-    var builder = new KafkaBytesBuilder();
-    _writeHeader(builder, apiKey, apiVersion, 0);
+    var builder = new KafkaBytesBuilder.withRequestHeader(
+        apiKey, apiVersion, correlationId);
+
     builder.addInt32(_replicaId);
     builder.addInt32(maxWaitTime);
     builder.addInt32(minBytes);
@@ -96,12 +92,13 @@ class _FetchPartitionInfo {
 class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 
-  FetchResponse.fromData(List<int> data) {
+  FetchResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var correlationId = reader.readInt32(); // TODO verify correlationId
+    var receivedCorrelationId = reader.readInt32();
+    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
 
     var count = reader.readInt32();
     while (count > 0) {

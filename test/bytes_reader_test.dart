@@ -20,6 +20,16 @@ void main() {
     _reader = new KafkaBytesReader.fromBytes(_data);
   });
 
+  test('it indicates end of buffer', () {
+    var builder = new KafkaBytesBuilder();
+    builder.addInt8(53);
+    _reader = new KafkaBytesReader.fromBytes(builder.takeBytes());
+    expect(_reader.length, equals(1));
+    expect(_reader.eof, isFalse);
+    _reader.readInt8();
+    expect(_reader.eof, isTrue);
+  });
+
   test('it reads all Kafka types', () {
     expect(_reader.readInt8(), equals(53));
     expect(_reader.readInt16(), equals(3541));

@@ -4,12 +4,24 @@ enum KafkaType { int8, int16, int32, int64, string, bytes, object }
 
 /// Bytes builder specific to Kafka protocol.
 ///
-/// Provides convenient methods for writing all Kafka data types:
+/// Provides convenient methods for writing all Kafka data types (and some more):
 /// int8, int16, int32, string, bytes, array.
 class KafkaBytesBuilder {
   BytesBuilder _builder = new BytesBuilder();
 
   int get length => _builder.length;
+
+  /// Creates new builder with empty buffer.
+  KafkaBytesBuilder();
+
+  /// Creates new builder and initializes buffer with proper request header.
+  KafkaBytesBuilder.withRequestHeader(
+      int apiKey, int apiVersion, int correlationId) {
+    addInt16(apiKey);
+    addInt16(apiVersion);
+    addInt32(correlationId);
+    addString(kafkaClientId);
+  }
 
   /// Adds 8 bit integer to this buffer.
   void addInt8(int value) {

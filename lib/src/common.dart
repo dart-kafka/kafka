@@ -1,20 +1,17 @@
 part of kafka;
 
 /// Compression types supported by Kafka.
-///
-/// Indexes of the values map to the ones defined in Kafka protocol.
 enum KafkaCompression { none, gzip, snappy }
 
 /// Base interface for all Kafka API requests.
 abstract class KafkaRequest {
-  List<int> toBytes();
+  static final _random = new Random();
 
-  void _writeHeader(KafkaBytesBuilder builder, int apiKey, int apiVersion,
-      int correlationId) {
-    builder
-      ..addInt16(apiKey)
-      ..addInt16(apiVersion)
-      ..addInt32(correlationId)
-      ..addString("dart-kafka-v1.0.0-dev");
-  }
+  final KafkaClient client;
+  final KafkaHost host;
+  final int correlationId;
+
+  KafkaRequest(this.client, this.host) : correlationId = _random.nextInt(65536);
+
+  List<int> toBytes();
 }

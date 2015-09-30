@@ -1,6 +1,5 @@
 library kafka.test.api.offset;
 
-import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
 

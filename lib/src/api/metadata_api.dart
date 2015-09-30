@@ -1,33 +1,42 @@
 part of kafka;
 
-/// Kafka Metadata Request.
+/// MetadataRequest as defined in the Kafka protocol.
+///
+/// This is a low-level Kafka API object. Unlike most of the other Kafka APIs
+/// MetadataRequests can be send to any given host.
+///
+/// While you can use this class directly it is recommended to use
+/// [KafkaClient.getMetadata()] instead.
 class MetadataRequest extends KafkaRequest {
+  /// API key of [MetadataRequest]
   final int apiKey = 3;
+
+  /// API version of [MetadataRequest]
   final int apiVersion = 0;
 
-  KafkaClient _client;
-  KafkaHost _host;
-  List<String> topicNames;
+  /// List of topic names to fetch metadata for. If set to null or empty
+  /// this request will fetch metadata for all topics.
+  final List<String> topicNames;
 
   /// Creats new instance of Kafka MetadataRequest.
   ///
-  /// If [topicNames] is omitted then metadata for all existing topics
+  /// If [topicNames] is omitted or empty then metadata for all existing topics
   /// will be returned.
-  MetadataRequest(this._client, this._host, [List<String> topicNames]) {
-    this.topicNames = (topicNames == null) ? [] : topicNames;
-  }
+  MetadataRequest(KafkaClient client, KafkaHost host, [this.topicNames])
+      : super(client, host);
 
   /// Sends the request.
   Future<MetadataResponse> send() async {
-    var data = await _client.send(_host, this);
-    return new MetadataResponse.fromData(data);
+    var data = await client.send(host, this);
+    return new MetadataResponse.fromData(data, correlationId);
   }
 
   @override
   List<int> toBytes() {
-    var builder = new KafkaBytesBuilder();
-    _writeHeader(builder, apiKey, apiVersion, 0);
-    builder.addArray(this.topicNames, KafkaType.string);
+    var builder = new KafkaBytesBuilder.withRequestHeader(
+        apiKey, apiVersion, correlationId);
+    var list = (this.topicNames is List) ? this.topicNames : [];
+    builder.addArray(list, KafkaType.string);
 
     var body = builder.takeBytes();
     builder.addBytes(body);
@@ -41,12 +50,13 @@ class MetadataResponse {
   List<Broker> brokers;
   List<TopicMetadata> topicMetadata;
 
-  MetadataResponse.fromData(List<int> data) {
+  MetadataResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var correlationId = reader.readInt32(); // TODO verify correlationId
+    var receivedCorrelationId = reader.readInt32();
+    assert(receivedCorrelationId == correlationId);
 
     this.brokers = reader.readArray(
         KafkaType.object, (reader) => new Broker.readFrom(reader));

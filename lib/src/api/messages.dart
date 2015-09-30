@@ -3,50 +3,72 @@ part of kafka;
 /// Kafka Message Attributes. Only [KafkaCompression] is supported by the
 /// server at the moment.
 class MessageAttributes {
-  KafkaCompression compression;
+  /// Compression codec.
+  final KafkaCompression compression;
+
+  /// Creates new instance of MessageAttributes.
   MessageAttributes([this.compression = KafkaCompression.none]);
 
-  MessageAttributes.readFrom(KafkaBytesReader reader) {
-    var attributes = reader.readInt8(); // TODO do bit manipulation magic.
-    this.compression = KafkaCompression.none;
-  }
+  /// Creates MessageAttributes from the raw byte.
+  MessageAttributes.readFrom(int byte) : compression = getCompression(byte);
 
-  int toInt() {
-    return 0;
-  }
-}
-
-/// Kafka Message type as defined in the protocol specification.
-class Message {
-  int magicByte;
-  MessageAttributes attributes;
-  List<int> key;
-  List<int> value;
-
-  /// Creates new Message.
-  ///
-  /// The [value] can be either [String] or [List<int>] type.
-  Message(dynamic value, [MessageAttributes attributes, List<int> key]) {
-    this.magicByte = 0;
-    this.attributes =
-        (attributes == null) ? new MessageAttributes() : attributes;
-    this.key = key;
-    if (value is String) {
-      this.value = UTF8.encode(value);
-    } else if (value is List<int>) {
-      this.value = value;
-    } else {
-      throw new StateError('Message value must be either String or List<int>');
+  static KafkaCompression getCompression(int byte) {
+    var c = byte & 3;
+    switch (c) {
+      case 0:
+        return KafkaCompression.none;
+      case 1:
+        return KafkaCompression.gzip;
+      case 2:
+        return KafkaCompression.snappy;
+      default:
+        throw new StateError('Unsupported compression codec: ${c}.');
     }
   }
 
+  /// Converts this attributes into byte.
+  int toInt() {
+    return _compressionToInt();
+  }
+
+  int _compressionToInt() {
+    switch (this.compression) {
+      case KafkaCompression.none:
+        return 0;
+      case KafkaCompression.gzip:
+        return 1;
+      case KafkaCompression.snappy:
+        return 2;
+    }
+  }
+}
+
+/// Kafka Message as defined in the protocol.
+class Message {
+  final int magicByte;
+  final MessageAttributes attributes;
+  final List<int> value;
+  final List<int> key;
+
+  /// Default constructor.
+  Message(this.magicByte, this.attributes, this.key, this.value);
+
+  /// Creates new Message from string value.
+  static Message fromString(String value,
+      [MessageAttributes attributes, List<int> key]) {
+    var valueInBytes = UTF8.encode(value);
+    attributes ??= new MessageAttributes();
+    return new Message(0, attributes, key, valueInBytes);
+  }
+
   /// Creates new instance of Message from the received data.
-  Message.readFrom(KafkaBytesReader reader) {
+  static Message readFrom(KafkaBytesReader reader) {
     var crc = reader.readInt32(); // TODO validate CRC
-    this.magicByte = reader.readInt8();
-    this.attributes = new MessageAttributes.readFrom(reader);
-    this.key = reader.readBytes();
-    this.value = reader.readBytes();
+    var magicByte = reader.readInt8();
+    var attributes = new MessageAttributes.readFrom(reader.readInt8());
+    var key = reader.readBytes();
+    var value = reader.readBytes();
+    return new Message(magicByte, attributes, key, value);
   }
 
   /// Converts Message to byte array.
@@ -64,9 +86,15 @@ class Message {
 
     return builder.toBytes();
   }
+
+  /// Returns value of this message converted into a string.
+  String asString() {
+    return UTF8.decode(this.value);
+  }
 }
 
 /// Kafka MessageSet type as defined in the protocol specification.
+/// TODO: make this Iterable and hide `messages` from public.
 class MessageSet {
   /// Collection of messages. Keys in the map are message offsets.
   Map<int, Message> messages = new Map();
@@ -79,14 +107,24 @@ class MessageSet {
 
   /// Creates new MessageSet from provided data.
   MessageSet.readFrom(KafkaBytesReader reader) {
-    try {
-      int offset = reader.readInt64();
-      int messageSize = reader.readInt32();
-      var message = new Message.readFrom(reader);
-      this.messages[offset] = message;
-    } on RangeError {
-      // no-op. According to protocol spec server is allowed to return partial
-      // messages, so we just ignore it here.
+    int messageSize = 0;
+    while (reader.eof == false) {
+      try {
+        int offset = reader.readInt64();
+        messageSize = reader.readInt32();
+        var data = reader.readRaw(messageSize);
+        var messageReader = new KafkaBytesReader.fromBytes(data);
+        var message = Message.readFrom(messageReader);
+        this.messages[offset] = message;
+      } on RangeError {
+        // no-op. According to spec server is allowed to return partial
+        // messages, so we just ignore it here. Just exit the loop.
+        print('Encountered partial message!'); // TODO: replace with logging
+        print('Expected message size: ${messageSize}.');
+        var s = reader.length - reader.offset;
+        print('Remaining size: ${s}.');
+        break;
+      }
     }
   }
 

@@ -58,10 +58,10 @@ class KafkaClient {
     return defaultHosts.first;
   }
 
-  void _rotateDefaultHosts() {
-    var current = defaultHosts.removeFirst();
-    defaultHosts.addLast(current);
-  }
+  // void _rotateDefaultHosts() {
+  //   var current = defaultHosts.removeFirst();
+  //   defaultHosts.addLast(current);
+  // }
 
   Future<Socket> _getSocketForHost(KafkaHost host) async {
     if (!sockets.containsKey(host)) {

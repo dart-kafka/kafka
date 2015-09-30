@@ -5,6 +5,15 @@ class KafkaBytesReader {
   Int8List _data;
   int _offset = 0;
 
+  /// Current position in this buffer.
+  int get offset => _offset;
+
+  /// Size of this byte buffer.
+  int get length => _data.length;
+
+  /// Either bytes buffer has been fully read.
+  bool get eof => _data.length == _offset;
+
   /// Creates reader from a list of bytes.
   KafkaBytesReader.fromBytes(List<int> data) {
     this._data = new Int8List.fromList(data);

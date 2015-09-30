@@ -1,6 +1,6 @@
 part of kafka;
 
-/// ProduceRequest as defined in Kafka protocol specification.
+/// ProduceRequest as defined in Kafka protocol.
 ///
 /// _Important: this class will not perform any checks to validate that
 /// messages in the payload can be published to particular Kafka broker since
@@ -14,8 +14,6 @@ class ProduceRequest extends KafkaRequest {
   /// API version of [ProduceRequest]
   final int apiVersion = 0;
 
-  KafkaClient _client;
-  KafkaHost _host;
   Map<String, Map<int, MessageSet>> _messages = new Map();
 
   /// Indicates how many acknowledgements the servers
@@ -26,9 +24,6 @@ class ProduceRequest extends KafkaRequest {
   /// can await the receipt of the number of acknowledgements in [requiredAcks].
   int timeout;
 
-  /// Kafka broker instance which would be a target of this request.
-  KafkaHost get host => _host;
-
   /// Creates Kafka [ProduceRequest].
   ///
   /// The [requiredAcks] field indicates how many acknowledgements the servers
@@ -36,35 +31,33 @@ class ProduceRequest extends KafkaRequest {
   /// The [timeout] field provides a maximum time in milliseconds the server
   /// can await the receipt of the number of acknowledgements in [requiredAcks].
   ProduceRequest(
-      KafkaClient client, KafkaHost host, this.requiredAcks, this.timeout) {
-    this._client = client;
-    this._host = host;
-  }
+      KafkaClient client, KafkaHost host, this.requiredAcks, this.timeout)
+      : super(client, host);
 
   /// Adds messages to be published by this [ProduceRequest] when it's sent.
-  void addMessages(String topicName, int partitionId, List messages) {
+  void addMessages(String topicName, int partitionId, List<String> messages) {
     var partitions = _getTopicPartitions(topicName);
     if (!partitions.containsKey(partitionId)) {
       var messageSet = new MessageSet();
-      messages.forEach((m) => messageSet.addMessage(new Message(m)));
+      messages.forEach((m) => messageSet.addMessage(Message.fromString(m)));
       partitions[partitionId] = messageSet;
     } else {
       messages.forEach((m) {
-        partitions[partitionId].addMessage(new Message(m));
+        partitions[partitionId].addMessage(Message.fromString(m));
       });
     }
   }
 
-  /// Sends this request to selected Kafka broker ([host]).
+  /// Sends this request to Kafka broker specified by [host] property.
   Future<ProduceResponse> send() async {
-    var data = await _client.send(_host, this);
-    return new ProduceResponse.fromData(data);
+    var data = await client.send(host, this);
+    return new ProduceResponse.fromData(data, correlationId);
   }
 
   @override
   List<int> toBytes() {
-    var builder = new KafkaBytesBuilder();
-    _writeHeader(builder, apiKey, apiVersion, 0);
+    var builder = new KafkaBytesBuilder.withRequestHeader(
+        apiKey, apiVersion, correlationId);
     builder.addInt16(requiredAcks);
     builder.addInt32(timeout);
 
@@ -98,12 +91,15 @@ class ProduceRequest extends KafkaRequest {
 /// Result of [ProduceRequest] as defined in Kafka protocol specification.
 class ProduceResponse {
   List<TopicProduceResult> topics;
-  ProduceResponse.fromData(List<int> data) {
+
+  /// Creates response from the provided [data].
+  ProduceResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var correlationId = reader.readInt32(); // TODO verify correlationId
+    var receivedCorrelationId = reader.readInt32();
+    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
 
     this.topics = reader.readArray(
         KafkaType.object, (r) => new TopicProduceResult.readFrom(r));
