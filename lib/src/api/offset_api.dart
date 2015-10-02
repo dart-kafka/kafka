@@ -105,7 +105,9 @@ class OffsetResponse {
     assert(size == data.length - 4);
 
     var receivedCorrelationId = reader.readInt32();
-    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
+    if (receivedCorrelationId != correlationId) {
+      throw new CorrelationIdMismatchError();
+    }
 
     var count = reader.readInt32();
     while (count > 0) {

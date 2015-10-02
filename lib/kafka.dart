@@ -19,9 +19,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:collection';
 import 'dart:typed_data';
-import 'package:crc32/crc32.dart';
+import 'package:logging/logging.dart';
 
+part 'src/util/crc32.dart';
 part 'src/common.dart';
+part 'src/errors.dart';
 part 'src/config.dart';
 part 'src/bytes_builder.dart';
 part 'src/bytes_reader.dart';
@@ -35,4 +37,5 @@ part 'src/api/offset_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
 
+/// String identifier of this library.
 const String kafkaClientId = 'dart-kafka-v1.0.0-dev';

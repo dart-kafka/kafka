@@ -48,7 +48,7 @@ class FetchRequest extends KafkaRequest {
 
   Future<FetchResponse> send() async {
     var data = await client.send(host, this);
-    return new FetchResponse.fromData(data, correlationId);
+    return new FetchResponse.fromData(data, correlationId, client.logger);
   }
 
   @override
@@ -92,13 +92,15 @@ class _FetchPartitionInfo {
 class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 
-  FetchResponse.fromData(List<int> data, int correlationId) {
+  FetchResponse.fromData(List<int> data, int correlationId, [Logger logger]) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
     var receivedCorrelationId = reader.readInt32();
-    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
+    if (receivedCorrelationId != correlationId) {
+      throw new CorrelationIdMismatchError();
+    }
 
     var count = reader.readInt32();
     while (count > 0) {
@@ -106,7 +108,8 @@ class FetchResponse {
       topics[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        topics[topicName].add(new FetchedPartitionData.readFrom(reader));
+        topics[topicName]
+            .add(new FetchedPartitionData.readFrom(reader, logger));
         partitionCount--;
       }
       count--;
@@ -120,13 +123,13 @@ class FetchedPartitionData {
   int highwaterMarkOffset;
   MessageSet messages;
 
-  FetchedPartitionData.readFrom(KafkaBytesReader reader) {
+  FetchedPartitionData.readFrom(KafkaBytesReader reader, [Logger logger]) {
     partitionId = reader.readInt32();
     errorCode = reader.readInt16();
     highwaterMarkOffset = reader.readInt64();
     var messageSetSize = reader.readInt32();
     var data = reader.readRaw(messageSetSize);
     var messageReader = new KafkaBytesReader.fromBytes(data);
-    messages = new MessageSet.readFrom(messageReader);
+    messages = new MessageSet.readFrom(messageReader, logger);
   }
 }

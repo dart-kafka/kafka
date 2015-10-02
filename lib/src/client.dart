@@ -1,10 +1,16 @@
 part of kafka;
 
+/// Client responsible for communication with Kafka server(s).
+///
+/// This is a central hub of this library. All low-level requests as well as
+/// high-level abstractions for producers and consumers depend on this class.
+///
 class KafkaClient {
-  String protocolVersion;
-  Queue<KafkaHost> defaultHosts;
-  Map<KafkaHost, Socket> sockets = new Map();
-  Map<KafkaHost, StreamSubscription> subscriptions = new Map();
+  final String protocolVersion;
+  final Queue<KafkaHost> defaultHosts;
+  final Map<KafkaHost, Socket> sockets = new Map();
+  final Map<KafkaHost, StreamSubscription> subscriptions = new Map();
+  final Logger logger;
 
   /// Creates new instance of KafkaClient.
   ///
@@ -13,9 +19,8 @@ class KafkaClient {
   /// In case of one of the hosts is temporarily unavailable the client will
   /// rotate them until sucessful response is returned. Error will be thrown
   /// when all of the default hosts are unavailable.
-  KafkaClient(this.protocolVersion, List<KafkaHost> defaultHosts) {
-    this.defaultHosts = new Queue.from(defaultHosts);
-  }
+  KafkaClient(this.protocolVersion, List<KafkaHost> defaultHosts, [this.logger])
+      : defaultHosts = new Queue.from(defaultHosts);
 
   /// Fetches Kafka server metadata. If [topicNames] is null then metadata for
   /// all topics will be returned.

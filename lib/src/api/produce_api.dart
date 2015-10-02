@@ -99,7 +99,9 @@ class ProduceResponse {
     assert(size == data.length - 4);
 
     var receivedCorrelationId = reader.readInt32();
-    assert(receivedCorrelationId == correlationId); // TODO: throw exception?
+    if (receivedCorrelationId != correlationId) {
+      throw new CorrelationIdMismatchError();
+    }
 
     this.topics = reader.readArray(
         KafkaType.object, (r) => new TopicProduceResult.readFrom(r));
