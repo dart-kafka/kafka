@@ -1,6 +1,7 @@
 library kafka.test.api.fetch;
 
 import 'package:test/test.dart';
+import 'package:semver/semver.dart';
 import 'package:kafka/kafka.dart';
 
 String _topicName = 'dartKafkaTest';
@@ -12,7 +13,8 @@ int _offset;
 void main() {
   setUp(() async {
     var host = new KafkaHost('127.0.0.1', 9092);
-    _client = new KafkaClient('0.8.2', [host]);
+    var version = new SemanticVersion.fromString('0.8.2');
+    _client = new KafkaClient(version, [host]);
 
     ProduceRequest produce = new ProduceRequest(_client, host, 1, 1000);
     var now = new DateTime.now();

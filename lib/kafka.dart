@@ -20,6 +20,7 @@ import 'dart:math';
 import 'dart:collection';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
+import 'package:semver/semver.dart';
 
 part 'src/util/crc32.dart';
 part 'src/common.dart';
@@ -35,6 +36,7 @@ part 'src/api/produce_api.dart';
 part 'src/api/fetch_api.dart';
 part 'src/api/offset_api.dart';
 part 'src/api/consumer_metadata_api.dart';
+part 'src/api/offset_fetch_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
 

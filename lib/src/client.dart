@@ -6,7 +6,7 @@ part of kafka;
 /// high-level abstractions for producers and consumers depend on this class.
 ///
 class KafkaClient {
-  final String protocolVersion;
+  final SemanticVersion protocolVersion;
   final Queue<KafkaHost> defaultHosts;
   final Map<KafkaHost, Socket> sockets = new Map();
   final Map<KafkaHost, StreamSubscription> subscriptions = new Map();
