@@ -85,7 +85,7 @@ class _FetchPartitionInfo {
   _FetchPartitionInfo(this.partitionId, this.fetchOffset, this.maxBytes);
 }
 
-/// Result of [FetchRequest] as defined in Kafka protocol spec.
+/// Result of [FetchRequest] as defined in Kafka protocol.
 ///
 /// This is a low-level API object and requires extensive knowledge of Kafka
 /// protocol.

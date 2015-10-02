@@ -28,6 +28,8 @@ class KafkaClient {
   /// This is a wrapper around Kafka API [MetadataRequest].
   /// Result will also contain information about all brokers in the Kafka cluster.
   /// See [MetadataResponse] for details.
+  ///
+  /// TODO: actually rotate default hosts on failure.
   Future<MetadataResponse> getMetadata(
       [List<String> topicNames, bool invalidateCache = false]) async {
     var currentHost = _getCurrentDefaultHost();
@@ -54,6 +56,7 @@ class KafkaClient {
         completer.complete(_data);
       }
     });
+    // TODO: add timeout for how long to wait for response.
     socket.add(request.toBytes());
 
     return completer.future;
