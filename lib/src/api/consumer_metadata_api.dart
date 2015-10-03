@@ -21,8 +21,9 @@ class ConsumerMetadataRequest extends KafkaRequest {
   Future<ConsumerMetadataResponse> send() async {
     var data = await client.send(host, this);
     var response = ConsumerMetadataResponse.fromData(data, correlationId);
-    var retries = 0;
-    while (response.errorCode == 15 && retries < 3) {
+    var retries = 1;
+    while (response.errorCode == 15 && retries < 5) {
+      sleep(new Duration(seconds: 1 * retries));
       data = await client.send(host, this);
       response = ConsumerMetadataResponse.fromData(data, correlationId);
       retries++;
