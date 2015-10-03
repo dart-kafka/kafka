@@ -14,8 +14,8 @@ before_install:
   - docker run -d --name kafka-cluster -p 2181:2181 -p 9092:9092 -p 9093:9093 --env ADVERTISED_HOST=127.0.0.1 kafka-cluster
   - docker ps -a
   - sleep 10
-  - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper=localhost:2181 --topic dartKafkaTest --partitions 3 --replication-factor 2'
-  - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --list --zookeeper=localhost:2181'
+  - docker exec kafka-cluster bash -c '$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper=localhost:2181 --topic dartKafkaTest --partitions 3 --replication-factor 2'
+  - docker exec kafka-cluster bash -c '$KAFKA_HOME/bin/kafka-topics.sh --list --zookeeper=localhost:2181'
 
 script:
   - pub run test -r expanded
