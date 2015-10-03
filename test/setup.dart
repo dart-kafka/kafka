@@ -7,6 +7,7 @@ import 'dart:async';
 /// Docker Toolbox and OS X (sorry). The IP of `default` docker-machine will
 /// be used.
 Future<String> getDefaultHost() async {
+  Platform.environment.forEach((k, v) => print('$k : $v'));
   if (Platform.environment.containsKey('TRAVIS') &&
       Platform.environment['TRAVIS'] == true) {
     return '127.0.0.1';
