@@ -13,8 +13,10 @@ before_install:
   - docker pull spotify/kafka
   - docker run --name kafka -d -p 2181:2181 -p 9092:9092 spotify/kafka
   - docker ps -a
-  - docker exec kafka kafka-topics.sh --create --zookeeper=127.0.0.1:2181 --topic dartKafkaTest --partitions 1 --replication-factor 1
-  - docker exec kafka kafka-topics.sh --list --zookeeper=127.0.0.1:2181
+  - docker exec kafka echo $KAFKA_HOME
+  - docker exec kafka ls $KAFKA_HOME/bin
+  # - docker exec kafka kafka-topics.sh --create --zookeeper=127.0.0.1:2181 --topic dartKafkaTest --partitions 1 --replication-factor 1
+  # - docker exec kafka kafka-topics.sh --list --zookeeper=127.0.0.1:2181
 
 script:
   - pub run test
