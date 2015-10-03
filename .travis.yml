@@ -6,7 +6,7 @@ services:
   - docker
 
 dart:
-  - "1.12.1"
+  - stable
 
 before_install:
   - docker build -t spotify/kafka .
