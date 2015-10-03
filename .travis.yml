@@ -9,8 +9,8 @@ dart:
   - stable
 
 before_install:
-  - docker build -t spotify/kafka .
-  - docker run -p 2181:2181 -p 9092:9092 spotify/kafka
+  - docker pull spotify/kafka
+  - docker run -d -p 2181:2181 -p 9092:9092 spotify/kafka
   - docker ps -a
 
 script:
