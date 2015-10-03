@@ -13,9 +13,26 @@ class ConsumerMetadataRequest extends KafkaRequest {
       : super(client, host);
 
   /// Sends this request to Kafka server specified in [host].
+  ///
+  /// For convenience this request handles `ConsumerCoordinatorNotAvailableCode`
+  /// API error which Kafka returns in case [ConsumerMetadataRequest] is sent
+  /// for the very first time to this particular server (and special topic to
+  /// store consumer offsets does not exist yet).
   Future<ConsumerMetadataResponse> send() async {
     var data = await client.send(host, this);
-    return ConsumerMetadataResponse.fromData(data, correlationId);
+    var response = ConsumerMetadataResponse.fromData(data, correlationId);
+    var retries = 0;
+    while (response.errorCode == 15 && retries < 3) {
+      data = await client.send(host, this);
+      response = ConsumerMetadataResponse.fromData(data, correlationId);
+      retries++;
+    }
+
+    if (response.errorCode == 15) {
+      throw new KafkaApiError.consumerCoordinatorNotAvailable();
+    }
+
+    return response;
   }
 
   /// Converts this request into byte list
