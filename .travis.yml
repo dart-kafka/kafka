@@ -9,6 +9,7 @@ dart:
   - stable
 
 before_install:
+  - sudo service docker restart ; sleep 10
   - docker pull spotify/kafka
   - docker run -d -p 2181:2181 -p 9092:9092 spotify/kafka
   - docker ps -a
