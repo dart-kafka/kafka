@@ -2,6 +2,7 @@ library kafka.test.api.offset;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
+import '../setup.dart';
 
 String _topicName = 'dartKafkaTest';
 KafkaClient _client;
@@ -10,18 +11,21 @@ int _offset;
 
 void main() {
   setUp(() async {
-    var host = new KafkaHost('127.0.0.1', 9092);
+    var ip = await getDefaultHost();
+    var host = new KafkaHost(ip, 9092);
     _client = new KafkaClient([host]);
     var metadata = await _client.getMetadata();
-    var replicaId = metadata.brokers.first.nodeId;
+    var leaderId = metadata.getTopicMetadata(_topicName).getPartition(0).leader;
+    var broker = metadata.brokers.firstWhere((b) => b.nodeId == leaderId);
+    var leaderHost = new KafkaHost(broker.host, broker.port);
 
-    ProduceRequest produce = new ProduceRequest(_client, host, 1, 1000);
+    ProduceRequest produce = new ProduceRequest(_client, leaderHost, 1, 1000);
     var now = new DateTime.now();
     var _message = 'test:' + now.toIso8601String();
     produce.addMessages(_topicName, 0, [_message]);
     var response = await produce.send();
     _offset = response.topics.first.partitions.first.offset;
-    _request = new OffsetRequest(_client, host, replicaId);
+    _request = new OffsetRequest(_client, host, leaderId);
   });
 
   test('it fetches partition offset info', () async {

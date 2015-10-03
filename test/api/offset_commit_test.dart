@@ -2,17 +2,20 @@ library kafka.test.api.offset_commit;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
+import '../setup.dart';
 
 String _topicName = 'dartKafkaTest';
 KafkaClient _client;
 KafkaHost _host;
+KafkaHost _coordinatorHost;
 OffsetCommitRequest _request;
 int _offset;
 String _testGroup;
 
 void main() {
   setUp(() async {
-    _host = new KafkaHost('127.0.0.1', 9092);
+    var ip = await getDefaultHost();
+    _host = new KafkaHost(ip, 9092);
     _client = new KafkaClient([_host]);
 
     ProduceRequest produce = new ProduceRequest(_client, _host, 1, 1000);
@@ -23,10 +26,16 @@ void main() {
     _offset = response.topics.first.partitions.first.offset;
 
     _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
-    _request = new OffsetCommitRequest(_client, _host, _testGroup, 0, '');
+    var consumerMetadataRequest =
+        new ConsumerMetadataRequest(_client, _host, _testGroup);
+    var metadata = await consumerMetadataRequest.send();
+    _coordinatorHost =
+        new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
+    _request =
+        new OffsetCommitRequest(_client, _coordinatorHost, _testGroup, 0, '');
   });
 
-  test('it fetches consumer offsets', () async {
+  test('it commits consumer offsets', () async {
     var now = new DateTime.now();
     _request.addTopicPartitionOffset(
         'dartKafkaTest', 0, _offset, now.millisecondsSinceEpoch, 'helloworld');
@@ -38,7 +47,7 @@ void main() {
     var p = partitions.first;
     expect(p.errorCode, equals(0));
 
-    var fetch = new OffsetFetchRequest(_client, _host, _testGroup);
+    var fetch = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup);
     fetch.addTopicPartitions(_topicName, [0]);
     var fetchResponse = await fetch.send();
     var info = fetchResponse.topics[_topicName].first;

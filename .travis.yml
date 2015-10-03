@@ -10,15 +10,12 @@ dart:
 
 before_install:
   - sudo service docker restart ; sleep 10
-  - docker pull spotify/kafka
-  - docker run --name kafka -d -p 2181:2181 -p 9092:9092 spotify/kafka
+  - docker build -t kafka-cluster kafka-cluster/
+  - docker run --name kafka-cluster -p 2181:2181 -p 9092:9092 -p 9093:9093 --env ADVERTISED_HOST=127.0.0.1 kafka-cluster
   - docker ps -a
   - sleep 10
-  - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper=localhost:2181 --topic dartKafkaTest --partitions 1 --replication-factor 1'
+  - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper=localhost:2181 --topic dartKafkaTest --partitions 3 --replication-factor 2'
   - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --list --zookeeper=localhost:2181'
 
 script:
-  - pub run test
-
-after_script:
-  - docker exec kafka bash -c '$KAFKA_HOME/bin/kafka-topics.sh --list --zookeeper=localhost:2181'
+  - pub run test -r expanded

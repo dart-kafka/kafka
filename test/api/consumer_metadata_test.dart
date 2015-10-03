@@ -2,13 +2,15 @@ library kafka.test.api.consumer_metadata;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
+import '../setup.dart';
 
 KafkaClient _client;
 ConsumerMetadataRequest _request;
 
 void main() {
-  setUp(() {
-    var host = new KafkaHost('127.0.0.1', 9092);
+  setUp(() async {
+    var ip = await getDefaultHost();
+    var host = new KafkaHost(ip, 9092);
     _client = new KafkaClient([host]);
     _request = new ConsumerMetadataRequest(_client, host, 'testGroup');
   });
