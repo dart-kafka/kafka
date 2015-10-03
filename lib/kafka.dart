@@ -37,8 +37,10 @@ part 'src/api/fetch_api.dart';
 part 'src/api/offset_api.dart';
 part 'src/api/consumer_metadata_api.dart';
 part 'src/api/offset_fetch_api.dart';
+part 'src/api/offset_commit_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
 
 /// String identifier of this library.
 const String kafkaClientId = 'dart-kafka-v1.0.0-dev';
+const SemanticVersion kafkaProtocolVersion = const SemanticVersion(0, 8, 2);

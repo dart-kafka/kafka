@@ -9,19 +9,14 @@ class OffsetFetchRequest extends KafkaRequest {
   /// API key of [OffsetFetchRequest]
   final int apiKey = 9;
 
+  /// API version of [OffsetFetchRequest].
+  final int apiVersion = 1;
+
   /// Name of consumer group.
   final String consumerGroup;
 
   /// Map of topics and partitions
   final Map<String, List<int>> topics = new Map();
-
-  /// API version of [OffsetFetchRequest].
-  ///
-  /// For Kafka prior to `0.8.2` is `0` for `>=0.8.2` is `1`.
-  int get apiVersion {
-    var v = new SemanticVersion.fromString('0.8.2');
-    return (v >= client.protocolVersion) ? 1 : 0;
-  }
 
   /// Creates new instance of [OffsetFetchRequest].
   ///
