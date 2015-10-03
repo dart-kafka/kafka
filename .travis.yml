@@ -11,8 +11,10 @@ dart:
 before_install:
   - sudo service docker restart ; sleep 10
   - docker pull spotify/kafka
-  - docker run -d -p 2181:2181 -p 9092:9092 spotify/kafka
+  - docker run --name kafka -d -p 2181:2181 -p 9092:9092 spotify/kafka
   - docker ps -a
+  - docker exec kafka kafka-topics.sh --create --zookeeper=127.0.0.1:2181 --topic dartKafkaTest --partitions 1 --replication-factor 1
+  - docker exec kafka kafka-topics.sh --list --zookeeper=127.0.0.1:2181
 
 script:
   - pub run test
