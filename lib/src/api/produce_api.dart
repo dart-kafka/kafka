@@ -35,16 +35,14 @@ class ProduceRequest extends KafkaRequest {
       : super(client, host);
 
   /// Adds messages to be published by this [ProduceRequest] when it's sent.
-  void addMessages(String topicName, int partitionId, List<String> messages) {
+  void addMessages(String topicName, int partitionId, List<Message> messages) {
     var partitions = _getTopicPartitions(topicName);
     if (!partitions.containsKey(partitionId)) {
       var messageSet = new MessageSet();
-      messages.forEach((m) => messageSet.addMessage(Message.fromString(m)));
+      messages.forEach((m) => messageSet.addMessage(m));
       partitions[partitionId] = messageSet;
     } else {
-      messages.forEach((m) {
-        partitions[partitionId].addMessage(Message.fromString(m));
-      });
+      messages.forEach((m) => partitions[partitionId].addMessage(m));
     }
   }
 
@@ -100,7 +98,8 @@ class ProduceResponse {
 
     var receivedCorrelationId = reader.readInt32();
     if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError();
+      throw new CorrelationIdMismatchError(
+          'Original value: $correlationId, received: $receivedCorrelationId');
     }
 
     this.topics = reader.readArray(

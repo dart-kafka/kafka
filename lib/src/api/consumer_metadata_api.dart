@@ -70,7 +70,8 @@ class ConsumerMetadataResponse {
 
     var receivedCorrelationId = reader.readInt32();
     if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError();
+      throw new CorrelationIdMismatchError(
+          'Original value: $correlationId, received: $receivedCorrelationId');
     }
     var errorCode = reader.readInt16();
     var id = reader.readInt32();

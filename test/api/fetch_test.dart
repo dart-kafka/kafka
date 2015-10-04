@@ -23,7 +23,7 @@ void main() {
     ProduceRequest produce = new ProduceRequest(_client, leaderHost, 1, 1000);
     var now = new DateTime.now();
     _message = 'test:' + now.toIso8601String();
-    produce.addMessages(_topicName, 0, [_message]);
+    produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
     var response = await produce.send();
     _offset = response.topics.first.partitions.first.offset;
     _request = new FetchRequest(_client, leaderHost, 100, 1);
@@ -36,8 +36,10 @@ void main() {
     expect(response.topics, hasLength(1));
     expect(response.topics[_topicName].first.messages,
         hasLength(greaterThanOrEqualTo(1)));
+    // new String.fromCharCodes(charCodes)
     var value =
-        response.topics[_topicName].first.messages.messages[_offset].asString();
-    expect(value, equals(_message));
+        response.topics[_topicName].first.messages.messages[_offset].value;
+    var text = new String.fromCharCodes(value);
+    expect(text, equals(_message));
   });
 }

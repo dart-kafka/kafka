@@ -67,7 +67,8 @@ class OffsetFetchResponse {
 
     var receivedCorrelationId = reader.readInt32();
     if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError();
+      throw new CorrelationIdMismatchError(
+          'Original value: $correlationId, received: $receivedCorrelationId');
     }
 
     var count = reader.readInt32();

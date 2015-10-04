@@ -22,7 +22,7 @@ class KafkaProducer {
   /// [topicName] and [partitionId] so that actual request will be sent to
   /// that particular node.
   Future addMessages(
-      String topicName, partitionId, List<String> messages) async {
+      String topicName, partitionId, List<Message> messages) async {
     var metadata = await client.getMetadata();
     var topic = metadata.getTopicMetadata(topicName);
     var partition = topic.getPartition(partitionId);

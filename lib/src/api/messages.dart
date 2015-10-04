@@ -22,7 +22,7 @@ class MessageAttributes {
       case 2:
         return KafkaCompression.snappy;
       default:
-        throw new StateError('Unsupported compression codec: ${c}.');
+        throw new KafkaClientError('Unsupported compression codec: ${c}.');
     }
   }
 
@@ -45,32 +45,40 @@ class MessageAttributes {
 
 /// Kafka Message as defined in the protocol.
 class Message {
+  /// This is a version id used to allow backwards compatible evolution
+  /// of the message binary format. The current value is 0.
   final int magicByte;
+
+  /// Metadata attributes about this message.
   final MessageAttributes attributes;
+
+  /// Actual message contents.
   final List<int> value;
+
+  /// Optional message key that was used for partition assignment. The key can be `null`.
   final List<int> key;
 
-  /// Default constructor.
-  Message(this.magicByte, this.attributes, this.key, this.value);
+  /// Default internal constructor.
+  Message._internal(this.attributes, this.key, this.value,
+      [this.magicByte = 0]);
 
-  /// Creates new Message from string value.
-  static Message fromString(String value,
+  /// Creates new [Message].
+  factory Message(List<int> value,
       [MessageAttributes attributes, List<int> key]) {
-    var valueInBytes = UTF8.encode(value);
     attributes ??= new MessageAttributes();
-    return new Message(0, attributes, key, valueInBytes);
+    return new Message._internal(attributes, key, value);
   }
 
-  /// Creates new instance of Message from the received data.
-  static Message readFrom(KafkaBytesReader reader) {
+  /// Creates new instance of [Message] from the received data.
+  factory Message.readFrom(KafkaBytesReader reader) {
     var magicByte = reader.readInt8();
     var attributes = new MessageAttributes.readFrom(reader.readInt8());
     var key = reader.readBytes();
     var value = reader.readBytes();
-    return new Message(magicByte, attributes, key, value);
+    return new Message._internal(attributes, key, value, magicByte);
   }
 
-  /// Converts Message to byte array.
+  /// Converts Message to a list of bytes.
   List<int> toBytes() {
     var builder = new KafkaBytesBuilder();
     builder.addInt8(magicByte);
@@ -85,11 +93,6 @@ class Message {
 
     return builder.toBytes();
   }
-
-  /// Returns value of this message converted into a string.
-  String asString() {
-    return UTF8.decode(this.value);
-  }
 }
 
 /// Kafka MessageSet type as defined in the protocol specification.
@@ -97,7 +100,7 @@ class MessageSet {
   /// Collection of messages. Keys in the map are message offsets.
   final Map<int, Message> _messages = new Map();
 
-  Map get messages => new UnmodifiableMapView(_messages);
+  Map<int, Message> get messages => new UnmodifiableMapView(_messages);
 
   /// Number of messages in this message set.
   int get length => _messages.length;
@@ -122,7 +125,7 @@ class MessageSet {
               'Expected crc: ${crc}, actual: ${actualCrc}');
         }
         var messageReader = new KafkaBytesReader.fromBytes(data);
-        var message = Message.readFrom(messageReader);
+        var message = new Message.readFrom(messageReader);
         this._messages[offset] = message;
       } on RangeError {
         // According to spec server is allowed to return partial

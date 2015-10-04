@@ -22,7 +22,7 @@ void main() {
     ProduceRequest produce = new ProduceRequest(_client, leaderHost, 1, 1000);
     var now = new DateTime.now();
     var _message = 'test:' + now.toIso8601String();
-    produce.addMessages(_topicName, 0, [_message]);
+    produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
     var response = await produce.send();
     _offset = response.topics.first.partitions.first.offset;
     _request = new OffsetRequest(_client, host, leaderId);

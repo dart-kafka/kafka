@@ -21,7 +21,7 @@ void main() {
   });
 
   test('it publishes messages to Kafka topic', () async {
-    _request.addMessages(_topicName, 0, ['hello world']);
+    _request.addMessages(_topicName, 0, [new Message('hello world'.codeUnits)]);
     var response = await _request.send();
     expect(response.topics, hasLength(1));
     expect(response.topics.first.topicName, equals(_topicName));
