@@ -14,4 +14,13 @@ abstract class KafkaRequest {
   KafkaRequest(this.client, this.host) : correlationId = _random.nextInt(65536);
 
   List<int> toBytes();
+
+  dynamic _createResponse(List<int> data);
+}
+
+class TopicPartitions {
+  final String topicName;
+  final Set<int> partitions;
+
+  TopicPartitions(this.topicName, this.partitions);
 }

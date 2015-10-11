@@ -65,9 +65,9 @@ class KafkaBytesBuilder {
   ///
   /// Kafka array starts with int32 indicating size of the array followed by
   /// the array items encoded according to their [KafkaType]
-  void addArray(List array, KafkaType itemType) {
-    addInt32(array.length);
-    for (var item in array) {
+  void addArray(Iterable items, KafkaType itemType) {
+    addInt32(items.length);
+    for (var item in items) {
       switch (itemType) {
         case KafkaType.int8:
           addInt8(item);

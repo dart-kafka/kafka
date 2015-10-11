@@ -16,28 +16,17 @@ class OffsetCommitRequest extends KafkaRequest {
   final int consumerGroupGenerationId;
   final String consumerId;
 
-  final Map<String, List<_PartitionOffsetCommitInfo>> _topics = new Map();
+  final Map<String, List<ConsumerOffset>> offsets;
 
-  /// Creates new instance of [OffsetFetchRequest].
+  /// Creates new instance of [OffsetCommitRequest].
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
   OffsetCommitRequest(KafkaClient client, KafkaHost host, this.consumerGroup,
-      this.consumerGroupGenerationId, this.consumerId)
+      this.offsets, this.consumerGroupGenerationId, this.consumerId)
       : super(client, host);
 
-  /// Adds offset to be committed for particular topic-partition.
-  void addTopicPartitionOffset(String topicName, int partitionId, int offset,
-      int timestamp, String metadata) {
-    if (!_topics.containsKey(topicName)) {
-      _topics[topicName] = new List();
-    }
-    _topics[topicName].add(new _PartitionOffsetCommitInfo(
-        partitionId, offset, timestamp, metadata));
-  }
-
   Future<OffsetCommitResponse> send() async {
-    var data = await this.client.send(host, this);
-    return new OffsetCommitResponse.fromData(data, correlationId);
+    return this.client.send(host, this);
   }
 
   @override
@@ -45,17 +34,18 @@ class OffsetCommitRequest extends KafkaRequest {
     var builder = new KafkaBytesBuilder.withRequestHeader(
         apiKey, apiVersion, correlationId);
 
+    var timestamp = new DateTime.now().millisecondsSinceEpoch;
     builder.addString(consumerGroup);
     builder.addInt32(consumerGroupGenerationId);
     builder.addString(consumerId);
-    builder.addInt32(_topics.length);
-    _topics.forEach((topicName, partitions) {
+    builder.addInt32(offsets.length);
+    offsets.forEach((topicName, partitions) {
       builder.addString(topicName);
       builder.addInt32(partitions.length);
       partitions.forEach((p) {
         builder.addInt32(p.partitionId);
         builder.addInt64(p.offset);
-        builder.addInt64(p.timestamp);
+        builder.addInt64(timestamp);
         builder.addString(p.metadata);
       });
     });
@@ -65,15 +55,21 @@ class OffsetCommitRequest extends KafkaRequest {
 
     return builder.takeBytes();
   }
+
+  @override
+  _createResponse(List<int> data) {
+    return new OffsetCommitResponse.fromData(data, correlationId);
+  }
 }
 
-class _PartitionOffsetCommitInfo {
+class ConsumerOffset {
   final int partitionId;
   final int offset;
-  final int timestamp;
   final String metadata;
-  _PartitionOffsetCommitInfo(
-      this.partitionId, this.offset, this.timestamp, this.metadata);
+  final int errorCode;
+
+  ConsumerOffset(this.partitionId, this.offset, this.metadata,
+      [this.errorCode]);
 }
 
 class OffsetCommitResponse {

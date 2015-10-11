@@ -48,8 +48,7 @@ class ProduceRequest extends KafkaRequest {
 
   /// Sends this request to Kafka broker specified by [host] property.
   Future<ProduceResponse> send() async {
-    var data = await client.send(host, this);
-    return new ProduceResponse.fromData(data, correlationId);
+    return client.send(host, this);
   }
 
   @override
@@ -83,6 +82,11 @@ class ProduceRequest extends KafkaRequest {
     }
 
     return _messages[topicName];
+  }
+
+  @override
+  _createResponse(List<int> data) {
+    return new ProduceResponse.fromData(data, correlationId);
   }
 }
 

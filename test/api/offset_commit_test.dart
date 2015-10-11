@@ -8,7 +8,6 @@ String _topicName = 'dartKafkaTest';
 KafkaClient _client;
 KafkaHost _host;
 KafkaHost _coordinatorHost;
-OffsetCommitRequest _request;
 int _offset;
 String _testGroup;
 
@@ -31,15 +30,16 @@ void main() {
     var metadata = await consumerMetadataRequest.send();
     _coordinatorHost =
         new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
-    _request =
-        new OffsetCommitRequest(_client, _coordinatorHost, _testGroup, 0, '');
   });
 
   test('it commits consumer offsets', () async {
-    var now = new DateTime.now();
-    _request.addTopicPartitionOffset(
-        'dartKafkaTest', 0, _offset, now.millisecondsSinceEpoch, 'helloworld');
-    var response = await _request.send();
+    var offsets = new Map<String, List<ConsumerOffset>>();
+    offsets['dartKafkaTest'] = [new ConsumerOffset(0, _offset, 'helloworld')];
+
+    var request = new OffsetCommitRequest(
+        _client, _coordinatorHost, _testGroup, offsets, 0, '');
+
+    var response = await request.send();
     expect(response.topics, hasLength(equals(1)));
     expect(response.topics, contains('dartKafkaTest'));
     var partitions = response.topics['dartKafkaTest'];
@@ -47,10 +47,12 @@ void main() {
     var p = partitions.first;
     expect(p.errorCode, equals(0));
 
-    var fetch = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup);
-    fetch.addTopicPartitions(_topicName, [0]);
+    var fetch = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup, {
+      _topicName: new Set.from([0])
+    });
+
     var fetchResponse = await fetch.send();
-    var info = fetchResponse.topics[_topicName].first;
+    var info = fetchResponse.offsets[_topicName].first;
     expect(info.errorCode, equals(0));
     expect(info.offset, equals(_offset));
     expect(info.metadata, equals('helloworld'));

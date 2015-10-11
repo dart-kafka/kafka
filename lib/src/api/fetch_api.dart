@@ -47,8 +47,7 @@ class FetchRequest extends KafkaRequest {
   }
 
   Future<FetchResponse> send() async {
-    var data = await client.send(host, this);
-    return new FetchResponse.fromData(data, correlationId, client.logger);
+    return client.send(host, this);
   }
 
   @override
@@ -76,6 +75,11 @@ class FetchRequest extends KafkaRequest {
 
     return builder.takeBytes();
   }
+
+  @override
+  _createResponse(List<int> data) {
+    return new FetchResponse.fromData(data, correlationId, client.logger);
+  }
 }
 
 class _FetchPartitionInfo {
@@ -87,8 +91,7 @@ class _FetchPartitionInfo {
 
 /// Result of [FetchRequest] as defined in Kafka protocol.
 ///
-/// This is a low-level API object and requires extensive knowledge of Kafka
-/// protocol.
+/// This is a low-level API object.
 class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 

@@ -61,6 +61,10 @@ packages:
     description: mime
     source: hosted
     version: "0.9.3"
+  mockito:
+    description: mockito
+    source: hosted
+    version: "0.11.0"
   package_config:
     description: package_config
     source: hosted

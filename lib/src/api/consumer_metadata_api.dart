@@ -19,13 +19,13 @@ class ConsumerMetadataRequest extends KafkaRequest {
   /// for the very first time to this particular server (and special topic to
   /// store consumer offsets does not exist yet).
   Future<ConsumerMetadataResponse> send() async {
-    var data = await client.send(host, this);
-    var response = ConsumerMetadataResponse.fromData(data, correlationId);
+    var response = await client.send(host, this);
+
     var retries = 1;
     while (response.errorCode == 15 && retries < 5) {
-      sleep(new Duration(seconds: 1 * retries));
-      data = await client.send(host, this);
-      response = ConsumerMetadataResponse.fromData(data, correlationId);
+      sleep(new Duration(
+          seconds: 1 * retries)); // TODO: switch to Future.delayed().
+      response = await client.send(host, this);
       retries++;
     }
 
@@ -48,6 +48,11 @@ class ConsumerMetadataRequest extends KafkaRequest {
     builder.addBytes(body);
 
     return builder.takeBytes();
+  }
+
+  @override
+  _createResponse(List<int> data) {
+    return ConsumerMetadataResponse.fromData(data, correlationId);
   }
 }
 

@@ -13,7 +13,7 @@ class KafkaClient {
 
   /// Creates new instance of KafkaClient.
   ///
-  /// The [defaultHosts] will be used to fetch Kafka metadata information. At least
+  /// [defaultHosts] will be used to fetch Kafka metadata information. At least
   /// one is required. However for production consider having more than 1.
   /// In case of one of the hosts is temporarily unavailable the client will
   /// rotate them until sucessful response is returned. Error will be thrown
@@ -38,8 +38,18 @@ class KafkaClient {
     return request.send();
   }
 
+  /// Fetches metadata for specified [consumerGroup].
+  ///
+  /// TODO: rotate default hosts.
+  Future<ConsumerMetadataResponse> getConsumerMetadata(
+      String consumerGroup) async {
+    var currentHost = _getCurrentDefaultHost();
+    var request = new ConsumerMetadataRequest(this, currentHost, consumerGroup);
+    return request.send();
+  }
+
   /// Sends request to specified [KafkaHost].
-  Future<List<int>> send(KafkaHost host, KafkaRequest request) async {
+  Future<dynamic> send(KafkaHost host, KafkaRequest request) async {
     var socket = await _getSocketForHost(host);
     Completer completer = new Completer();
     List<int> _data = new List();
@@ -53,10 +63,11 @@ class KafkaClient {
       }
 
       if (size == _data.length - 4) {
-        completer.complete(_data);
+        completer.complete(request._createResponse(_data));
       }
     });
     // TODO: add timeout for how long to wait for response.
+    // TODO: add error handling.
     socket.add(request.toBytes());
 
     return completer.future;

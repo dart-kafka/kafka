@@ -22,15 +22,16 @@ void main() {
     var metadata = await consumerMetadataRequest.send();
     _coordinatorHost =
         new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
-    _request = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup);
+    _request = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup, {
+      'dartKafkaTest': new Set.from([0])
+    });
   });
 
   test('it fetches consumer offsets', () async {
-    _request.addTopicPartitions('dartKafkaTest', [0]);
     var response = await _request.send();
-    expect(response.topics, hasLength(equals(1)));
-    expect(response.topics, contains('dartKafkaTest'));
-    var partitions = response.topics['dartKafkaTest'];
+    expect(response.offsets, hasLength(equals(1)));
+    expect(response.offsets, contains('dartKafkaTest'));
+    var partitions = response.offsets['dartKafkaTest'];
     expect(partitions, hasLength(1));
     var p = partitions.first;
     expect(p.errorCode, equals(0));

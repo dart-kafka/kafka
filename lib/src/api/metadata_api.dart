@@ -27,21 +27,25 @@ class MetadataRequest extends KafkaRequest {
 
   /// Sends the request.
   Future<MetadataResponse> send() async {
-    var data = await client.send(host, this);
-    return new MetadataResponse.fromData(data, correlationId);
+    return client.send(host, this);
   }
 
   @override
   List<int> toBytes() {
     var builder = new KafkaBytesBuilder.withRequestHeader(
         apiKey, apiVersion, correlationId);
-    var list = (this.topicNames is List) ? this.topicNames : [];
+    List list = (this.topicNames is List) ? this.topicNames : [];
     builder.addArray(list, KafkaType.string);
 
     var body = builder.takeBytes();
     builder.addBytes(body);
 
     return builder.takeBytes();
+  }
+
+  @override
+  _createResponse(List<int> data) {
+    return new MetadataResponse.fromData(data, correlationId);
   }
 }
 

@@ -42,8 +42,7 @@ class OffsetRequest extends KafkaRequest {
 
   /// Sends this request to the server specified in the [host] property.
   Future<OffsetResponse> send() async {
-    var data = await client.send(host, this);
-    return new OffsetResponse.fromData(data, correlationId);
+    return client.send(host, this);
   }
 
   /// Converts this request into a byte array.
@@ -68,6 +67,11 @@ class OffsetRequest extends KafkaRequest {
     builder.addBytes(body);
 
     return builder.takeBytes();
+  }
+
+  @override
+  _createResponse(List<int> data) {
+    return new OffsetResponse.fromData(data, correlationId);
   }
 }
 

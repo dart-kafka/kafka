@@ -15,26 +15,18 @@ class OffsetFetchRequest extends KafkaRequest {
   /// Name of consumer group.
   final String consumerGroup;
 
-  /// Map of topics and partitions
-  final Map<String, List<int>> topics = new Map();
+  /// Map of topic names and partition IDs.
+  final Map<String, Set<int>> topics;
 
   /// Creates new instance of [OffsetFetchRequest].
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
-  OffsetFetchRequest(KafkaClient client, KafkaHost host, this.consumerGroup)
+  OffsetFetchRequest(
+      KafkaClient client, KafkaHost host, this.consumerGroup, this.topics)
       : super(client, host);
 
-  /// Adds topic-partitions to this request.
-  void addTopicPartitions(String topicName, List<int> partitions) {
-    if (!topics.containsKey(topicName)) {
-      topics[topicName] = new List();
-    }
-    topics[topicName].addAll(partitions);
-  }
-
   Future<OffsetFetchResponse> send() async {
-    var data = await this.client.send(host, this);
-    return new OffsetFetchResponse.fromData(data, correlationId);
+    return this.client.send(host, this);
   }
 
   @override
@@ -54,11 +46,20 @@ class OffsetFetchRequest extends KafkaRequest {
 
     return builder.takeBytes();
   }
+
+  @override
+  _createResponse(List<int> data) {
+    return new OffsetFetchResponse.fromData(data, correlationId);
+  }
 }
 
 /// Result of [OffsetFetchResponse] as defined in Kafka protocol.
 class OffsetFetchResponse {
-  final Map<String, List<ConsumerPartitionOffsetInfo>> topics = new Map();
+  final Map<String, List<ConsumerOffset>> offsets = new Map();
+
+  OffsetFetchResponse.fromOffsets(Map<String, List<ConsumerOffset>> offsets) {
+    this.offsets.addAll(offsets);
+  }
 
   OffsetFetchResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
@@ -74,32 +75,18 @@ class OffsetFetchResponse {
     var count = reader.readInt32();
     while (count > 0) {
       var topicName = reader.readString();
-      topics[topicName] = new List();
+      offsets[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        topics[topicName].add(ConsumerPartitionOffsetInfo.readFrom(reader));
+        var id = reader.readInt32();
+        var offset = reader.readInt64();
+        var metadata = reader.readString();
+        var errorCode = reader.readInt16();
+        offsets[topicName]
+            .add(new ConsumerOffset(id, offset, metadata, errorCode));
         partitionCount--;
       }
       count--;
     }
-  }
-}
-
-/// Information about consumer offset on particular topic partition.
-class ConsumerPartitionOffsetInfo {
-  final int partitionId;
-  final int offset;
-  final String metadata;
-  final int errorCode;
-  ConsumerPartitionOffsetInfo(
-      this.partitionId, this.offset, this.metadata, this.errorCode);
-
-  /// Reads data from [reader] and creates new instace of ConsumerPartitionOffsetInfo.
-  static ConsumerPartitionOffsetInfo readFrom(KafkaBytesReader reader) {
-    var id = reader.readInt32();
-    var offset = reader.readInt64();
-    var metadata = reader.readString();
-    var errorCode = reader.readInt16();
-    return new ConsumerPartitionOffsetInfo(id, offset, metadata, errorCode);
   }
 }
