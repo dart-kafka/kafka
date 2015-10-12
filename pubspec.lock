@@ -4,7 +4,7 @@ packages:
   analyzer:
     description: analyzer
     source: hosted
-    version: "0.26.1+6"
+    version: "0.26.1+9"
   args:
     description: args
     source: hosted
@@ -52,7 +52,7 @@ packages:
   logging:
     description: logging
     source: hosted
-    version: "0.11.1+1"
+    version: "0.11.2"
   matcher:
     description: matcher
     source: hosted
@@ -80,7 +80,7 @@ packages:
   pool:
     description: pool
     source: hosted
-    version: "1.1.0"
+    version: "1.2.0"
   pub_semver:
     description: pub_semver
     source: hosted
@@ -112,7 +112,7 @@ packages:
   source_span:
     description: source_span
     source: hosted
-    version: "1.2.0"
+    version: "1.2.1"
   stack_trace:
     description: stack_trace
     source: hosted
@@ -124,7 +124,7 @@ packages:
   test:
     description: test
     source: hosted
-    version: "0.12.4+9"
+    version: "0.12.5"
   unittest:
     description: unittest
     source: hosted
@@ -140,4 +140,4 @@ packages:
   yaml:
     description: yaml
     source: hosted
-    version: "2.1.5"
+    version: "2.1.7"

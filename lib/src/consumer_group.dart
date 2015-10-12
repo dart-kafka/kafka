@@ -18,7 +18,7 @@ class ConsumerGroup {
     return _fetchOffsets(topicPartitions, retries: 3);
   }
 
-  /// Internal method for fetching offsets.
+  /// Internal method for fetching offsets with retries.
   Future<Map<String, List<ConsumerOffset>>> _fetchOffsets(
       Map<String, Set<int>> topicPartitions,
       {int retries: 0,
@@ -46,8 +46,7 @@ class ConsumerGroup {
         } else if (partition.errorCode != 0) {
           logger?.info(
               'ConsumerGroup(${name}): fetchOffsets failed. Error code: ${partition.errorCode} for partition ${partition.partitionId} of ${topic}.');
-          throw new KafkaClientError(
-              'ConsumerGroup: fetchOffsets failed. Error code: ${partition.errorCode} for partition ${partition.partitionId} of ${topic}.');
+          throw new KafkaApiError.fromErrorCode(partition.errorCode);
         }
       }
     }
@@ -58,11 +57,34 @@ class ConsumerGroup {
   /// Commits provided [offsets] to the server for this consumer group.
   Future commitOffsets(Map<String, List<ConsumerOffset>> offsets,
       int consumerGenerationId, String consumerId) async {
-    var host = await _getCoordinatorHost();
+    return _commitOffsets(offsets, consumerGenerationId, consumerId,
+        retries: 3);
+  }
+
+  /// Internal method for commiting offsets with retries.
+  Future _commitOffsets(Map<String, List<ConsumerOffset>> offsets,
+      int consumerGenerationId, String consumerId,
+      {int retries: 0, bool refresh: false}) async {
+    var host = await _getCoordinatorHost(refresh: refresh);
     var request = new OffsetCommitRequest(
         client, host, name, offsets, consumerGenerationId, consumerId);
 
     var response = await request.send();
+    for (var topic in response.topics.keys) {
+      for (var partition in response.topics[topic]) {
+        if (partition.errorCode == 16 && retries > 1) {
+          // Re-fetch coordinator metadata and try again
+          logger?.info(
+              'ConsumerGroup(${name}): encountered API error 16 (NotCoordinatorForConsumerCode) when commiting offsets. Scheduling retry with metadata refresh.');
+          return _commitOffsets(offsets, consumerGenerationId, consumerId,
+              retries: retries - 1, refresh: true);
+        } else if (partition.errorCode != 0) {
+          logger?.info(
+              'ConsumerGroup(${name}): commitOffsets failed. Error code: ${partition.errorCode} for partition ${partition.partitionId} of ${topic}.');
+          throw new KafkaApiError.fromErrorCode(partition.errorCode);
+        }
+      }
+    }
   }
 
   /// Returns instance of coordinator host for this consumer group.

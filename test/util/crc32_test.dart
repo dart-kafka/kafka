@@ -4,23 +4,25 @@ import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
 
 void main() {
-  test('it produces valid CRC32 checksums (unsigned)', () {
-    _dataProvider().forEach((input, expected) {
-      var result = Crc32.unsigned(input);
-      expect(result, equals(expected));
+  group('Crc32', () {
+    test('it produces valid CRC32 checksums (unsigned)', () {
+      _dataProvider().forEach((input, expected) {
+        var result = Crc32.unsigned(input);
+        expect(result, equals(expected));
+      });
     });
-  });
 
-  test('it produces valid CRC32 checksums for string inputs', () {
-    _stringDataProvider().forEach((input, expected) {
-      var result = Crc32.unsigned(input);
-      expect(result, equals(expected));
+    test('it produces valid CRC32 checksums for string inputs', () {
+      _stringDataProvider().forEach((input, expected) {
+        var result = Crc32.unsigned(input);
+        expect(result, equals(expected));
+      });
     });
-  });
 
-  test('it can produce signed checksum', () {
-    var result = Crc32.signed('Lammert'.codeUnits);
-    expect(result, equals(0x71FC2734));
+    test('it can produce signed checksum', () {
+      var result = Crc32.signed('Lammert'.codeUnits);
+      expect(result, equals(0x71FC2734));
+    });
   });
 }
 
