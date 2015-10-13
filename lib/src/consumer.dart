@@ -4,7 +4,7 @@ part of kafka;
 ///
 /// Provides convenience layer on top of Kafka's [FetchRequest],
 /// [ConsumerMetadataRequest] and Offset Fetch / Commit API.
-class KafkaConsumer {
+class Consumer {
   /// Instance of [KafkaClient] used to send requests.
   final KafkaClient client;
 
@@ -22,8 +22,7 @@ class KafkaConsumer {
   final Map<KafkaHost, FetchRequest> _fetchRequests = new Map();
 
   /// Creates new consumer identified by [consumerGroup].
-  KafkaConsumer(
-      this.client, this.consumerGroup, this.maxWaitTime, this.minBytes);
+  Consumer(this.client, this.consumerGroup, this.maxWaitTime, this.minBytes);
 
   Future addTopicPartitions(TopicPartitions partitions) async {
     //
