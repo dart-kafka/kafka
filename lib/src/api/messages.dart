@@ -75,6 +75,7 @@ class Message {
     var attributes = new MessageAttributes.readFrom(reader.readInt8());
     var key = reader.readBytes();
     var value = reader.readBytes();
+
     return new Message._internal(attributes, key, value, magicByte);
   }
 
@@ -100,6 +101,7 @@ class MessageSet {
   /// Collection of messages. Keys in the map are message offsets.
   final Map<int, Message> _messages = new Map();
 
+  /// Map of message offsets to messages.
   Map<int, Message> get messages => new UnmodifiableMapView(_messages);
 
   /// Number of messages in this message set.
@@ -128,6 +130,7 @@ class MessageSet {
         var message = new Message.readFrom(messageReader);
         this._messages[offset] = message;
       } on RangeError {
+        print('Partial message');
         // According to spec server is allowed to return partial
         // messages, so we just ignore it here and exit the loop.
         var remaining = reader.length - reader.offset;

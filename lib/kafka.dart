@@ -41,7 +41,6 @@ part 'src/api/offset_commit_api.dart';
 part 'src/producer.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
-part 'src/message_stream.dart';
 
 /// String identifier of this library.
 const String kafkaClientId = 'dart-kafka-v1.0.0-dev';

@@ -3,7 +3,7 @@ part of kafka;
 /// FetchRequest as defined in Kafka protocol spec.
 ///
 /// This is a low-level API object and requires extensive knowledge of Kafka protocol.
-/// Consider using high-level [KafkaConsumer] class instead.
+/// Consider using high-level [Consumer] class instead.
 ///
 /// It is responsibility of the user of this class to make sure that this request
 /// will be send to the host which actually manages all topics and partitions in

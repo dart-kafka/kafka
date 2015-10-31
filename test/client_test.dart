@@ -1,6 +1,5 @@
 library kafka.test.client;
 
-import 'dart:async';
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
 import 'setup.dart';

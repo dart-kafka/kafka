@@ -11,6 +11,11 @@ class KafkaClient {
   final Map<KafkaHost, StreamSubscription> subscriptions = new Map();
   final Logger logger;
 
+  Map<KafkaRequest, Completer> _inflightRequests = new Map();
+
+  Map<KafkaHost, List<int>> _buffers = new Map();
+  Map<KafkaHost, int> _sizes = new Map();
+
   /// Creates new instance of KafkaClient.
   ///
   /// [defaultHosts] will be used to fetch Kafka metadata information. At least
@@ -52,25 +57,47 @@ class KafkaClient {
   Future<dynamic> send(KafkaHost host, KafkaRequest request) async {
     var socket = await _getSocketForHost(host);
     Completer completer = new Completer();
-    List<int> _data = new List();
-    int size = -1;
-    subscriptions[host].onData((d) {
-      _data.addAll(d);
-      if (_data.length >= 4) {
-        var sizeBytes = _data.sublist(0, 4);
-        var reader = new KafkaBytesReader.fromBytes(sizeBytes);
-        size = reader.readInt32();
-      }
-
-      if (size == _data.length - 4) {
-        completer.complete(request._createResponse(_data));
-      }
-    });
+    _inflightRequests[request] = completer;
     // TODO: add timeout for how long to wait for response.
     // TODO: add error handling.
     socket.add(request.toBytes());
 
     return completer.future;
+  }
+
+  void _handleData(KafkaHost host, List<int> d) {
+    var buffer = _buffers[host];
+
+    buffer.addAll(d);
+    if (buffer.length >= 4 && _sizes[host] == -1) {
+      var sizeBytes = buffer.sublist(0, 4);
+      var reader = new KafkaBytesReader.fromBytes(sizeBytes);
+      _sizes[host] = reader.readInt32();
+    }
+
+    var extra;
+    if (buffer.length > _sizes[host] + 4) {
+      print('Extra data: ${buffer.length}, size: ${_sizes[host]}');
+      extra = buffer.sublist(_sizes[host] + 4);
+      buffer.removeRange(_sizes[host] + 4, buffer.length);
+    }
+
+    if (buffer.length == _sizes[host] + 4) {
+      var header = buffer.sublist(4, 8);
+      var reader = new KafkaBytesReader.fromBytes(header);
+      var correlationId = reader.readInt32();
+      var request = _inflightRequests.keys
+          .firstWhere((r) => r.correlationId == correlationId);
+      var completer = _inflightRequests[request];
+      completer.complete(request._createResponse(buffer));
+      _inflightRequests.remove(request);
+      buffer.clear();
+      _sizes[host] = -1;
+      if (extra is List && extra.isNotEmpty) {
+        print('Do extra');
+        _handleData(host, extra);
+      }
+    }
   }
 
   KafkaHost _getCurrentDefaultHost() {
@@ -85,7 +112,9 @@ class KafkaClient {
   Future<Socket> _getSocketForHost(KafkaHost host) async {
     if (!sockets.containsKey(host)) {
       var s = await Socket.connect(host.host, host.port);
-      subscriptions[host] = s.listen(null);
+      _buffers[host] = new List();
+      _sizes[host] = -1;
+      subscriptions[host] = s.listen((d) => _handleData(host, d));
       sockets[host] = s;
       sockets[host].setOption(SocketOption.TCP_NODELAY, true);
     }

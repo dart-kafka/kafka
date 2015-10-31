@@ -15,7 +15,7 @@ void main() {
     });
 
     test('it can produce messages to multiple brokers', () async {
-      var producer = new KafkaProducer(_client, 1, 100);
+      var producer = new Producer(_client, 1, 100);
       producer.addMessages(_topicName, 0, [new Message('test1'.codeUnits)]);
       producer.addMessages(_topicName, 1, [new Message('test2'.codeUnits)]);
       producer.addMessages(_topicName, 2, [new Message('test3'.codeUnits)]);

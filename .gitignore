@@ -3,3 +3,5 @@ bin/
 doc/
 packages
 .packages
+notes.md
+coverage/

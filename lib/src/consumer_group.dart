@@ -68,7 +68,6 @@ class ConsumerGroup {
     var host = await _getCoordinatorHost(refresh: refresh);
     var request = new OffsetCommitRequest(
         client, host, name, offsets, consumerGenerationId, consumerId);
-
     var response = await request.send();
     for (var topic in response.topics.keys) {
       for (var partition in response.topics[topic]) {
@@ -85,6 +84,43 @@ class ConsumerGroup {
         }
       }
     }
+
+    return null;
+  }
+
+  Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions) async {
+    var meta = await client.getMetadata();
+    var requests = new Map<KafkaHost, OffsetRequest>();
+    for (var topic in topicPartitions.keys) {
+      var partitions = topicPartitions[topic];
+      for (var p in partitions) {
+        var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
+        var host = new KafkaHost(
+            meta.getBroker(leader).host, meta.getBroker(leader).port);
+        if (!requests.containsKey(host)) {
+          requests[host] = new OffsetRequest(client, host, leader);
+        }
+        requests[host].addTopicPartition(topic, p, -2, 1);
+      }
+    }
+
+    var offsets = new Map<String, List<ConsumerOffset>>();
+    for (var request in requests.values) {
+      var response = await request.send();
+      for (var topic in response.topics.keys) {
+        var partitions = response.topics[topic];
+        for (var p in partitions) {
+          if (!offsets.containsKey(topic)) {
+            offsets[topic] = [];
+          }
+          print('Reset offset: p=${p.partitionId}, o=${p.offsets.first}');
+          offsets[topic].add(new ConsumerOffset(
+              p.partitionId, p.offsets.first, 'resetToEarliest'));
+        }
+      }
+    }
+
+    return commitOffsets(offsets, 0, '');
   }
 
   /// Returns instance of coordinator host for this consumer group.

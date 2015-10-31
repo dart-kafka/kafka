@@ -2,7 +2,7 @@ part of kafka;
 
 /// OffsetRequest as defined in Kafka protocol spec.
 ///
-/// This is a low-level API object and requires good knowledge of Kafka protocol.
+/// This is a low-level API object.
 class OffsetRequest extends KafkaRequest {
   /// API key of [OffsetRequest].
   final int apiKey = 2;

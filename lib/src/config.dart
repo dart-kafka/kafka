@@ -14,6 +14,12 @@ class KafkaHost {
     return _instances[key];
   }
 
+  factory KafkaHost.fromHostPort(String hostPort) {
+    var list = hostPort.split(':');
+
+    return new KafkaHost(list.first, int.parse(list.last));
+  }
+
   KafkaHost._internal(this.host, this.port);
 }
 

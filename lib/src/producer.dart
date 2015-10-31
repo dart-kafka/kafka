@@ -6,7 +6,7 @@ part of kafka;
 /// and provides simple API for implementing producers.
 ///
 /// _It is recommended to use this class instead of [ProduceRequest] directly._
-class KafkaProducer {
+class Producer {
   /// Instance of [KafkaClient] which is used to send requests to Kafka brokers.
   final KafkaClient client;
 
@@ -25,14 +25,14 @@ class KafkaProducer {
   /// Map to keep track of which request should go to which broker.
   Map<KafkaHost, ProduceRequest> _requests = new Map();
 
-  /// Creates new instance of [KafkaProducer].
+  /// Creates new instance of [Producer].
   ///
   /// [requiredAcks] specifies how many acknowledgements the servers should
   /// receive before responding to the request.
   ///
   /// [timeout] specifies maximum time in milliseconds the server can await
   /// the receipt of the number of acknowledgements in [requiredAcks].
-  KafkaProducer(this.client, this.requiredAcks, this.timeout);
+  Producer(this.client, this.requiredAcks, this.timeout);
 
   /// Adds messages to be sent in a [ProduceRequest] to Kafka.
   ///

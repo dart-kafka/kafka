@@ -3,7 +3,7 @@ part of kafka;
 /// OffsetCommitRequest as defined in Kafka protocol spec.
 ///
 /// This is a low-level API object. While it is posible to use this request
-/// directly it is recommended to rely on high-level [KafkaConsumer] class which
+/// directly it is recommended to rely on high-level [Consumer] class which
 /// encapsulates a lot of details about dealing with metadata and offsets.
 class OffsetCommitRequest extends KafkaRequest {
   /// API key of [OffsetCommitRequest]

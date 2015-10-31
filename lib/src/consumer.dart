@@ -2,14 +2,18 @@ part of kafka;
 
 /// High-level Kafka consumer class.
 ///
-/// Provides convenience layer on top of Kafka's [FetchRequest],
-/// [ConsumerMetadataRequest] and Offset Fetch / Commit API.
+/// Provides convenience layer on top of Kafka's low-level APIs.
+///
+/// TODO: add `consumeBatch(int maxBatchSize)`
 class Consumer {
   /// Instance of [KafkaClient] used to send requests.
   final KafkaClient client;
 
-  /// Consumer group.
+  /// Consumer group this consumer belongs to.
   final ConsumerGroup consumerGroup;
+
+  /// Topics and partitions to consume.
+  final Map<String, Set<int>> topicPartitions;
 
   /// Maximum amount of time in milliseconds to block waiting if insufficient
   /// data is available at the time the request is issued.
@@ -19,20 +23,211 @@ class Consumer {
   /// to give a response.
   final int minBytes;
 
-  final Map<KafkaHost, FetchRequest> _fetchRequests = new Map();
-
   /// Creates new consumer identified by [consumerGroup].
-  Consumer(this.client, this.consumerGroup, this.maxWaitTime, this.minBytes);
+  Consumer(this.client, this.consumerGroup, this.topicPartitions,
+      this.maxWaitTime, this.minBytes);
 
-  Future addTopicPartitions(TopicPartitions partitions) async {
-    //
+  /// Consumes messages from Kafka. If [limit] is specified consuming
+  /// will stop after exactly [limit] messages have been retrieved. If no
+  /// specific limit is set it'll default to `-1` and will consume all incoming
+  /// messages continuously.
+  Stream<MessageEnvelope> consume({int limit: -1}) {
+    var controller = new _MessageStreamController(limit);
+
+    Future<List<_HostWorker>> list = _buildWorkers(controller);
+    list.then((workers) {
+      if (workers.isEmpty) {
+        controller.close();
+        return;
+      }
+      var remaining = workers.length;
+      List<Future> futures = workers.map((w) => w.run()).toList();
+      futures.forEach((f) {
+        f.then((_) {
+          remaining--;
+          if (remaining == 0) {
+            print('All workers are done. Closing stream.');
+            controller.close();
+          }
+        });
+      });
+    });
+
+    return controller.stream;
   }
 
-  FetchRequest _getRequestForHost(KafkaHost host) {
-    if (!_fetchRequests.containsKey(host)) {
-      _fetchRequests[host] =
-          new FetchRequest(client, host, maxWaitTime, minBytes);
+  Future<List<_HostWorker>> _buildWorkers(
+      _MessageStreamController controller) async {
+    var meta = await client.getMetadata();
+    var topicsByHost = new Map<KafkaHost, Map<String, Set<int>>>();
+
+    topicPartitions.forEach((topic, partitions) {
+      partitions.forEach((p) {
+        var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
+        var host = new KafkaHost(
+            meta.getBroker(leader).host, meta.getBroker(leader).port);
+        if (topicsByHost.containsKey(host) == false) {
+          topicsByHost[host] = new Map<String, Set<int>>();
+        }
+        if (topicsByHost[host].containsKey(topic) == false) {
+          topicsByHost[host][topic] = new Set<int>();
+        }
+        topicsByHost[host][topic].add(p);
+      });
+    });
+
+    var workers = new List<_HostWorker>();
+    topicsByHost.forEach((host, topics) {
+      workers.add(new _HostWorker(client, host, consumerGroup, controller,
+          topics, maxWaitTime, minBytes));
+    });
+
+    return workers;
+  }
+}
+
+class _MessageStreamController {
+  final int limit;
+  final StreamController<MessageEnvelope> _controller =
+      new StreamController<MessageEnvelope>();
+  int _added = 0;
+
+  _MessageStreamController(this.limit);
+
+  bool get canAdd => (limit == -1) || (_added < limit);
+  Stream<MessageEnvelope> get stream => _controller.stream;
+
+  void add(MessageEnvelope event) {
+    _controller.add(event);
+    _added++;
+  }
+
+  void close() {
+    _controller.close();
+  }
+}
+
+/// Worker responsible for fetching messages from one particular Kafka broker.
+class _HostWorker {
+  final KafkaClient client;
+  final KafkaHost host;
+  final ConsumerGroup group;
+  final _MessageStreamController controller;
+  final Map<String, Set<int>> topicPartitions;
+  final int maxWaitTime;
+  final int minBytes;
+
+  _HostWorker(this.client, this.host, this.group, this.controller,
+      this.topicPartitions, this.maxWaitTime, this.minBytes);
+
+  Future run() async {
+    print('Running worker on host ${host.host}:${host.port}');
+    Completer completer = new Completer();
+
+    var shouldContinue = true;
+    while (shouldContinue) {
+      var request = await _createRequest();
+      var response = await request.send();
+      var didReset = await _resetOffsetsIfNeeded(response);
+      if (didReset) {
+        print('Offsets were reset to earliest. Forcing re-fetch.');
+        continue;
+      }
+      var messageCount = 0;
+      for (var topic in response.topics.keys) {
+        var partitions = response.topics[topic];
+        for (var p in partitions) {
+          for (var offset in p.messages.messages.keys) {
+            var message = p.messages.messages[offset];
+            var envelope =
+                new MessageEnvelope(topic, p.partitionId, offset, message);
+            if (controller.canAdd) {
+              messageCount++;
+              controller.add(envelope);
+              var metadata = await envelope.future;
+              var commitOffset = {
+                topic: [new ConsumerOffset(p.partitionId, offset, metadata)]
+              };
+              await group.commitOffsets(commitOffset, 0, '');
+              print(
+                  'Done with message ${offset}. I: ${messageCount}, total: ${p.messages.messages.length}');
+            } else {
+              completer.complete();
+              shouldContinue = false;
+              break;
+            }
+          }
+          if (!shouldContinue) break;
+        }
+        if (!shouldContinue) break;
+      }
+      if (messageCount == 0 && controller.canAdd == false) {
+        print('No need to consume more. Finishing up.');
+        completer.complete();
+        shouldContinue = false;
+      }
     }
-    return _fetchRequests[host];
+
+    return completer.future;
+  }
+
+  Future<bool> _resetOffsetsIfNeeded(FetchResponse response) async {
+    var topicsToReset = new Map<String, Set<int>>();
+    for (var topic in response.topics.keys) {
+      var partitions = response.topics[topic];
+      for (var p in partitions) {
+        if (p.errorCode == 1) {
+          print('Got API error 1');
+          if (!topicsToReset.containsKey(topic)) {
+            topicsToReset[topic] = [];
+          }
+          topicsToReset[topic].add(p.partitionId);
+        }
+      }
+    }
+
+    if (topicsToReset.isNotEmpty) {
+      await group.resetOffsetsToEarliest(topicsToReset);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  Future<FetchRequest> _createRequest() async {
+    var offsets = await group.fetchOffsets(topicPartitions);
+    var request = new FetchRequest(client, host, maxWaitTime, minBytes);
+    topicPartitions.forEach((topic, partitions) {
+      for (var p in partitions) {
+        var offset = offsets[topic].firstWhere((o) => o.partitionId == p);
+        request.add(topic, p, offset.offset + 1);
+      }
+    });
+
+    return request;
+  }
+}
+
+/// Envelope for a [Message] used by high-level consumer.
+class MessageEnvelope {
+  final String topicName;
+  final int partitionId;
+  final int offset;
+  final Message message;
+
+  Completer<String> _completer = new Completer<String>();
+
+  MessageEnvelope(this.topicName, this.partitionId, this.offset, this.message);
+
+  Future<String> get future => _completer.future;
+
+  /// Acknowledges that messages has been processed successfully. You must call
+  /// [ack] or [nack] when you're done with this message.
+  void ack(String metadata) {
+    _completer.complete(metadata);
+  }
+
+  void nack(String error) {
+    _completer.completeError(error);
   }
 }

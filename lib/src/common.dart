@@ -17,10 +17,3 @@ abstract class KafkaRequest {
 
   dynamic _createResponse(List<int> data);
 }
-
-class TopicPartitions {
-  final String topicName;
-  final Set<int> partitions;
-
-  TopicPartitions(this.topicName, this.partitions);
-}
