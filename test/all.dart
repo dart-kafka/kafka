@@ -13,7 +13,6 @@ import 'api/produce_test.dart' as produce_test;
 import 'consumer_group_test.dart' as consumer_group_test;
 import 'producer_test.dart' as producer_test;
 import 'consumer_test.dart' as consumer_test;
-import 'functional_test.dart' as functional_test;
 
 void main() {
   bytes_builder_test.main();
@@ -29,5 +28,4 @@ void main() {
   consumer_group_test.main();
   producer_test.main();
   consumer_test.main();
-  functional_test.main();
 }
