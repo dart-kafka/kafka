@@ -1,6 +1,6 @@
 # Dart Kafka
 
-[![Build Status](https://travis-ci.org/pulyaevskiy/dart-kafka.svg?branch=master)](https://travis-ci.org/pulyaevskiy/dart-kafka)
+[![Build Status](https://travis-ci.org/pulyaevskiy/dart-kafka.svg?branch=master)](https://travis-ci.org/pulyaevskiy/dart-kafka) [![Coverage Status](https://coveralls.io/repos/pulyaevskiy/dart-kafka/badge.svg?branch=master&service=github)](https://coveralls.io/github/pulyaevskiy/dart-kafka?branch=master)
 
 Kafka client library written in Dart.
 
