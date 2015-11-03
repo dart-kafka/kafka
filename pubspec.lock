@@ -25,6 +25,10 @@ packages:
     description: collection
     source: hosted
     version: "1.1.3"
+  coverage:
+    description: coverage
+    source: hosted
+    version: "0.7.2"
   crypto:
     description: crypto
     source: hosted
@@ -33,6 +37,10 @@ packages:
     description: csslib
     source: hosted
     version: "0.12.1"
+  dart_coveralls:
+    description: dart_coveralls
+    source: hosted
+    version: "0.4.0"
   glob:
     description: glob
     source: hosted
@@ -41,6 +49,10 @@ packages:
     description: html
     source: hosted
     version: "0.12.2"
+  http:
+    description: http
+    source: hosted
+    version: "0.11.3+2"
   http_multi_server:
     description: http_multi_server
     source: hosted
@@ -61,6 +73,10 @@ packages:
     description: mime
     source: hosted
     version: "0.9.3"
+  mockable_filesystem:
+    description: mockable_filesystem
+    source: hosted
+    version: "0.0.3"
   mockito:
     description: mockito
     source: hosted

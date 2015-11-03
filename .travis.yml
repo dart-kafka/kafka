@@ -19,7 +19,4 @@ before_install:
 
 script:
   - pub run test -r expanded test/all.dart
-
-after_success:
-  - pub global activate dart_coveralls
-  - pub global run dart_coveralls report -T test/all.dart
+  - pub run dart_coveralls report -T --retry 2 --debug test/client_test.dart
