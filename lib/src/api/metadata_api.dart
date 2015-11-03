@@ -26,7 +26,7 @@ class MetadataRequest extends KafkaRequest {
       : super(client, host);
 
   /// Sends the request.
-  Future<MetadataResponse> send() async {
+  Future<MetadataResponse> send() {
     return client.send(host, this);
   }
 

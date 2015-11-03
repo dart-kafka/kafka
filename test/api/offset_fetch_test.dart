@@ -28,6 +28,10 @@ void main() {
       });
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it fetches consumer offsets', () async {
       var response = await _request.send();
       expect(response.offsets, hasLength(equals(1)));

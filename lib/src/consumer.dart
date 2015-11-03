@@ -46,7 +46,7 @@ class Consumer {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
-            print('All workers are done. Closing stream.');
+            logger.info('Consumer: All workers are done. Closing stream.');
             controller.close();
           }
         });
@@ -121,7 +121,7 @@ class _HostWorker {
       this.topicPartitions, this.maxWaitTime, this.minBytes);
 
   Future run() async {
-    print('Running worker on host ${host.host}:${host.port}');
+    logger.info('Consumer: Running worker on host ${host.host}:${host.port}');
     Completer completer = new Completer();
 
     var shouldContinue = true;
@@ -130,7 +130,7 @@ class _HostWorker {
       var response = await request.send();
       var didReset = await _resetOffsetsIfNeeded(response);
       if (didReset) {
-        print('Offsets were reset to earliest. Forcing re-fetch.');
+        logger.warning('Offsets were reset to earliest. Forcing re-fetch.');
         continue;
       }
       var messageCount = 0;
@@ -149,8 +149,6 @@ class _HostWorker {
                 topic: [new ConsumerOffset(p.partitionId, offset, metadata)]
               };
               await group.commitOffsets(commitOffset, 0, '');
-              print(
-                  'Done with message ${offset}. I: ${messageCount}, total: ${p.messages.messages.length}');
             } else {
               completer.complete();
               shouldContinue = false;
@@ -162,7 +160,6 @@ class _HostWorker {
         if (!shouldContinue) break;
       }
       if (messageCount == 0 && controller.canAdd == false) {
-        print('No need to consume more. Finishing up.');
         completer.complete();
         shouldContinue = false;
       }
@@ -177,7 +174,8 @@ class _HostWorker {
       var partitions = response.topics[topic];
       for (var p in partitions) {
         if (p.errorCode == 1) {
-          print('Got API error 1');
+          logger.warning(
+              'Consumer: received API error 1 for topic ${topic}:${p.partitionId}');
           if (!topicsToReset.containsKey(topic)) {
             topicsToReset[topic] = [];
           }

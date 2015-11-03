@@ -8,10 +8,9 @@ void main() {
   group('Client', () {
     KafkaClient _client;
 
-    // setUp(() async {
-    // var host = await getDefaultHost();
-    // _client = new KafkaClient([new KafkaHost(host, 9092)]);
-    // });
+    tearDown(() async {
+      await _client.close();
+    });
 
     test('it can fetch topic metadata', () async {
       var host = await getDefaultHost();

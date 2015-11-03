@@ -33,6 +33,10 @@ void main() {
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it commits consumer offsets', () async {
       var offsets = new Map<String, List<ConsumerOffset>>();
       offsets['dartKafkaTest'] = [new ConsumerOffset(0, _offset, 'helloworld')];

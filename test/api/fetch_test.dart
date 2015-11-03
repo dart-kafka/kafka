@@ -31,6 +31,10 @@ void main() {
       _request = new FetchRequest(_client, leaderHost, 100, 1);
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it fetches messages from Kafka topic', () async {
       _request.add(_topicName, 0, _offset);
       var response = await _request.send();

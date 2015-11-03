@@ -25,6 +25,9 @@ class Producer {
   /// Map to keep track of which request should go to which broker.
   Map<KafkaHost, ProduceRequest> _requests = new Map();
 
+  /// Messages to publish grouped by topic and partition.
+  List<Tuple3<String, int, List<Message>>> _messages = new List();
+
   /// Creates new instance of [Producer].
   ///
   /// [requiredAcks] specifies how many acknowledgements the servers should
@@ -39,15 +42,8 @@ class Producer {
   /// This method will autodetect which broker is currently a leader for
   /// [topicName] and [partitionId] so that actual request will be sent to
   /// that particular node.
-  Future addMessages(
-      String topicName, partitionId, List<Message> messages) async {
-    var metadata = await client.getMetadata();
-    var topic = metadata.getTopicMetadata(topicName);
-    var partition = topic.getPartition(partitionId);
-
-    var broker = metadata.getBroker(partition.leader);
-    var host = new KafkaHost(broker.host, broker.port);
-    _getRequestForHost(host).addMessages(topicName, partitionId, messages);
+  addMessages(String topicName, partitionId, List<Message> messages) {
+    _messages.add(new Tuple3(topicName, partitionId, messages));
   }
 
   /// Sends produce data to Kafka.
@@ -58,6 +54,18 @@ class Producer {
   /// This method will wait for all [ProduceRequest]s to finish, aggregate the
   /// results and return instance of [ProduceResult].
   Future<ProduceResult> send() async {
+    if (_messages.isEmpty) {
+      throw new KafkaClientError('Must add messages to produce.');
+    }
+    var metadata = await client.getMetadata();
+    for (var t in _messages) {
+      var topic = metadata.getTopicMetadata(t._1);
+      var partition = topic.getPartition(t._2);
+      var broker = metadata.getBroker(partition.leader);
+      var host = new KafkaHost(broker.host, broker.port);
+      _getRequestForHost(host).addMessages(t._1, t._2, t._3);
+    }
+
     var futures = _requests.values.map((r) => r.send());
     var completer = new Completer();
     Future.wait(futures).then((List<ProduceResponse> responses) {
@@ -79,17 +87,26 @@ class Producer {
 /// Result of [KafkaProducer.send()] call.
 ///
 /// Provides convenience layer on top of Kafka API [ProduceResponse]:
-/// * Aggregates information about Kafka API errors.
-/// * Provides easy access to failed requests data (if any)
+///
+/// * Implements auto-discovery of brokers when publishing messages to multiple
+///   topics/partitions.
 class ProduceResult {
+  final List<ProduceResponse> responses;
   bool _hasErrors = false;
 
   bool get hasErrors => _hasErrors;
+  Map<String, Map<int, int>> _offsets = new Map();
 
-  ProduceResult(List<ProduceResponse> responses) {
+  Map<String, Map<int, int>> get offsets => _offsets;
+
+  ProduceResult(this.responses) {
     responses.forEach((response) {
       response.topics.forEach((topic) {
+        if (_offsets.containsKey(topic.topicName) == false) {
+          _offsets[topic.topicName] = new Map();
+        }
         topic.partitions.forEach((p) {
+          _offsets[topic.topicName][p.partitionId] = p.offset;
           if (p.errorCode > 0) {
             _hasErrors = true;
           }

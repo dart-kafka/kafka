@@ -16,6 +16,10 @@ void main() {
       _request = new ConsumerMetadataRequest(_client, host, 'testGroup');
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it fetches consumer metadata', () async {
       var response = await _request.send();
       expect(response.errorCode, equals(0));

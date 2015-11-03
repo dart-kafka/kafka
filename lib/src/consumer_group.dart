@@ -113,7 +113,6 @@ class ConsumerGroup {
           if (!offsets.containsKey(topic)) {
             offsets[topic] = [];
           }
-          print('Reset offset: p=${p.partitionId}, o=${p.offsets.first}');
           offsets[topic].add(new ConsumerOffset(
               p.partitionId, p.offsets.first, 'resetToEarliest'));
         }

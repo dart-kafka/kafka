@@ -85,10 +85,6 @@ packages:
     description: pub_semver
     source: hosted
     version: "1.2.2"
-  semver:
-    description: semver
-    source: hosted
-    version: "0.2.1"
   shelf:
     description: shelf
     source: hosted
@@ -125,10 +121,6 @@ packages:
     description: test
     source: hosted
     version: "0.12.5"
-  unittest:
-    description: unittest
-    source: hosted
-    version: "0.11.6+1"
   utf:
     description: utf
     source: hosted

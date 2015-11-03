@@ -30,6 +30,10 @@ void main() {
       _request = new OffsetRequest(_client, host, leaderId);
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it fetches offset info', () async {
       // TODO: finish test!
       _request.addTopicPartition(_topicName, 0, -1, 1);

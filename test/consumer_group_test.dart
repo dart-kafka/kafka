@@ -21,6 +21,10 @@ void main() {
       _client = spy(new KafkaClientMock(), client);
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it fetches offsets', () async {
       var group = new ConsumerGroup(_client, 'testGroup');
       var offsets = await group.fetchOffsets({

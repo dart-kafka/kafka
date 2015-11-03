@@ -22,6 +22,10 @@ void main() {
       _request = new ProduceRequest(_client, leaderHost, 1, 1000);
     });
 
+    tearDown(() async {
+      await _client.close();
+    });
+
     test('it publishes messages to Kafka topic', () async {
       _request.addMessages(
           _topicName, 0, [new Message('hello world'.codeUnits)]);

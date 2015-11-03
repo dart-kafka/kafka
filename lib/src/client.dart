@@ -65,6 +65,13 @@ class KafkaClient {
     return completer.future;
   }
 
+  Future close() async {
+    for (var h in sockets.keys) {
+      await subscriptions[h].cancel();
+      sockets[h].destroy();
+    }
+  }
+
   void _handleData(KafkaHost host, List<int> d) {
     var buffer = _buffers[host];
 
@@ -77,7 +84,7 @@ class KafkaClient {
 
     var extra;
     if (buffer.length > _sizes[host] + 4) {
-      print('Extra data: ${buffer.length}, size: ${_sizes[host]}');
+      logger.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
       extra = buffer.sublist(_sizes[host] + 4);
       buffer.removeRange(_sizes[host] + 4, buffer.length);
     }
@@ -94,7 +101,6 @@ class KafkaClient {
       buffer.clear();
       _sizes[host] = -1;
       if (extra is List && extra.isNotEmpty) {
-        print('Do extra');
         _handleData(host, extra);
       }
     }

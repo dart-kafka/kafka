@@ -1,16 +1,7 @@
-/// ## Kafka Client library
+/// ## Library providing interface to Apache Kafka.
 ///
-/// Provides interface for implementing Kafka producers and consumers in Dart.
-///
-/// Fetching metadata:
-///
-///     import 'package:kafka/kafka.dart';
-///
-///     void main() async {
-///       KafkaClient client = new KafkaClient('0.8.2', [new KafkaHost('127.0.0.1', 9092)]);
-///       var metadata = client.getMetadata();
-///     }
-///
+/// This library implementas Kafka binary protocal as well as provides some
+/// high-level abstraction for producing and consuming messages.
 library kafka;
 
 import 'dart:io';
@@ -20,9 +11,10 @@ import 'dart:math';
 import 'dart:collection';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
-import 'package:semver/semver.dart';
 
 part 'src/util/crc32.dart';
+part 'src/util/tuple.dart';
+
 part 'src/common.dart';
 part 'src/errors.dart';
 part 'src/config.dart';
@@ -42,6 +34,11 @@ part 'src/producer.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
 
-/// String identifier of this library.
+/// String identifier of this library used to pass to Kafka server in API calls.
 const String kafkaClientId = 'dart-kafka-v1.0.0-dev';
-const SemanticVersion kafkaProtocolVersion = const SemanticVersion(0, 8, 2);
+
+/// Logger for this library.
+///
+/// Doesn't do anything by default. You should set log level and add your handler
+/// in order to get logs.
+final Logger logger = new Logger('Kafka');
