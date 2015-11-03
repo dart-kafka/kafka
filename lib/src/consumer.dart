@@ -46,7 +46,7 @@ class Consumer {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
-            logger.info('Consumer: All workers are done. Closing stream.');
+            logger?.info('Consumer: All workers are done. Closing stream.');
             controller.close();
           }
         });
@@ -121,7 +121,7 @@ class _HostWorker {
       this.topicPartitions, this.maxWaitTime, this.minBytes);
 
   Future run() async {
-    logger.info('Consumer: Running worker on host ${host.host}:${host.port}');
+    logger?.info('Consumer: Running worker on host ${host.host}:${host.port}');
     Completer completer = new Completer();
 
     var shouldContinue = true;
@@ -130,7 +130,7 @@ class _HostWorker {
       var response = await request.send();
       var didReset = await _resetOffsetsIfNeeded(response);
       if (didReset) {
-        logger.warning('Offsets were reset to earliest. Forcing re-fetch.');
+        logger?.warning('Offsets were reset to earliest. Forcing re-fetch.');
         continue;
       }
       var messageCount = 0;
@@ -174,7 +174,7 @@ class _HostWorker {
       var partitions = response.topics[topic];
       for (var p in partitions) {
         if (p.errorCode == 1) {
-          logger.warning(
+          logger?.warning(
               'Consumer: received API error 1 for topic ${topic}:${p.partitionId}');
           if (!topicsToReset.containsKey(topic)) {
             topicsToReset[topic] = [];

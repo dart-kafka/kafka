@@ -84,7 +84,7 @@ class KafkaClient {
 
     var extra;
     if (buffer.length > _sizes[host] + 4) {
-      logger.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
+      logger?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
       extra = buffer.sublist(_sizes[host] + 4);
       buffer.removeRange(_sizes[host] + 4, buffer.length);
     }
