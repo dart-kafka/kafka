@@ -19,4 +19,4 @@ before_install:
 
 script:
   - pub run test -r expanded test/all.dart
-  - pub run dart_coveralls report -T --retry 2 --debug test/client_test.dart
+  - pub run dart_coveralls report -T --retry 2 --debug test/all.dart

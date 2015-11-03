@@ -37,7 +37,7 @@ void main() {
         commitOffsets.add(new ConsumerOffset(p, offsets[p] - 2002, 'metadata'));
       }
       _group.commitOffsets({_topicName: commitOffsets}, 0, '');
-    });
+    }, timeout: new Timeout(new Duration(minutes: 1)));
 
     test('it can consume 6000 messages', () async {
       var topics = {
@@ -50,6 +50,6 @@ void main() {
         envelope.ack('');
       }
       expect(i, 6000);
-    });
+    }, timeout: new Timeout(new Duration(minutes: 1)));
   });
 }
