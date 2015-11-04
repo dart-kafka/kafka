@@ -1,6 +1,6 @@
 name: 'kafka'
 version: 1.0.0-dev
-description: Kafka Client for Dartlang
+description: Kafka Client library for Dartlang
 author: Anatoly Pulyaevskiy <anatoly.pulyaevskiy@gmail.com>
 
 environment:

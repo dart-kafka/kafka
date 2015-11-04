@@ -8,7 +8,7 @@ part of kafka;
 /// _It is recommended to use this class instead of [ProduceRequest] directly._
 class Producer {
   /// Instance of [KafkaSession] which is used to send requests to Kafka brokers.
-  final KafkaSession client;
+  final KafkaSession session;
 
   /// How many acknowledgements the servers should receive before responding to the request.
   ///
@@ -35,7 +35,7 @@ class Producer {
   ///
   /// [timeout] specifies maximum time in milliseconds the server can await
   /// the receipt of the number of acknowledgements in [requiredAcks].
-  Producer(this.client, this.requiredAcks, this.timeout);
+  Producer(this.session, this.requiredAcks, this.timeout);
 
   /// Adds messages to be sent in a [ProduceRequest] to Kafka.
   ///
@@ -57,7 +57,7 @@ class Producer {
     if (_messages.isEmpty) {
       throw new KafkaClientError('Must add messages to produce.');
     }
-    var metadata = await client.getMetadata();
+    var metadata = await session.getMetadata();
     for (var t in _messages) {
       var topic = metadata.getTopicMetadata(t._1);
       var partition = topic.getPartition(t._2);
@@ -77,7 +77,8 @@ class Producer {
 
   ProduceRequest _getRequestForHost(KafkaHost host) {
     if (_requests.containsKey(host) == false) {
-      _requests[host] = new ProduceRequest(client, host, requiredAcks, timeout);
+      _requests[host] =
+          new ProduceRequest(session, host, requiredAcks, timeout);
     }
 
     return _requests[host];

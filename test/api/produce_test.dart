@@ -7,23 +7,23 @@ import '../setup.dart';
 void main() {
   group('ProduceApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaSession _client;
+    KafkaSession _session;
     ProduceRequest _request;
 
     setUp(() async {
       var ip = await getDefaultHost();
       var host = new KafkaHost(ip, 9092);
-      _client = new KafkaSession([host]);
-      var metadata = await _client.getMetadata();
+      _session = new KafkaSession([host]);
+      var metadata = await _session.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       var broker = metadata.brokers.firstWhere((b) => b.nodeId == leaderId);
       var leaderHost = new KafkaHost(broker.host, broker.port);
-      _request = new ProduceRequest(_client, leaderHost, 1, 1000);
+      _request = new ProduceRequest(_session, leaderHost, 1, 1000);
     });
 
     tearDown(() async {
-      await _client.close();
+      await _session.close();
     });
 
     test('it publishes messages to Kafka topic', () async {

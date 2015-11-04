@@ -1,12 +1,12 @@
 part of kafka;
 
 class ConsumerGroup {
-  final KafkaSession client;
+  final KafkaSession session;
   final String name;
 
   KafkaHost _coordinatorHost;
 
-  ConsumerGroup(this.client, this.name);
+  ConsumerGroup(this.session, this.name);
 
   /// Retrieves offsets of this consumer group from the server.
   ///
@@ -23,7 +23,7 @@ class ConsumerGroup {
       {int retries: 0,
       bool refresh: false}) async {
     var host = await _getCoordinatorHost(refresh: refresh);
-    var request = new OffsetFetchRequest(client, host, name, topicPartitions);
+    var request = new OffsetFetchRequest(session, host, name, topicPartitions);
     var response = await request.send();
     var offsets = new Map<String, List<ConsumerOffset>>.from(response.offsets);
 
@@ -66,7 +66,7 @@ class ConsumerGroup {
       {int retries: 0, bool refresh: false}) async {
     var host = await _getCoordinatorHost(refresh: refresh);
     var request = new OffsetCommitRequest(
-        client, host, name, offsets, consumerGenerationId, consumerId);
+        session, host, name, offsets, consumerGenerationId, consumerId);
     var response = await request.send();
     for (var topic in response.topics.keys) {
       for (var partition in response.topics[topic]) {
@@ -88,34 +88,15 @@ class ConsumerGroup {
   }
 
   Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions) async {
-    var meta = await client.getMetadata();
-    var requests = new Map<KafkaHost, OffsetRequest>();
-    for (var topic in topicPartitions.keys) {
-      var partitions = topicPartitions[topic];
-      for (var p in partitions) {
-        var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
-        var host = new KafkaHost(
-            meta.getBroker(leader).host, meta.getBroker(leader).port);
-        if (!requests.containsKey(host)) {
-          requests[host] = new OffsetRequest(client, host, leader);
-        }
-        requests[host].addTopicPartition(topic, p, -2, 1);
-      }
-    }
-
+    var offsetMaster = new OffsetMaster(session);
+    var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
     var offsets = new Map<String, List<ConsumerOffset>>();
-    for (var request in requests.values) {
-      var response = await request.send();
-      for (var topic in response.topics.keys) {
-        var partitions = response.topics[topic];
-        for (var p in partitions) {
-          if (!offsets.containsKey(topic)) {
-            offsets[topic] = [];
-          }
-          offsets[topic].add(new ConsumerOffset(
-              p.partitionId, p.offsets.first, 'resetToEarliest'));
-        }
+    for (var earliest in earliestOffsets) {
+      if (offsets.containsKey(earliest.topicName) == false) {
+        offsets[earliest.topicName] = new List();
       }
+      offsets[earliest.topicName].add(new ConsumerOffset(
+          earliest.partitionId, earliest.offset, 'resetToEarliest'));
     }
 
     return commitOffsets(offsets, 0, '');
@@ -128,7 +109,7 @@ class ConsumerGroup {
     }
 
     if (_coordinatorHost == null) {
-      var metadata = await client.getConsumerMetadata(name);
+      var metadata = await session.getConsumerMetadata(name);
       _coordinatorHost =
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
     }

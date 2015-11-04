@@ -7,7 +7,7 @@ import '../setup.dart';
 void main() {
   group('OffsetCommitApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaSession _client;
+    KafkaSession _session;
     KafkaHost _host;
     KafkaHost _coordinatorHost;
     int _offset;
@@ -16,9 +16,9 @@ void main() {
     setUp(() async {
       var ip = await getDefaultHost();
       _host = new KafkaHost(ip, 9092);
-      _client = new KafkaSession([_host]);
+      _session = new KafkaSession([_host]);
 
-      ProduceRequest produce = new ProduceRequest(_client, _host, 1, 1000);
+      ProduceRequest produce = new ProduceRequest(_session, _host, 1, 1000);
       var now = new DateTime.now();
       var message = 'test:' + now.toIso8601String();
       produce.addMessages(_topicName, 0, [new Message(message.codeUnits)]);
@@ -27,14 +27,14 @@ void main() {
 
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       var consumerMetadataRequest =
-          new ConsumerMetadataRequest(_client, _host, _testGroup);
+          new ConsumerMetadataRequest(_session, _host, _testGroup);
       var metadata = await consumerMetadataRequest.send();
       _coordinatorHost =
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
     });
 
     tearDown(() async {
-      await _client.close();
+      await _session.close();
     });
 
     test('it commits consumer offsets', () async {
@@ -42,7 +42,7 @@ void main() {
       offsets['dartKafkaTest'] = [new ConsumerOffset(0, _offset, 'helloworld')];
 
       var request = new OffsetCommitRequest(
-          _client, _coordinatorHost, _testGroup, offsets, 0, '');
+          _session, _coordinatorHost, _testGroup, offsets, 0, '');
 
       var response = await request.send();
       expect(response.topics, hasLength(equals(1)));
@@ -53,7 +53,7 @@ void main() {
       expect(p.errorCode, equals(0));
 
       var fetch =
-          new OffsetFetchRequest(_client, _coordinatorHost, _testGroup, {
+          new OffsetFetchRequest(_session, _coordinatorHost, _testGroup, {
         _topicName: new Set.from([0])
       });
 

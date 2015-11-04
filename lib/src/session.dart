@@ -19,7 +19,7 @@ class KafkaSession {
   ///
   /// [contactHosts] will be used to fetch Kafka metadata information. At least
   /// one is required. However for production consider having more than 1.
-  /// In case of one of the hosts is temporarily unavailable the client will
+  /// In case of one of the hosts is temporarily unavailable the session will
   /// rotate them until sucessful response is returned. Error will be thrown
   /// when all of the default hosts are unavailable.
   KafkaSession(List<KafkaHost> contactHosts)

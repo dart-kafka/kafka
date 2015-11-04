@@ -20,6 +20,8 @@ abstract class KafkaRequest {
 }
 
 /// Represents individual Kafka broker identified by host and port.
+///
+/// TODO: consolidate with [Broker].
 class KafkaHost {
   /// Host name or IP address of this Kafka broker.
   final String host;

@@ -24,9 +24,9 @@ import 'package:kafka/kafka.dart';
 
 main(List<String> arguments) async {
   var host = new KafkaHost('127.0.0.1', 9092);
-  var client = new KafkaClient([host]);
+  var session = new KafkaSession([host]);
 
-  var producer = new Producer(client, 1, 1000);
+  var producer = new Producer(session, 1, 1000);
   producer.addMessages('topicName', 0, [new Message('msgForPartition0'.codeUnits)]);
   producer.addMessages('topicName', 1, [new Message('msgForPartition1'.codeUnits)]);
   var response = await producer.send();
@@ -51,13 +51,13 @@ void main(List<String> arguments) {
 Future run() async {
   var completer = new Completer();
   var host = new KafkaHost('127.0.0.1', 9092);
-  var client = new KafkaClient([host]);
-  var group = new ConsumerGroup(client, 'consumerGroupName');
+  var session = new KafkaSession([host]);
+  var group = new ConsumerGroup(session, 'consumerGroupName');
   var topics = {
     'topicName': [0, 1] // list of partitions to consume from.
   };
 
-  var consumer = new Consumer(client, group, topics, 100, 1);
+  var consumer = new Consumer(session, group, topics, 100, 1);
   await for (MessageEnvelope message in consumer.consume(limit: 5)) {
     var value = new String.fromCharCodes(message.message.value);
     print('Got message: ${message.offset}, ${value}');

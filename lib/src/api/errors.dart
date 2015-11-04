@@ -27,4 +27,22 @@ class KafkaApiError {
   String get errorMessage => errorCodes[errorCode];
 
   KafkaApiError.fromErrorCode(this.errorCode);
+
+  static const int NoError = 0;
+  static const int Unknown = -1;
+  static const int OffsetOutOfRange = 1;
+  static const int InvalidMessage = 2;
+  static const int UnknownTopicOrPartition = 3;
+  static const int InvalidMessageSize = 4;
+  static const int LeaderNotAvailable = 5;
+  static const int NotLeaderForPartition = 6;
+  static const int RequestTimedOut = 7;
+  static const int BrokerNotAvailable = 8;
+  static const int ReplicaNotAvailable = 9;
+  static const int MessageSizeTooLarge = 10;
+  static const int StaleControllerEpoch = 11;
+  static const int OffsetMetadataTooLarge = 12;
+  static const int OffsetsLoadInProgress = 14;
+  static const int ConsumerCoordinatorNotAvailable = 15;
+  static const int NotCoordinatorForConsumer = 16;
 }

@@ -108,6 +108,29 @@ void main() {
       }
       verify(_session.getConsumerMetadata('testGroup')).called(3);
     });
+
+    test('it can reset offsets to earliest', () async {
+      var offsetMaster = new OffsetMaster(_session);
+      var earliestOffsets = await offsetMaster.fetchEarliest({
+        _topicName: [0, 1, 2]
+      });
+
+      var group = new ConsumerGroup(_session, 'testGroup');
+      await group.resetOffsetsToEarliest({
+        _topicName: [0, 1, 2]
+      });
+
+      var offsets = await group.fetchOffsets({
+        _topicName: [0, 1, 2]
+      });
+      expect(offsets[_topicName], hasLength(3));
+
+      for (var o in offsets[_topicName]) {
+        var earliest =
+            earliestOffsets.firstWhere((to) => to.partitionId == o.partitionId);
+        expect(o.offset, equals(earliest.offset));
+      }
+    });
   });
 }
 

@@ -7,7 +7,7 @@ part of kafka;
 /// TODO: add `consumeBatch(int maxBatchSize)`
 class Consumer {
   /// Instance of [KafkaSession] used to send requests.
-  final KafkaSession client;
+  final KafkaSession session;
 
   /// Consumer group this consumer belongs to.
   final ConsumerGroup consumerGroup;
@@ -24,7 +24,7 @@ class Consumer {
   final int minBytes;
 
   /// Creates new consumer identified by [consumerGroup].
-  Consumer(this.client, this.consumerGroup, this.topicPartitions,
+  Consumer(this.session, this.consumerGroup, this.topicPartitions,
       this.maxWaitTime, this.minBytes);
 
   /// Consumes messages from Kafka. If [limit] is specified consuming
@@ -58,7 +58,7 @@ class Consumer {
 
   Future<List<_HostWorker>> _buildWorkers(
       _MessageStreamController controller) async {
-    var meta = await client.getMetadata();
+    var meta = await session.getMetadata();
     var topicsByHost = new Map<KafkaHost, Map<String, Set<int>>>();
 
     topicPartitions.forEach((topic, partitions) {
@@ -78,7 +78,7 @@ class Consumer {
 
     var workers = new List<_HostWorker>();
     topicsByHost.forEach((host, topics) {
-      workers.add(new _HostWorker(client, host, consumerGroup, controller,
+      workers.add(new _HostWorker(session, host, consumerGroup, controller,
           topics, maxWaitTime, minBytes));
     });
 
@@ -109,7 +109,7 @@ class _MessageStreamController {
 
 /// Worker responsible for fetching messages from one particular Kafka broker.
 class _HostWorker {
-  final KafkaSession client;
+  final KafkaSession session;
   final KafkaHost host;
   final ConsumerGroup group;
   final _MessageStreamController controller;
@@ -117,7 +117,7 @@ class _HostWorker {
   final int maxWaitTime;
   final int minBytes;
 
-  _HostWorker(this.client, this.host, this.group, this.controller,
+  _HostWorker(this.session, this.host, this.group, this.controller,
       this.topicPartitions, this.maxWaitTime, this.minBytes);
 
   Future run() async {
@@ -194,7 +194,7 @@ class _HostWorker {
 
   Future<FetchRequest> _createRequest() async {
     var offsets = await group.fetchOffsets(topicPartitions);
-    var request = new FetchRequest(client, host, maxWaitTime, minBytes);
+    var request = new FetchRequest(session, host, maxWaitTime, minBytes);
     topicPartitions.forEach((topic, partitions) {
       for (var p in partitions) {
         var offset = offsets[topic].firstWhere((o) => o.partitionId == p);

@@ -28,6 +28,7 @@ part 'src/common.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
 part 'src/errors.dart';
+part 'src/offset_master.dart';
 part 'src/producer.dart';
 part 'src/session.dart';
 part 'src/util/crc32.dart';

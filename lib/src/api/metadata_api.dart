@@ -95,9 +95,8 @@ class Broker {
     this.port = reader.readInt32();
   }
 
-  @override
-  String toString() {
-    return "Broker(nodeId: ${nodeId.toString()}, host: ${host}, port: ${port.toString()})";
+  KafkaHost toKafkaHost() {
+    return new KafkaHost(host, port);
   }
 }
 
