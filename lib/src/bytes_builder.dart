@@ -79,7 +79,7 @@ class KafkaBytesBuilder {
           addInt32(item);
           break;
         case KafkaType.int64:
-          addInt32(item);
+          addInt64(item);
           break;
         case KafkaType.string:
           addString(item);
