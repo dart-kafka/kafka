@@ -2,6 +2,14 @@ part of kafka;
 
 /// ConsumerMetadataRequest as defined in Kafka protocol.
 /// This is a low-level API object.
+///
+/// For convenience implementation of this request handles
+/// `ConsumerCoordinatorNotAvailableCode(15)` API error which Kafka returns
+/// in case [ConsumerMetadataRequest] is sent for the very first time to this
+/// particular server (and special topic to store consumer offsets does not
+/// exist yet).
+///
+/// It will attempt up to 5 retries with delay in order to fetch metadata.
 class ConsumerMetadataRequest extends KafkaRequest {
   final int apiKey = 10;
   final int apiVersion = 0;
@@ -13,24 +21,20 @@ class ConsumerMetadataRequest extends KafkaRequest {
       : super(session, host);
 
   /// Sends this request to Kafka server specified in [host].
-  ///
-  /// For convenience this request handles `ConsumerCoordinatorNotAvailableCode`
-  /// API error which Kafka returns in case [ConsumerMetadataRequest] is sent
-  /// for the very first time to this particular server (and special topic to
-  /// store consumer offsets does not exist yet).
   Future<ConsumerMetadataResponse> send() async {
-    var response = await session.send(host, this);
+    ConsumerMetadataResponse response = await session.send(host, this);
 
     var retries = 1;
     while (response.errorCode == 15 && retries < 5) {
-      sleep(new Duration(
-          seconds: 1 * retries)); // TODO: switch to Future.delayed().
-      response = await session.send(host, this);
+      var future = new Future.delayed(
+          new Duration(seconds: 1 * retries), () => session.send(host, this));
+
+      response = await future;
       retries++;
     }
 
-    if (response.errorCode == 15) {
-      throw new KafkaApiError.consumerCoordinatorNotAvailable();
+    if (response.errorCode != 0) {
+      throw new KafkaApiError.fromErrorCode(response.errorCode);
     }
 
     return response;

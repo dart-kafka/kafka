@@ -26,7 +26,5 @@ class KafkaApiError {
 
   String get errorMessage => errorCodes[errorCode];
 
-  KafkaApiError.consumerCoordinatorNotAvailable() : errorCode = 15;
-
   KafkaApiError.fromErrorCode(this.errorCode);
 }
