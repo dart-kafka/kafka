@@ -27,7 +27,7 @@ void main() {
       produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
       var response = await produce.send();
       _offset = response.topics.first.partitions.first.offset;
-      _request = new OffsetRequest(_client, host, leaderId);
+      _request = new OffsetRequest(_client, leaderHost, leaderId);
     });
 
     tearDown(() async {
