@@ -26,9 +26,11 @@ void main() {
       builder.addInt8(53);
       _reader = new KafkaBytesReader.fromBytes(builder.takeBytes());
       expect(_reader.length, equals(1));
-      expect(_reader.eof, isFalse);
+      expect(_reader.isEOF, isFalse);
+      expect(_reader.isNotEOF, isTrue);
       _reader.readInt8();
-      expect(_reader.eof, isTrue);
+      expect(_reader.isEOF, isTrue);
+      expect(_reader.isNotEOF, isFalse);
     });
 
     test('it reads all Kafka types', () {

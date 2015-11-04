@@ -37,8 +37,10 @@ part 'src/consumer_group.dart';
 /// String identifier of this library used to pass to Kafka server in API calls.
 const String kafkaClientId = 'dart-kafka-v1.0.0-dev';
 
+final Logger _logger = new Logger('Kafka');
+
 /// Logger for this library.
 ///
 /// Doesn't do anything by default. You should set log level and add your handler
 /// in order to get logs.
-final Logger logger = new Logger('Kafka');
+Logger get kafkaLogger => _logger;

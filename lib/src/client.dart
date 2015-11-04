@@ -9,7 +9,6 @@ class KafkaClient {
   final Queue<KafkaHost> defaultHosts;
   final Map<KafkaHost, Socket> sockets = new Map();
   final Map<KafkaHost, StreamSubscription> subscriptions = new Map();
-  final Logger logger;
 
   Map<KafkaRequest, Completer> _inflightRequests = new Map();
 
@@ -23,7 +22,7 @@ class KafkaClient {
   /// In case of one of the hosts is temporarily unavailable the client will
   /// rotate them until sucessful response is returned. Error will be thrown
   /// when all of the default hosts are unavailable.
-  KafkaClient(List<KafkaHost> defaultHosts, [this.logger])
+  KafkaClient(List<KafkaHost> defaultHosts)
       : defaultHosts = new Queue.from(defaultHosts);
 
   /// Fetches Kafka server metadata. If [topicNames] is null then metadata for
@@ -84,7 +83,7 @@ class KafkaClient {
 
     var extra;
     if (buffer.length > _sizes[host] + 4) {
-      logger?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
+      _logger?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
       extra = buffer.sublist(_sizes[host] + 4);
       buffer.removeRange(_sizes[host] + 4, buffer.length);
     }

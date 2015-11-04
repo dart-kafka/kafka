@@ -1,5 +1,6 @@
 library kafka.all_tests;
 
+import 'library_test.dart' as library_test;
 import 'bytes_builder_test.dart' as bytes_builder_test;
 import 'bytes_reader_test.dart' as bytes_reader_test;
 import 'util/crc32_test.dart' as crc32_test;
@@ -15,6 +16,7 @@ import 'producer_test.dart' as producer_test;
 import 'consumer_test.dart' as consumer_test;
 
 void main() {
+  library_test.main();
   bytes_builder_test.main();
   bytes_reader_test.main();
   crc32_test.main();

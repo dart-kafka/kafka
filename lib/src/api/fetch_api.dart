@@ -78,7 +78,7 @@ class FetchRequest extends KafkaRequest {
 
   @override
   _createResponse(List<int> data) {
-    return new FetchResponse.fromData(data, correlationId, client.logger);
+    return new FetchResponse.fromData(data, correlationId);
   }
 }
 
@@ -95,7 +95,7 @@ class _FetchPartitionInfo {
 class FetchResponse {
   Map<String, List<FetchedPartitionData>> topics = new Map();
 
-  FetchResponse.fromData(List<int> data, int correlationId, [Logger logger]) {
+  FetchResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
@@ -112,8 +112,7 @@ class FetchResponse {
       topics[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        topics[topicName]
-            .add(new FetchedPartitionData.readFrom(reader, logger));
+        topics[topicName].add(new FetchedPartitionData.readFrom(reader));
         partitionCount--;
       }
       count--;
@@ -127,13 +126,13 @@ class FetchedPartitionData {
   int highwaterMarkOffset;
   MessageSet messages;
 
-  FetchedPartitionData.readFrom(KafkaBytesReader reader, [Logger logger]) {
+  FetchedPartitionData.readFrom(KafkaBytesReader reader) {
     partitionId = reader.readInt32();
     errorCode = reader.readInt16();
     highwaterMarkOffset = reader.readInt64();
     var messageSetSize = reader.readInt32();
     var data = reader.readRaw(messageSetSize);
     var messageReader = new KafkaBytesReader.fromBytes(data);
-    messages = new MessageSet.readFrom(messageReader, logger);
+    messages = new MessageSet.readFrom(messageReader);
   }
 }

@@ -111,9 +111,9 @@ class MessageSet {
   MessageSet();
 
   /// Creates new MessageSet from provided data.
-  MessageSet.readFrom(KafkaBytesReader reader, [Logger logger]) {
+  MessageSet.readFrom(KafkaBytesReader reader) {
     int messageSize = 0;
-    while (reader.eof == false) {
+    while (reader.isNotEOF) {
       try {
         int offset = reader.readInt64();
         messageSize = reader.readInt32();
@@ -122,7 +122,8 @@ class MessageSet {
         var data = reader.readRaw(messageSize - 4);
         var actualCrc = Crc32.signed(data);
         if (actualCrc != crc) {
-          // TODO: Maybe catch this error below and just break out of this loop?
+          _logger.warning(
+              'Message CRC sum mismatch. Expected crc: ${crc}, actual: ${actualCrc}');
           throw new MessageCrcMismatchError(
               'Expected crc: ${crc}, actual: ${actualCrc}');
         }
@@ -133,8 +134,8 @@ class MessageSet {
         // According to spec server is allowed to return partial
         // messages, so we just ignore it here and exit the loop.
         var remaining = reader.length - reader.offset;
-        logger?.info(
-            'Encountered partial message. Expected message size: ${messageSize}, bytes left in buffer: ${remaining}');
+        _logger?.info(
+            'Encountered partial message. Expected message size: ${messageSize}, bytes left in buffer: ${remaining}, total buffer size ${reader.length}');
         break;
       }
     }

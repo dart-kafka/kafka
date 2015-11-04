@@ -11,8 +11,11 @@ class KafkaBytesReader {
   /// Size of this byte buffer.
   int get length => _data.length;
 
-  /// Either bytes buffer has been fully read.
-  bool get eof => _data.length == _offset;
+  /// Whether this bytes buffer has been fully read.
+  bool get isEOF => _data.length == _offset;
+
+  /// Whether there are still unread bytes left in this buffer.
+  bool get isNotEOF => !isEOF;
 
   /// Creates reader from a list of bytes.
   KafkaBytesReader.fromBytes(List<int> data) {
