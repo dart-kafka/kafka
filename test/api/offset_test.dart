@@ -35,11 +35,14 @@ void main() {
     });
 
     test('it fetches offset info', () async {
-      // TODO: finish test!
       _request.addTopicPartition(_topicName, 0, -1, 1);
       var response = await _request.send();
 
       expect(response.topics, hasLength(1));
+      var partition = response.topics[_topicName].first;
+      expect(partition.offsets, hasLength(1));
+      expect(partition.errorCode, equals(0));
+      expect(partition.offsets.first, equals(_offset + 1));
     });
   });
 }
