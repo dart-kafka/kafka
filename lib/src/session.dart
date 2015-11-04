@@ -2,28 +2,28 @@ part of kafka;
 
 /// Session responsible for communication with Kafka server(s).
 ///
-/// This is a central hub of this library. All low-level requests as well as
-/// high-level abstractions for producers and consumers depend on this class.
-///
+/// This is a central hub of this library as it handles socket connections
+/// to Kafka brokers and orchestrates all API communications.
 class KafkaSession {
-  final Queue<KafkaHost> defaultHosts;
-  final Map<KafkaHost, Socket> sockets = new Map();
-  final Map<KafkaHost, StreamSubscription> subscriptions = new Map();
+  /// List of Kafka brokers which are used as initial contact points.
+  final Queue<KafkaHost> contactHosts;
+  final Map<KafkaHost, Socket> _sockets = new Map();
+  final Map<KafkaHost, StreamSubscription> _subscriptions = new Map();
 
   Map<KafkaRequest, Completer> _inflightRequests = new Map();
-
   Map<KafkaHost, List<int>> _buffers = new Map();
   Map<KafkaHost, int> _sizes = new Map();
+  MetadataResponse _metadata;
 
-  /// Creates new instance of KafkaClient.
+  /// Creates new session.
   ///
-  /// [defaultHosts] will be used to fetch Kafka metadata information. At least
+  /// [contactHosts] will be used to fetch Kafka metadata information. At least
   /// one is required. However for production consider having more than 1.
   /// In case of one of the hosts is temporarily unavailable the client will
   /// rotate them until sucessful response is returned. Error will be thrown
   /// when all of the default hosts are unavailable.
-  KafkaSession(List<KafkaHost> defaultHosts)
-      : defaultHosts = new Queue.from(defaultHosts);
+  KafkaSession(List<KafkaHost> contactHosts)
+      : contactHosts = new Queue.from(contactHosts);
 
   /// Fetches Kafka server metadata. If [topicNames] is null then metadata for
   /// all topics will be returned.
@@ -33,13 +33,17 @@ class KafkaSession {
   /// See [MetadataResponse] for details.
   ///
   /// TODO: actually rotate default hosts on failure.
-  /// TODO: cache metadata results.
   Future<MetadataResponse> getMetadata(
-      [List<String> topicNames, bool invalidateCache = false]) async {
-    var currentHost = _getCurrentDefaultHost();
-    var request = new MetadataRequest(this, currentHost, topicNames);
+      {List<String> topicNames, bool invalidateCache: false}) async {
+    if (invalidateCache) _metadata = null;
 
-    return request.send();
+    if (_metadata == null) {
+      var currentHost = _getCurrentDefaultHost();
+      var request = new MetadataRequest(this, currentHost, topicNames);
+      _metadata = await request.send();
+    }
+
+    return _metadata;
   }
 
   /// Fetches metadata for specified [consumerGroup].
@@ -65,9 +69,9 @@ class KafkaSession {
   }
 
   Future close() async {
-    for (var h in sockets.keys) {
-      await subscriptions[h].cancel();
-      sockets[h].destroy();
+    for (var h in _sockets.keys) {
+      await _subscriptions[h].cancel();
+      _sockets[h].destroy();
     }
   }
 
@@ -106,7 +110,7 @@ class KafkaSession {
   }
 
   KafkaHost _getCurrentDefaultHost() {
-    return defaultHosts.first;
+    return contactHosts.first;
   }
 
   // void _rotateDefaultHosts() {
@@ -115,15 +119,15 @@ class KafkaSession {
   // }
 
   Future<Socket> _getSocketForHost(KafkaHost host) async {
-    if (!sockets.containsKey(host)) {
+    if (!_sockets.containsKey(host)) {
       var s = await Socket.connect(host.host, host.port);
       _buffers[host] = new List();
       _sizes[host] = -1;
-      subscriptions[host] = s.listen((d) => _handleData(host, d));
-      sockets[host] = s;
-      sockets[host].setOption(SocketOption.TCP_NODELAY, true);
+      _subscriptions[host] = s.listen((d) => _handleData(host, d));
+      _sockets[host] = s;
+      _sockets[host].setOption(SocketOption.TCP_NODELAY, true);
     }
 
-    return sockets[host];
+    return _sockets[host];
   }
 }

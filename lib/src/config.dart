@@ -1,11 +1,16 @@
 part of kafka;
 
+/// Represents individual Kafka broker identified by host and port.
 class KafkaHost {
+  /// Host name or IP address of this Kafka broker.
   final String host;
+
+  /// Port number of this Kafka broker.
   final int port;
 
   static final Map<String, KafkaHost> _instances = new Map();
 
+  /// Creates instance of Kafka broker identified by [host] and [port].
   factory KafkaHost(String host, int port) {
     var key = '${host}:${port}';
     if (!_instances.containsKey(key)) {
@@ -14,13 +19,5 @@ class KafkaHost {
     return _instances[key];
   }
 
-  factory KafkaHost.fromHostPort(String hostPort) {
-    var list = hostPort.split(':');
-
-    return new KafkaHost(list.first, int.parse(list.last));
-  }
-
   KafkaHost._internal(this.host, this.port);
 }
-
-class KafkaConfig {}
