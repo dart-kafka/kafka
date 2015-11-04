@@ -40,8 +40,8 @@ void main() {
 
       expect(response.topics, hasLength(1));
       var partition = response.topics[_topicName].first;
-      expect(partition.offsets, hasLength(1));
       expect(partition.errorCode, equals(0));
+      expect(partition.offsets, hasLength(1));
       expect(partition.offsets.first, equals(_offset + 1));
     });
   });
