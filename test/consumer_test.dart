@@ -6,13 +6,13 @@ import 'setup.dart';
 
 void main() {
   group('Consumer', () {
-    KafkaClient _client;
+    KafkaSession _client;
     String _topicName = 'dartKafkaTest';
     Map<int, int> _expectedOffsets = new Map();
 
     setUp(() async {
       var host = await getDefaultHost();
-      _client = new KafkaClient([new KafkaHost(host, 9092)]);
+      _client = new KafkaSession([new KafkaHost(host, 9092)]);
       var producer = new Producer(_client, 1, 100);
       producer.addMessages(_topicName, 0, [new Message('msg1'.codeUnits)]);
       producer.addMessages(_topicName, 1, [new Message('msg2'.codeUnits)]);

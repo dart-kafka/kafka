@@ -7,7 +7,7 @@ import '../setup.dart';
 void main() {
   group('FetchApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaClient _client;
+    KafkaSession _session;
     FetchRequest _request;
     String _message;
     int _offset;
@@ -15,24 +15,25 @@ void main() {
     setUp(() async {
       var ip = await getDefaultHost();
       var host = new KafkaHost(ip, 9092);
-      _client = new KafkaClient([host]);
-      var metadata = await _client.getMetadata();
+      _session = new KafkaSession([host]);
+      var metadata = await _session.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       var broker = metadata.brokers.firstWhere((b) => b.nodeId == leaderId);
       var leaderHost = new KafkaHost(broker.host, broker.port);
 
-      ProduceRequest produce = new ProduceRequest(_client, leaderHost, 1, 1000);
+      ProduceRequest produce =
+          new ProduceRequest(_session, leaderHost, 1, 1000);
       var now = new DateTime.now();
       _message = 'test:' + now.toIso8601String();
       produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
       var response = await produce.send();
       _offset = response.topics.first.partitions.first.offset;
-      _request = new FetchRequest(_client, leaderHost, 100, 1);
+      _request = new FetchRequest(_session, leaderHost, 100, 1);
     });
 
     tearDown(() async {
-      await _client.close();
+      await _session.close();
     });
 
     test('it fetches messages from Kafka topic', () async {

@@ -21,12 +21,12 @@ class OffsetCommitRequest extends KafkaRequest {
   /// Creates new instance of [OffsetCommitRequest].
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
-  OffsetCommitRequest(KafkaClient client, KafkaHost host, this.consumerGroup,
+  OffsetCommitRequest(KafkaSession session, KafkaHost host, this.consumerGroup,
       this.offsets, this.consumerGroupGenerationId, this.consumerId)
-      : super(client, host);
+      : super(session, host);
 
   Future<OffsetCommitResponse> send() async {
-    return this.client.send(host, this);
+    return this.session.send(host, this);
   }
 
   @override

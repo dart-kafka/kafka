@@ -6,8 +6,8 @@ part of kafka;
 ///
 /// TODO: add `consumeBatch(int maxBatchSize)`
 class Consumer {
-  /// Instance of [KafkaClient] used to send requests.
-  final KafkaClient client;
+  /// Instance of [KafkaSession] used to send requests.
+  final KafkaSession client;
 
   /// Consumer group this consumer belongs to.
   final ConsumerGroup consumerGroup;
@@ -109,7 +109,7 @@ class _MessageStreamController {
 
 /// Worker responsible for fetching messages from one particular Kafka broker.
 class _HostWorker {
-  final KafkaClient client;
+  final KafkaSession client;
   final KafkaHost host;
   final ConsumerGroup group;
   final _MessageStreamController controller;

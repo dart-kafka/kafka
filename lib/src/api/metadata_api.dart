@@ -6,7 +6,7 @@ part of kafka;
 /// MetadataRequests can be send to any given host.
 ///
 /// While you can use this class directly it is recommended to use
-/// [KafkaClient.getMetadata()] instead.
+/// [KafkaSession.getMetadata()] instead.
 class MetadataRequest extends KafkaRequest {
   /// API key of [MetadataRequest]
   final int apiKey = 3;
@@ -22,12 +22,12 @@ class MetadataRequest extends KafkaRequest {
   ///
   /// If [topicNames] is omitted or empty then metadata for all existing topics
   /// will be returned.
-  MetadataRequest(KafkaClient client, KafkaHost host, [this.topicNames])
-      : super(client, host);
+  MetadataRequest(KafkaSession session, KafkaHost host, [this.topicNames])
+      : super(session, host);
 
   /// Sends the request.
   Future<MetadataResponse> send() {
-    return client.send(host, this);
+    return session.send(host, this);
   }
 
   @override

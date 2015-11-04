@@ -1,7 +1,7 @@
 part of kafka;
 
 class ConsumerGroup {
-  final KafkaClient client;
+  final KafkaSession client;
   final String name;
   final Logger logger;
 

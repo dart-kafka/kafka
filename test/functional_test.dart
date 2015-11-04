@@ -6,13 +6,13 @@ import 'setup.dart';
 
 void main() {
   group('Functional', () {
-    KafkaClient _client;
+    KafkaSession _client;
     String _topicName = 'dartKafkaTest';
     ConsumerGroup _group;
 
     setUp(() async {
       var host = await getDefaultHost();
-      _client = new KafkaClient([new KafkaHost(host, 9092)]);
+      _client = new KafkaSession([new KafkaHost(host, 9092)]);
       _group = new ConsumerGroup(_client, 'functionalTestGroup');
     });
 

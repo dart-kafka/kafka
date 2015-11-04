@@ -7,8 +7,8 @@ part of kafka;
 ///
 /// _It is recommended to use this class instead of [ProduceRequest] directly._
 class Producer {
-  /// Instance of [KafkaClient] which is used to send requests to Kafka brokers.
-  final KafkaClient client;
+  /// Instance of [KafkaSession] which is used to send requests to Kafka brokers.
+  final KafkaSession client;
 
   /// How many acknowledgements the servers should receive before responding to the request.
   ///

@@ -16,7 +16,7 @@ class FetchRequest extends KafkaRequest {
   final int apiVersion = 0;
 
   /// The replica id indicates the node id of the replica initiating this request.
-  /// Normal client consumers should always specify this as -1 as they have no node id.
+  /// Normal consumers should always specify this as -1 as they have no node id.
   final int _replicaId = -1;
 
   /// Maximum amount of time in milliseconds to block waiting if insufficient
@@ -31,8 +31,8 @@ class FetchRequest extends KafkaRequest {
 
   /// Creates new instance of FetchRequest.
   FetchRequest(
-      KafkaClient client, KafkaHost host, this.maxWaitTime, this.minBytes)
-      : super(client, host);
+      KafkaSession session, KafkaHost host, this.maxWaitTime, this.minBytes)
+      : super(session, host);
 
   /// Adds [topicName] with [paritionId] to this FetchRequest. [fetchOffset]
   /// defines the offset to begin this fetch from.
@@ -47,7 +47,7 @@ class FetchRequest extends KafkaRequest {
   }
 
   Future<FetchResponse> send() async {
-    return client.send(host, this);
+    return session.send(host, this);
   }
 
   @override

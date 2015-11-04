@@ -22,11 +22,11 @@ class OffsetFetchRequest extends KafkaRequest {
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
   OffsetFetchRequest(
-      KafkaClient client, KafkaHost host, this.consumerGroup, this.topics)
-      : super(client, host);
+      KafkaSession session, KafkaHost host, this.consumerGroup, this.topics)
+      : super(session, host);
 
   Future<OffsetFetchResponse> send() async {
-    return this.client.send(host, this);
+    return this.session.send(host, this);
   }
 
   @override

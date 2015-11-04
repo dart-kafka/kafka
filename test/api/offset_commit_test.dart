@@ -7,7 +7,7 @@ import '../setup.dart';
 void main() {
   group('OffsetCommitApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaClient _client;
+    KafkaSession _client;
     KafkaHost _host;
     KafkaHost _coordinatorHost;
     int _offset;
@@ -16,7 +16,7 @@ void main() {
     setUp(() async {
       var ip = await getDefaultHost();
       _host = new KafkaHost(ip, 9092);
-      _client = new KafkaClient([_host]);
+      _client = new KafkaSession([_host]);
 
       ProduceRequest produce = new ProduceRequest(_client, _host, 1, 1000);
       var now = new DateTime.now();

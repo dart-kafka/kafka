@@ -4,7 +4,7 @@ import 'library_test.dart' as library_test;
 import 'bytes_builder_test.dart' as bytes_builder_test;
 import 'bytes_reader_test.dart' as bytes_reader_test;
 import 'util/crc32_test.dart' as crc32_test;
-import 'client_test.dart' as client_test;
+import 'session_test.dart' as session_test;
 import 'api/consumer_metadata_test.dart' as consumer_metadata_test;
 import 'api/fetch_test.dart' as fetch_test;
 import 'api/offset_commit_test.dart' as offset_commit_test;
@@ -20,7 +20,7 @@ void main() {
   bytes_builder_test.main();
   bytes_reader_test.main();
   crc32_test.main();
-  client_test.main();
+  session_test.main();
   consumer_metadata_test.main();
   fetch_test.main();
   offset_commit_test.main();

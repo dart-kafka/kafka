@@ -7,14 +7,14 @@ import '../setup.dart';
 void main() {
   group('OffsetApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaClient _client;
+    KafkaSession _client;
     OffsetRequest _request;
     int _offset;
 
     setUp(() async {
       var ip = await getDefaultHost();
       var host = new KafkaHost(ip, 9092);
-      _client = new KafkaClient([host]);
+      _client = new KafkaSession([host]);
       var metadata = await _client.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;

@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:collection';
 import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
 
 part 'src/util/crc32.dart';
@@ -20,7 +21,7 @@ part 'src/errors.dart';
 part 'src/config.dart';
 part 'src/bytes_builder.dart';
 part 'src/bytes_reader.dart';
-part 'src/client.dart';
+part 'src/session.dart';
 part 'src/api/errors.dart';
 part 'src/api/messages.dart';
 part 'src/api/metadata_api.dart';
@@ -35,7 +36,7 @@ part 'src/consumer.dart';
 part 'src/consumer_group.dart';
 
 /// String identifier of this library used to pass to Kafka server in API calls.
-const String kafkaClientId = 'dart-kafka-v1.0.0-dev';
+const String dartKafkaId = 'dart-kafka-v1.0.0-dev';
 
 final Logger _logger = new Logger('Kafka');
 

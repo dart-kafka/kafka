@@ -6,7 +6,7 @@ import '../setup.dart';
 
 void main() {
   group('OffsetFetchApi', () {
-    KafkaClient _client;
+    KafkaSession _session;
     OffsetFetchRequest _request;
     KafkaHost _host;
     KafkaHost _coordinatorHost;
@@ -15,21 +15,22 @@ void main() {
     setUp(() async {
       var ip = await getDefaultHost();
       _host = new KafkaHost(ip, 9092);
-      _client = new KafkaClient([_host]);
+      _session = new KafkaSession([_host]);
       var now = new DateTime.now();
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       var consumerMetadataRequest =
-          new ConsumerMetadataRequest(_client, _host, _testGroup);
+          new ConsumerMetadataRequest(_session, _host, _testGroup);
       var metadata = await consumerMetadataRequest.send();
       _coordinatorHost =
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
-      _request = new OffsetFetchRequest(_client, _coordinatorHost, _testGroup, {
+      _request =
+          new OffsetFetchRequest(_session, _coordinatorHost, _testGroup, {
         'dartKafkaTest': new Set.from([0])
       });
     });
 
     tearDown(() async {
-      await _client.close();
+      await _session.close();
     });
 
     test('it fetches consumer offsets', () async {

@@ -20,7 +20,7 @@ class KafkaBytesBuilder {
     addInt16(apiKey);
     addInt16(apiVersion);
     addInt32(correlationId);
-    addString(kafkaClientId);
+    addString(dartKafkaId);
   }
 
   /// Adds 8 bit integer to this buffer.
@@ -56,9 +56,9 @@ class KafkaBytesBuilder {
   /// Kafka string type starts with int16 indicating size of the string
   /// followed by the actual string value.
   void addString(String value) {
-    List<int> clientId = UTF8.encode(value);
-    addInt16(clientId.length);
-    _builder.add(clientId);
+    List<int> data = UTF8.encode(value);
+    addInt16(data.length);
+    _builder.add(data);
   }
 
   /// Adds Kafka array to this bytes builder.

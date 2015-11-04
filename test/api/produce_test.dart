@@ -7,13 +7,13 @@ import '../setup.dart';
 void main() {
   group('ProduceApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaClient _client;
+    KafkaSession _client;
     ProduceRequest _request;
 
     setUp(() async {
       var ip = await getDefaultHost();
       var host = new KafkaHost(ip, 9092);
-      _client = new KafkaClient([host]);
+      _client = new KafkaSession([host]);
       var metadata = await _client.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;

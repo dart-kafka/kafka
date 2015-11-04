@@ -31,8 +31,8 @@ class ProduceRequest extends KafkaRequest {
   /// The [timeout] field provides a maximum time in milliseconds the server
   /// can await the receipt of the number of acknowledgements in [requiredAcks].
   ProduceRequest(
-      KafkaClient client, KafkaHost host, this.requiredAcks, this.timeout)
-      : super(client, host);
+      KafkaSession session, KafkaHost host, this.requiredAcks, this.timeout)
+      : super(session, host);
 
   /// Adds messages to be published by this [ProduceRequest] when it's sent.
   void addMessages(String topicName, int partitionId, List<Message> messages) {
@@ -48,7 +48,7 @@ class ProduceRequest extends KafkaRequest {
 
   /// Sends this request to Kafka broker specified by [host] property.
   Future<ProduceResponse> send() async {
-    return client.send(host, this);
+    return session.send(host, this);
   }
 
   @override

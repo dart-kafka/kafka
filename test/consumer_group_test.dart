@@ -7,26 +7,26 @@ import 'setup.dart';
 
 void main() {
   group('ConsumerGroup', () {
-    KafkaClient _client;
+    KafkaSession _session;
     String _topicName = 'dartKafkaTest';
     KafkaHost _coordinator;
 
     setUp(() async {
       var host = await getDefaultHost();
-      var client = new KafkaClient([new KafkaHost(host, 9092)]);
-      var metadata = await client.getConsumerMetadata('testGroup');
+      var session = new KafkaSession([new KafkaHost(host, 9092)]);
+      var metadata = await session.getConsumerMetadata('testGroup');
       _coordinator =
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
 
-      _client = spy(new KafkaClientMock(), client);
+      _session = spy(new KafkaSessionMock(), session);
     });
 
     tearDown(() async {
-      await _client.close();
+      await _session.close();
     });
 
     test('it fetches offsets', () async {
-      var group = new ConsumerGroup(_client, 'testGroup');
+      var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = await group.fetchOffsets({
         _topicName: [0, 1, 2]
       });
@@ -39,10 +39,10 @@ void main() {
     test('it tries to refresh coordinator host 3 times on fetchOffsets',
         () async {
       var badPort = (_coordinator.port == 9092) ? 9093 : 9092;
-      when(_client.getConsumerMetadata('testGroup')).thenReturn(
+      when(_session.getConsumerMetadata('testGroup')).thenReturn(
           new ConsumerMetadataResponse(0, 1, _coordinator.host, badPort));
 
-      var group = new ConsumerGroup(_client, 'testGroup');
+      var group = new ConsumerGroup(_session, 'testGroup');
       // Can't use expect(throws) here since it's async, so `verify` check below
       // fails.
       try {
@@ -53,7 +53,7 @@ void main() {
         expect(e, new isInstanceOf<KafkaApiError>());
         expect(e.errorCode, equals(16));
       }
-      verify(_client.getConsumerMetadata('testGroup')).called(3);
+      verify(_session.getConsumerMetadata('testGroup')).called(3);
     });
 
     test(
@@ -66,11 +66,11 @@ void main() {
           new ConsumerOffset(2, -1, '', 14)
         ]
       };
-      when(_client.send(argThat(new isInstanceOf<KafkaHost>()),
+      when(_session.send(argThat(new isInstanceOf<KafkaHost>()),
               argThat(new isInstanceOf<OffsetFetchRequest>())))
           .thenReturn(new OffsetFetchResponse.fromOffsets(badOffsets));
 
-      var group = new ConsumerGroup(_client, 'testGroup');
+      var group = new ConsumerGroup(_session, 'testGroup');
       // Can't use expect(throws) here since it's async, so `verify` check below
       // fails.
       var now = new DateTime.now();
@@ -86,17 +86,17 @@ void main() {
         expect(e, new isInstanceOf<KafkaApiError>());
         expect(e.errorCode, equals(14));
       }
-      verify(_client.send(argThat(new isInstanceOf<KafkaHost>()),
+      verify(_session.send(argThat(new isInstanceOf<KafkaHost>()),
           argThat(new isInstanceOf<OffsetFetchRequest>()))).called(3);
     });
 
     test('it tries to refresh coordinator host 3 times on commitOffsets',
         () async {
       var badPort = (_coordinator.port == 9092) ? 9093 : 9092;
-      when(_client.getConsumerMetadata('testGroup')).thenReturn(
+      when(_session.getConsumerMetadata('testGroup')).thenReturn(
           new ConsumerMetadataResponse(0, 1, _coordinator.host, badPort));
 
-      var group = new ConsumerGroup(_client, 'testGroup');
+      var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = new Map();
       offsets[_topicName] = [new ConsumerOffset(0, 3, '')];
 
@@ -106,11 +106,11 @@ void main() {
         expect(e, new isInstanceOf<KafkaApiError>());
         expect(e.errorCode, equals(16));
       }
-      verify(_client.getConsumerMetadata('testGroup')).called(3);
+      verify(_session.getConsumerMetadata('testGroup')).called(3);
     });
   });
 }
 
-class KafkaClientMock extends Mock implements KafkaClient {
+class KafkaSessionMock extends Mock implements KafkaSession {
   noSuchMethod(i) => super.noSuchMethod(i);
 }

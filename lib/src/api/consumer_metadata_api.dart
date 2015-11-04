@@ -9,8 +9,8 @@ class ConsumerMetadataRequest extends KafkaRequest {
 
   /// Creates new instance of ConsumerMetadataRequest.
   ConsumerMetadataRequest(
-      KafkaClient client, KafkaHost host, this.consumerGroup)
-      : super(client, host);
+      KafkaSession session, KafkaHost host, this.consumerGroup)
+      : super(session, host);
 
   /// Sends this request to Kafka server specified in [host].
   ///
@@ -19,13 +19,13 @@ class ConsumerMetadataRequest extends KafkaRequest {
   /// for the very first time to this particular server (and special topic to
   /// store consumer offsets does not exist yet).
   Future<ConsumerMetadataResponse> send() async {
-    var response = await client.send(host, this);
+    var response = await session.send(host, this);
 
     var retries = 1;
     while (response.errorCode == 15 && retries < 5) {
       sleep(new Duration(
           seconds: 1 * retries)); // TODO: switch to Future.delayed().
-      response = await client.send(host, this);
+      response = await session.send(host, this);
       retries++;
     }
 
