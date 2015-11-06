@@ -4,11 +4,28 @@ part of kafka;
 ///
 /// Encapsulates auto-discovery logic for fetching topic offsets.
 class OffsetMaster {
+  /// Instance of KafkaSession.
   final KafkaSession session;
 
+  /// Creates new OffsetMaster.
   OffsetMaster(this.session);
 
-  Future<List<TopicOffset>> fetchEarliest(Map<String, Set<int>> topicPartitions,
+  /// Returns earliest offsets for specified topics and partitions.
+  Future<List<TopicOffset>> fetchEarliest(
+      Map<String, Set<int>> topicPartitions) {
+    return _fetch(topicPartitions, -2);
+  }
+
+  /// Returns latest offsets (that is the offset of next incoming message)
+  /// for specified topics and partitions.
+  ///
+  /// These offsets are also called 'highWatermark' offsets in Kafka docs.
+  Future<List<TopicOffset>> fetchLatest(Map<String, Set<int>> topicPartitions) {
+    return _fetch(topicPartitions, -1);
+  }
+
+  Future<List<TopicOffset>> _fetch(
+      Map<String, Set<int>> topicPartitions, int time,
       {refreshMetadata: false}) async {
     var meta = await session.getMetadata(invalidateCache: refreshMetadata);
     var requests = new Map<KafkaHost, OffsetRequest>();
@@ -20,7 +37,7 @@ class OffsetMaster {
         if (!requests.containsKey(host)) {
           requests[host] = new OffsetRequest(session, host, leader);
         }
-        requests[host].addTopicPartition(topic, p, -2, 1);
+        requests[host].addTopicPartition(topic, p, time, 1);
       }
     }
 
@@ -33,7 +50,7 @@ class OffsetMaster {
           if (p.errorCode == KafkaApiError.NotLeaderForPartition &&
               refreshMetadata == false) {
             // Refresh metadata and try again.
-            return fetchEarliest(topicPartitions, refreshMetadata: true);
+            return _fetch(topicPartitions, time, refreshMetadata: true);
           }
 
           if (p.errorCode != KafkaApiError.NoError) {
@@ -48,6 +65,7 @@ class OffsetMaster {
   }
 }
 
+/// Represents an offset of particular topic and partition.
 class TopicOffset {
   final String topicName;
   final int partitionId;
