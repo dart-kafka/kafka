@@ -1,7 +1,7 @@
 /// ## Library providing interface to Apache Kafka.
 ///
-/// This library implementas Kafka binary protocal as well as provides some
-/// high-level abstraction for producing and consuming messages.
+/// This library implementas Kafka binary protocol as well as provides some
+/// high-level abstractions for producing and consuming messages.
 library kafka;
 
 import 'dart:async';
@@ -25,6 +25,7 @@ part 'src/api/produce_api.dart';
 part 'src/bytes_builder.dart';
 part 'src/bytes_reader.dart';
 part 'src/common.dart';
+part 'src/fetcher.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
 part 'src/errors.dart';

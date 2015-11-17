@@ -6,11 +6,10 @@ Kafka client library written in Dart.
 
 ### Current status
 
-This library is in it's early stages and is not ready for production deployments.
-However APIs are starting to settle already.
+This library is not ready for production deployments yet.
 
-This package is not published on Pub yet. Once APIs are stable enough I'm planning
-to release first beta which will be uploaded to Pub as well.
+This package is not published on Pub yet. Once APIs are stable enough first beta
+version will be uploaded to Pub.
 
 But if you feel adventurous you can try it out already. You can find some examples below.
 
@@ -31,25 +30,33 @@ main(List<String> arguments) async {
   producer.addMessages('topicName', 1, [new Message('msgForPartition1'.codeUnits)]);
   var response = await producer.send();
   print(response.hasErrors);
+  session.close(); // make sure to always close the session when the work is done.
 }
 ```
 
 ### Consumer example (with ConsumerGroup offset handling)
 
 * Consumer also supports "auto-discovery" of brokers and it will start 1 worker per Kafka broker.
-* Current implementation will auto-commit offsets after each message. There is plans to make this behavior configurable.
+* Each message in the Consumer stream is wrapped in `MessageEnvelope` which provides
+  following methods:
+  * `commit(String metadata)` - signals to worker that message has been processed
+    and the offset should be committed.
+  * `ack()` - signals to worker that message has been processed and we are ready
+    for the next one.
+  * `cancel()` - signals to cancel any further deliveries and close the stream.
+    Note that offset of current message will not be committed in this case!
+* Either `commit()`, `ack()` (or `cancel()`) method on each `MessageEnvelope` must be
+  called in order for consumer to proceed to the next one in the stream.
+* It is possible to configure Consumer behavior when it receives `OffsetOutOfRange`
+  API error. Supported strategies: `resetToEarliest (default)`, `resetToLatest`,
+  `throwError`. See `Consumer.onOffsetOutOfRange` property for details.
 
 ```dart
 import 'dart:io';
 import 'dart:async';
 import 'package:kafka/kafka.dart';
 
-void main(List<String> arguments) {
-  run().then((_) => exit(0));
-}
-
-Future run() async {
-  var completer = new Completer();
+void main(List<String> arguments) async {
   var host = new KafkaHost('127.0.0.1', 9092);
   var session = new KafkaSession([host]);
   var group = new ConsumerGroup(session, 'consumerGroupName');
@@ -58,15 +65,13 @@ Future run() async {
   };
 
   var consumer = new Consumer(session, group, topics, 100, 1);
-  await for (MessageEnvelope message in consumer.consume(limit: 5)) {
-    var value = new String.fromCharCodes(message.message.value);
-    print('Got message: ${message.offset}, ${value}');
-    message.ack('metadata'); // This is required since we're committing offsets.
+  await for (MessageEnvelope envelope in consumer.consume(limit: 5)) {
+    var value = new String.fromCharCodes(envelope.message.value);
+    print('Got message: ${envelope.offset}, ${value}');
+    envelope.commit('metadata'); // This is required.
   }
   print('Done');
-  completer.complete();
-
-  return completer.future;
+  session.close(); // make sure to always close the session when the work is done.
 }
 ```
 

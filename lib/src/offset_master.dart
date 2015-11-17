@@ -72,4 +72,12 @@ class TopicOffset {
   final int offset;
 
   TopicOffset(this.topicName, this.partitionId, this.offset);
+
+  /// Creates pseudo-offset which refers to earliest offset in this topic
+  /// and partition.
+  TopicOffset.earliest(this.topicName, this.partitionId) : offset = -2;
+
+  /// Creates pseudo-offset which refers to latest offset in this topic and
+  /// partition.
+  TopicOffset.latest(this.topicName, this.partitionId) : offset = -1;
 }

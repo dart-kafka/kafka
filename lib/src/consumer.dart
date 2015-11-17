@@ -1,5 +1,20 @@
 part of kafka;
 
+/// Determines behavior of [Consumer] when it receives `OffsetOutOfRange` API
+/// error.
+enum OffsetOutOfRangeBehavior {
+  /// Consumer will throw [KafkaApiError] with error code `1`.
+  throwError,
+
+  /// Consumer will reset it's offsets to the earliest available for particular
+  /// topic-partition.
+  resetToEarliest,
+
+  /// Consumer will reset it's offsets to the latest available for particular
+  /// topic-partition.
+  resetToLatest
+}
+
 /// High-level Kafka consumer class.
 ///
 /// Provides convenience layer on top of Kafka's low-level APIs.
@@ -22,6 +37,17 @@ class Consumer {
   /// Minimum number of bytes of messages that must be available
   /// to give a response.
   final int minBytes;
+
+  /// Determines this consumer's strategy of handling `OffsetOutOfRange` API
+  /// errors.
+  ///
+  /// Default value is `resetToEarliest` which will automatically reset offset
+  /// of ConsumerGroup for particular topic-partition to the earliest offset
+  /// available.
+  ///
+  /// See [OffsetOutOfRangeBehavior] for details on each value.
+  OffsetOutOfRangeBehavior onOffsetOutOfRange =
+      OffsetOutOfRangeBehavior.resetToEarliest;
 
   /// Creates new consumer identified by [consumerGroup].
   Consumer(this.session, this.consumerGroup, this.topicPartitions,
@@ -91,15 +117,21 @@ class _MessageStreamController {
   final StreamController<MessageEnvelope> _controller =
       new StreamController<MessageEnvelope>();
   int _added = 0;
+  bool _cancelled = false;
 
   _MessageStreamController(this.limit);
 
-  bool get canAdd => (limit == -1) || (_added < limit);
+  bool get canAdd =>
+      (_cancelled == false && ((limit == -1) || (_added < limit)));
   Stream<MessageEnvelope> get stream => _controller.stream;
 
   void add(MessageEnvelope event) {
     _controller.add(event);
     _added++;
+  }
+
+  void cancel() {
+    _cancelled = true;
   }
 
   void close() {
@@ -117,20 +149,22 @@ class _HostWorker {
   final int maxWaitTime;
   final int minBytes;
 
+  OffsetOutOfRangeBehavior onOffsetOutOfRange =
+      OffsetOutOfRangeBehavior.resetToEarliest;
+
   _HostWorker(this.session, this.host, this.group, this.controller,
       this.topicPartitions, this.maxWaitTime, this.minBytes);
 
   Future run() async {
     _logger?.info('Consumer: Running worker on host ${host.host}:${host.port}');
-    Completer completer = new Completer();
 
     var shouldContinue = true;
     while (shouldContinue) {
       var request = await _createRequest();
       var response = await request.send();
-      var didReset = await _resetOffsetsIfNeeded(response);
+      var didReset = await _checkOffsets(response);
       if (didReset) {
-        _logger?.warning('Offsets were reset to earliest. Forcing re-fetch.');
+        _logger?.warning('Offsets were reset. Forcing re-fetch.');
         continue;
       }
       var messageCount = 0;
@@ -144,13 +178,20 @@ class _HostWorker {
             if (controller.canAdd) {
               messageCount++;
               controller.add(envelope);
-              var metadata = await envelope.future;
-              var commitOffset = {
-                topic: [new ConsumerOffset(p.partitionId, offset, metadata)]
-              };
-              await group.commitOffsets(commitOffset, 0, '');
+              var result = await envelope.result;
+              if (result.status == _ProcessingStatus.commit) {
+                var commitOffset = {
+                  topic: [
+                    new ConsumerOffset(
+                        p.partitionId, offset, result.commitMetadata)
+                  ]
+                };
+                await group.commitOffsets(commitOffset, 0, '');
+              } else if (result.status == _ProcessingStatus.cancel) {
+                controller.cancel();
+                shouldContinue = false;
+              }
             } else {
-              completer.complete();
               shouldContinue = false;
               break;
             }
@@ -160,15 +201,12 @@ class _HostWorker {
         if (!shouldContinue) break;
       }
       if (messageCount == 0 && controller.canAdd == false) {
-        completer.complete();
         shouldContinue = false;
       }
     }
-
-    return completer.future;
   }
 
-  Future<bool> _resetOffsetsIfNeeded(FetchResponse response) async {
+  Future<bool> _checkOffsets(FetchResponse response) async {
     var topicsToReset = new Map<String, Set<int>>();
     for (var topic in response.topics.keys) {
       var partitions = response.topics[topic];
@@ -185,7 +223,16 @@ class _HostWorker {
     }
 
     if (topicsToReset.isNotEmpty) {
-      await group.resetOffsetsToEarliest(topicsToReset);
+      switch (onOffsetOutOfRange) {
+        case OffsetOutOfRangeBehavior.throwError:
+          throw new KafkaApiError.fromErrorCode(1);
+        case OffsetOutOfRangeBehavior.resetToEarliest:
+          await group.resetOffsetsToEarliest(topicsToReset);
+          break;
+        case OffsetOutOfRangeBehavior.resetToLatest:
+          await group.resetOffsetsToEarliest(topicsToReset);
+          break;
+      }
       return true;
     } else {
       return false;
@@ -206,6 +253,23 @@ class _HostWorker {
   }
 }
 
+enum _ProcessingStatus { commit, ack, cancel }
+
+class _ProcessingResult {
+  final _ProcessingStatus status;
+  final String commitMetadata;
+
+  _ProcessingResult.commit(String metadata)
+      : status = _ProcessingStatus.commit,
+        commitMetadata = metadata;
+  _ProcessingResult.ack()
+      : status = _ProcessingStatus.ack,
+        commitMetadata = '';
+  _ProcessingResult.cancel()
+      : status = _ProcessingStatus.cancel,
+        commitMetadata = '';
+}
+
 /// Envelope for a [Message] used by high-level consumer.
 class MessageEnvelope {
   final String topicName;
@@ -213,19 +277,29 @@ class MessageEnvelope {
   final int offset;
   final Message message;
 
-  Completer<String> _completer = new Completer<String>();
+  Completer<_ProcessingResult> _completer = new Completer<_ProcessingResult>();
 
   MessageEnvelope(this.topicName, this.partitionId, this.offset, this.message);
 
-  Future<String> get future => _completer.future;
+  Future<_ProcessingResult> get result => _completer.future;
 
-  /// Acknowledges that messages has been processed successfully. You must call
-  /// [ack] or [nack] when you're done with this message.
-  void ack(String metadata) {
-    _completer.complete(metadata);
+  /// Signals that message has been processed and it's offset can
+  /// be committed (in case of high-level [Consumer] implementation). In case if
+  /// consumerGroup functionality is not used (like in the [Fetcher]) then
+  /// this method's behaviour will be the same as in [ack] method.
+  void commit(String metadata) {
+    _completer.complete(new _ProcessingResult.commit(metadata));
   }
 
-  void nack(String error) {
-    _completer.completeError(error);
+  /// Signals that message has been processed and we are ready for
+  /// the next one. This method will **not** trigger offset commit if this
+  /// envelope has been created by a high-level [Consumer].
+  void ack() {
+    _completer.complete(new _ProcessingResult.ack());
+  }
+
+  /// Signals to consumer to cancel any further deliveries and close the stream.
+  void cancel() {
+    _completer.complete(new _ProcessingResult.cancel());
   }
 }

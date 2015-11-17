@@ -47,7 +47,7 @@ void main() {
       var i = 0;
       await for (MessageEnvelope envelope in consumer.consume(limit: 6000)) {
         i++;
-        envelope.ack('');
+        envelope.commit('');
       }
       expect(i, 6000);
     }, timeout: new Timeout(new Duration(minutes: 1)));

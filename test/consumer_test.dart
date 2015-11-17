@@ -5,10 +5,11 @@ import 'package:kafka/kafka.dart';
 import 'setup.dart';
 
 void main() {
-  group('Consumer', () {
+  group('Consumer:', () {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
     Map<int, int> _expectedOffsets = new Map();
+    Map<int, int> _initialOffsets = new Map();
 
     setUp(() async {
       var host = await getDefaultHost();
@@ -22,7 +23,8 @@ void main() {
 
       var offsets = new List<ConsumerOffset>();
       for (var p in _expectedOffsets.keys) {
-        offsets.add(new ConsumerOffset(p, _expectedOffsets[p] - 1, ''));
+        _initialOffsets[p] = _expectedOffsets[p] - 1;
+        offsets.add(new ConsumerOffset(p, _initialOffsets[p], ''));
       }
       var group = new ConsumerGroup(_session, 'cg');
       await group.commitOffsets({_topicName: offsets}, 0, '');
@@ -32,7 +34,8 @@ void main() {
       await _session.close();
     });
 
-    test('it can consume messages from multiple brokers', () async {
+    test('it can consume messages from multiple brokers and commit offsets',
+        () async {
       var topics = {
         _topicName: [0, 1, 2]
       };
@@ -42,9 +45,48 @@ void main() {
       await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
         consumedOffsets[envelope.partitionId] = envelope.offset;
         expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
-        envelope.ack('');
+        envelope.commit('');
       }
       expect(consumedOffsets.length, _expectedOffsets.length);
+    });
+
+    test(
+        'it can consume messages from multiple brokers without commiting offsets',
+        () async {
+      var topics = {
+        _topicName: [0, 1, 2]
+      };
+      var consumer = new Consumer(
+          _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
+      var consumedOffsets = new Map();
+      await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
+        consumedOffsets[envelope.partitionId] = envelope.offset;
+        expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
+        envelope.ack();
+      }
+      expect(consumedOffsets.length, _expectedOffsets.length);
+
+      var group = new ConsumerGroup(_session, 'cg');
+      var offsets = await group.fetchOffsets(topics);
+      expect(offsets[_topicName], hasLength(3));
+      for (var o in offsets[_topicName]) {
+        expect(_initialOffsets[o.partitionId], o.offset);
+      }
+    });
+
+    test('it can handle cancelation request', () async {
+      var topics = {
+        _topicName: [0, 1, 2]
+      };
+      var consumer = new Consumer(
+          _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
+      var consumedOffsets = new Map();
+      await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
+        consumedOffsets[envelope.partitionId] = envelope.offset;
+        expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
+        envelope.cancel();
+      }
+      expect(consumedOffsets.length, equals(1));
     });
   });
 }
