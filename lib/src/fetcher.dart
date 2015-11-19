@@ -94,9 +94,10 @@ class _FetcherWorker {
       _checkResponseForErrors(response);
 
       for (var item in response.messageSets) {
-        for (var offset in item._3.messages.keys) {
-          var message = item._3.messages[offset];
-          var envelope = new MessageEnvelope(item._1, item._2, offset, message);
+        for (var offset in item.item3.messages.keys) {
+          var message = item.item3.messages[offset];
+          var envelope =
+              new MessageEnvelope(item.item1, item.item2, offset, message);
           if (!controller.add(envelope)) {
             return;
           } else {
@@ -107,11 +108,11 @@ class _FetcherWorker {
             }
           }
         }
-        if (item._3.messages.isNotEmpty) {
-          var nextOffset =
-              new TopicOffset(item._1, item._2, item._3.messages.keys.last + 1);
+        if (item.item3.messages.isNotEmpty) {
+          var nextOffset = new TopicOffset(
+              item.item1, item.item2, item.item3.messages.keys.last + 1);
           var previousOffset = offsets.firstWhere(
-              (o) => o.topicName == item._1 && o.partitionId == item._2);
+              (o) => o.topicName == item.item1 && o.partitionId == item.item2);
           offsets.remove(previousOffset);
           offsets.add(nextOffset);
         }

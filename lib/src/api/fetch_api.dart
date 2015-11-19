@@ -97,7 +97,7 @@ class FetchResponse {
 
   /// List of message sets of all fetched topic-paritions.
   ///
-  /// This list contains 3-tuples of <topicName, partitionId, messageSet>.
+  /// This list contains triplets of <topicName, partitionId, messageSet>.
   final List<Tuple3<String, int, MessageSet>> messageSets = new List();
 
   bool _hasErrors = false;

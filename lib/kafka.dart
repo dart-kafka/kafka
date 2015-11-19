@@ -11,6 +11,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:tuple/tuple.dart';
 import 'package:logging/logging.dart';
 
 part 'src/api/consumer_metadata_api.dart';
@@ -33,7 +34,6 @@ part 'src/offset_master.dart';
 part 'src/producer.dart';
 part 'src/session.dart';
 part 'src/util/crc32.dart';
-part 'src/util/tuple.dart';
 
 /// String identifier of this library used to pass to Kafka server in API calls.
 const String dartKafkaId = 'dart-kafka-v1.0.0-dev';

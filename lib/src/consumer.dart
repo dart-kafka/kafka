@@ -175,17 +175,18 @@ class _ConsumerWorker {
         continue;
       }
       for (var item in response.messageSets) {
-        for (var offset in item._3.messages.keys) {
-          var message = item._3.messages[offset];
-          var envelope = new MessageEnvelope(item._1, item._2, offset, message);
+        for (var offset in item.item3.messages.keys) {
+          var message = item.item3.messages[offset];
+          var envelope =
+              new MessageEnvelope(item.item1, item.item2, offset, message);
           if (!controller.add(envelope)) {
             return;
           } else {
             var result = await envelope.result;
             if (result.status == _ProcessingStatus.commit) {
               var commitOffset = {
-                item._1: [
-                  new ConsumerOffset(item._2, offset, result.commitMetadata)
+                item.item1: [
+                  new ConsumerOffset(item.item2, offset, result.commitMetadata)
                 ]
               };
               await group.commitOffsets(commitOffset, 0, '');

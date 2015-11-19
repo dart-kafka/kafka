@@ -59,11 +59,11 @@ class Producer {
     }
     var metadata = await session.getMetadata();
     for (var t in _messages) {
-      var topic = metadata.getTopicMetadata(t._1);
-      var partition = topic.getPartition(t._2);
+      var topic = metadata.getTopicMetadata(t.item1);
+      var partition = topic.getPartition(t.item2);
       var broker = metadata.getBroker(partition.leader);
       var host = new KafkaHost(broker.host, broker.port);
-      _getRequestForHost(host).addMessages(t._1, t._2, t._3);
+      _getRequestForHost(host).addMessages(t.item1, t.item2, t.item3);
     }
 
     var futures = _requests.values.map((r) => r.send());
