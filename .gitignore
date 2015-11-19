@@ -1,6 +1,7 @@
+pubspec.lock
 .pub/
 bin/
-doc/
+doc/api/
 packages
 .packages
 notes.md

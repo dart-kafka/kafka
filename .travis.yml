@@ -10,7 +10,7 @@ dart:
 
 before_install:
   - sudo service docker restart ; sleep 10
-  - docker build -t kafka-cluster kafka-cluster/
+  - docker build -t kafka-cluster tool/kafka-cluster/
   - docker run -d --name kafka-cluster -p 2181:2181 -p 9092:9092 -p 9093:9093 --env ADVERTISED_HOST=127.0.0.1 kafka-cluster
   - docker ps -a
   - sleep 10

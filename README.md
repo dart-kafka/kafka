@@ -1,17 +1,17 @@
 # Dart Kafka
 
-[![Build Status](https://travis-ci.org/pulyaevskiy/dart-kafka.svg?branch=master)](https://travis-ci.org/pulyaevskiy/dart-kafka) [![Coverage Status](https://coveralls.io/repos/pulyaevskiy/dart-kafka/badge.svg?branch=master&service=github)](https://coveralls.io/github/pulyaevskiy/dart-kafka?branch=master)
+[![Build Status](https://img.shields.io/travis-ci/pulyaevskiy/dart-kafka.svg?branch=master&style=flat-square)](https://travis-ci.org/pulyaevskiy/dart-kafka)
+[![Coverage Status](https://img.shields.io/coveralls/pulyaevskiy/dart-kafka.svg?branch=master&style=flat-square)](https://coveralls.io/github/pulyaevskiy/dart-kafka?branch=master)
+[![License](https://img.shields.io/badge/license-BSD--2-blue.svg?style=flat-square)](https://raw.githubusercontent.com/pulyaevskiy/dart-kafka/master/LICENSE)
 
 Kafka client library written in Dart.
 
 ### Current status
 
-This library is not ready for production deployments yet.
+This library has not been used on production yet.
 
-This package is not published on Pub yet. Once APIs are stable enough first beta
-version will be uploaded to Pub.
-
-But if you feel adventurous you can try it out already. You can find some examples below.
+This package is not published on Pub yet but you can use git dependency in your
+`pubspec.yaml`.
 
 ### Producer example
 
@@ -36,9 +36,10 @@ main(List<String> arguments) async {
 
 ### Consumer example (with ConsumerGroup offset handling)
 
-* Consumer also supports "auto-discovery" of brokers and it will start 1 worker per Kafka broker.
-* Each message in the Consumer stream is wrapped in `MessageEnvelope` which provides
-  following methods:
+* Consumer also supports "auto-discovery" of brokers and it will start 1 worker
+  per Kafka broker.
+* Each message in the Consumer stream is wrapped in `MessageEnvelope` which
+  provides following methods:
   * `commit(String metadata)` - signals to worker that message has been processed
     and the offset should be committed.
   * `ack()` - signals to worker that message has been processed and we are ready
@@ -70,7 +71,6 @@ void main(List<String> arguments) async {
     print('Got message: ${envelope.offset}, ${value}');
     envelope.commit('metadata'); // This is required.
   }
-  print('Done');
   session.close(); // make sure to always close the session when the work is done.
 }
 ```
@@ -78,3 +78,7 @@ void main(List<String> arguments) async {
 ### Supported protocol versions
 
 Current version targets version `0.8.2` of the Kafka protocol. There is no plans to support earlier versions.
+
+### License
+
+BSD-2
