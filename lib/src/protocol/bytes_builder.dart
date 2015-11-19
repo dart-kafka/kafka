@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 enum KafkaType { int8, int16, int32, int64, string, bytes, object }
 

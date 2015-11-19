@@ -3,7 +3,7 @@ library kafka.test.bytes_builder;
 import 'dart:async';
 import 'dart:convert';
 import 'package:test/test.dart';
-import 'package:kafka/kafka.dart';
+import 'package:kafka/src/protocol.dart';
 
 void main() {
   group('BytesBuilder', () {

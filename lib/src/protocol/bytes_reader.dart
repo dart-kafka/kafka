@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// Provides convenience methods read Kafka specific data types from a stream of bytes.
 class KafkaBytesReader {
