@@ -60,7 +60,7 @@ class Consumer {
   Stream<MessageEnvelope> consume({int limit: -1}) {
     var controller = new _MessageStreamController(limit);
 
-    Future<List<_HostWorker>> list = _buildWorkers(controller);
+    Future<List<_ConsumerWorker>> list = _buildWorkers(controller);
     list.then((workers) {
       if (workers.isEmpty) {
         controller.close();
@@ -82,7 +82,7 @@ class Consumer {
     return controller.stream;
   }
 
-  Future<List<_HostWorker>> _buildWorkers(
+  Future<List<_ConsumerWorker>> _buildWorkers(
       _MessageStreamController controller) async {
     var meta = await session.getMetadata();
     var topicsByHost = new Map<KafkaHost, Map<String, Set<int>>>();
@@ -102,10 +102,11 @@ class Consumer {
       });
     });
 
-    var workers = new List<_HostWorker>();
+    var workers = new List<_ConsumerWorker>();
     topicsByHost.forEach((host, topics) {
-      workers.add(new _HostWorker(session, host, consumerGroup, controller,
-          topics, maxWaitTime, minBytes));
+      workers.add(new _ConsumerWorker(
+          session, host, controller, topics, maxWaitTime, minBytes,
+          group: consumerGroup));
     });
 
     return workers;
@@ -125,9 +126,15 @@ class _MessageStreamController {
       (_cancelled == false && ((limit == -1) || (_added < limit)));
   Stream<MessageEnvelope> get stream => _controller.stream;
 
-  void add(MessageEnvelope event) {
-    _controller.add(event);
-    _added++;
+  /// Attempts to add [event] to the stream.
+  /// Returns true if adding event succeeded, false otherwise.
+  bool add(MessageEnvelope event) {
+    if (canAdd) {
+      _controller.add(event);
+      _added++;
+      return true;
+    }
+    return false;
   }
 
   void cancel() {
@@ -140,7 +147,7 @@ class _MessageStreamController {
 }
 
 /// Worker responsible for fetching messages from one particular Kafka broker.
-class _HostWorker {
+class _ConsumerWorker {
   final KafkaSession session;
   final KafkaHost host;
   final ConsumerGroup group;
@@ -152,14 +159,14 @@ class _HostWorker {
   OffsetOutOfRangeBehavior onOffsetOutOfRange =
       OffsetOutOfRangeBehavior.resetToEarliest;
 
-  _HostWorker(this.session, this.host, this.group, this.controller,
-      this.topicPartitions, this.maxWaitTime, this.minBytes);
+  _ConsumerWorker(this.session, this.host, this.controller,
+      this.topicPartitions, this.maxWaitTime, this.minBytes,
+      {this.group});
 
   Future run() async {
     _logger?.info('Consumer: Running worker on host ${host.host}:${host.port}');
 
-    var shouldContinue = true;
-    while (shouldContinue) {
+    while (controller.canAdd) {
       var request = await _createRequest();
       var response = await request.send();
       var didReset = await _checkOffsets(response);
@@ -167,41 +174,27 @@ class _HostWorker {
         _logger?.warning('Offsets were reset. Forcing re-fetch.');
         continue;
       }
-      var messageCount = 0;
-      for (var topic in response.topics.keys) {
-        var partitions = response.topics[topic];
-        for (var p in partitions) {
-          for (var offset in p.messages.messages.keys) {
-            var message = p.messages.messages[offset];
-            var envelope =
-                new MessageEnvelope(topic, p.partitionId, offset, message);
-            if (controller.canAdd) {
-              messageCount++;
-              controller.add(envelope);
-              var result = await envelope.result;
-              if (result.status == _ProcessingStatus.commit) {
-                var commitOffset = {
-                  topic: [
-                    new ConsumerOffset(
-                        p.partitionId, offset, result.commitMetadata)
-                  ]
-                };
-                await group.commitOffsets(commitOffset, 0, '');
-              } else if (result.status == _ProcessingStatus.cancel) {
-                controller.cancel();
-                shouldContinue = false;
-              }
-            } else {
-              shouldContinue = false;
-              break;
+      for (var item in response.messageSets) {
+        for (var offset in item._3.messages.keys) {
+          var message = item._3.messages[offset];
+          var envelope = new MessageEnvelope(item._1, item._2, offset, message);
+          if (!controller.add(envelope)) {
+            return;
+          } else {
+            var result = await envelope.result;
+            if (result.status == _ProcessingStatus.commit) {
+              var commitOffset = {
+                item._1: [
+                  new ConsumerOffset(item._2, offset, result.commitMetadata)
+                ]
+              };
+              await group.commitOffsets(commitOffset, 0, '');
+            } else if (result.status == _ProcessingStatus.cancel) {
+              controller.cancel();
+              return;
             }
           }
-          if (!shouldContinue) break;
         }
-        if (!shouldContinue) break;
-      }
-      if (messageCount == 0 && controller.canAdd == false) {
-        shouldContinue = false;
       }
     }
   }

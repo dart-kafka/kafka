@@ -80,4 +80,10 @@ class TopicOffset {
   /// Creates pseudo-offset which refers to latest offset in this topic and
   /// partition.
   TopicOffset.latest(this.topicName, this.partitionId) : offset = -1;
+
+  /// Indicates whether this is an earliest pseudo-offset.
+  bool get isEarliest => offset == -2;
+
+  /// Indicates whether this is a latest pseudo-offset.
+  bool get isLatest => offset == -1;
 }

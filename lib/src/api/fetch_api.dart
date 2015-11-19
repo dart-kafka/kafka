@@ -1,9 +1,8 @@
 part of kafka;
 
-/// FetchRequest as defined in Kafka protocol spec.
+/// FetchRequest as defined in Kafka protocol.
 ///
-/// This is a low-level API object and requires extensive knowledge of Kafka protocol.
-/// Consider using high-level [Consumer] class instead.
+/// Consider using high-level [Consumer] class instead of this class.
 ///
 /// It is responsibility of the user of this class to make sure that this request
 /// will be send to the host which actually manages all topics and partitions in
@@ -93,7 +92,20 @@ class _FetchPartitionInfo {
 ///
 /// This is a low-level API object.
 class FetchResponse {
-  Map<String, List<FetchedPartitionData>> topics = new Map();
+  /// Fetched raw topics data.
+  final Map<String, List<FetchedPartitionData>> topics = new Map();
+
+  /// List of message sets of all fetched topic-paritions.
+  ///
+  /// This list contains 3-tuples of <topicName, partitionId, messageSet>.
+  final List<Tuple3<String, int, MessageSet>> messageSets = new List();
+
+  bool _hasErrors = false;
+
+  /// Indicates if there are any errors in this response.
+  ///
+  /// To find out actual errors one must look in the returned partitions data.
+  bool get hasErrors => _hasErrors;
 
   FetchResponse.fromData(List<int> data, int correlationId) {
     var reader = new KafkaBytesReader.fromBytes(data);
@@ -112,7 +124,13 @@ class FetchResponse {
       topics[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        topics[topicName].add(new FetchedPartitionData.readFrom(reader));
+        var partitionData = new FetchedPartitionData.readFrom(reader);
+        if (partitionData.errorCode != KafkaApiError.NoError) {
+          _hasErrors = true;
+        }
+        topics[topicName].add(partitionData);
+        messageSets.add(new Tuple3(
+            topicName, partitionData.partitionId, partitionData.messages));
         partitionCount--;
       }
       count--;

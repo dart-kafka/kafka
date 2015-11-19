@@ -14,6 +14,7 @@ import 'api/produce_test.dart' as produce_test;
 import 'consumer_group_test.dart' as consumer_group_test;
 import 'producer_test.dart' as producer_test;
 import 'consumer_test.dart' as consumer_test;
+import 'fetcher_test.dart' as fetcher_test;
 
 void main() {
   library_test.main();
@@ -30,4 +31,5 @@ void main() {
   consumer_group_test.main();
   producer_test.main();
   consumer_test.main();
+  fetcher_test.main();
 }

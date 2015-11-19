@@ -1,12 +1,11 @@
 part of kafka;
 
 /// ConsumerMetadataRequest as defined in Kafka protocol.
-/// This is a low-level API object.
 ///
 /// For convenience implementation of this request handles
 /// `ConsumerCoordinatorNotAvailableCode(15)` API error which Kafka returns
 /// in case [ConsumerMetadataRequest] is sent for the very first time to this
-/// particular server (and special topic to store consumer offsets does not
+/// particular broker (when special topic to store consumer offsets does not
 /// exist yet).
 ///
 /// It will attempt up to 5 retries with delay in order to fetch metadata.
@@ -60,7 +59,7 @@ class ConsumerMetadataRequest extends KafkaRequest {
   }
 }
 
-/// Result of [ConsumerMetadataRequest] as defined in Kafka protocol
+/// Result of [ConsumerMetadataRequest] as defined in Kafka protocol.
 class ConsumerMetadataResponse {
   final int errorCode;
   final int coordinatorId;
@@ -86,6 +85,7 @@ class ConsumerMetadataResponse {
     var id = reader.readInt32();
     var host = reader.readString();
     var port = reader.readInt32();
+
     return new ConsumerMetadataResponse(errorCode, id, host, port);
   }
 }
