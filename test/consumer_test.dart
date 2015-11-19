@@ -19,6 +19,10 @@ void main() {
       producer.addMessages(_topicName, 1, [new Message('msg2'.codeUnits)]);
       producer.addMessages(_topicName, 2, [new Message('msg3'.codeUnits)]);
       var result = await producer.send();
+      if (result.hasErrors) {
+        throw new StateError(
+            'Consumer test: setUp failed to produce messages.');
+      }
       _expectedOffsets = result.offsets[_topicName];
 
       var offsets = new List<ConsumerOffset>();
