@@ -10,12 +10,43 @@ Kafka client library written in Dart.
 
 This library has not been used on production yet.
 
-This package is not published on Pub yet but you can use git dependency in your
-`pubspec.yaml`.
+## Installation
 
-### Producer example
+Use git dependency in your `pubspec.yaml`:
 
-Producer supports "auto-discovery" of brokers for publishing messages.
+```yaml
+dependencies:
+  kafka:
+    git: https://github.com/pulyaevskiy/dart-kafka.git
+```
+
+And then import it as usual:
+
+```dart
+import 'package:kafka/kafka.dart';
+```
+
+## Features
+
+This library provides several high-level API objects to interact with Kafka:
+
+* __KafkaSession__ - responsible for managing connections to Kafka brokers and
+  coordinating all requests. Also provides access to metadata information.
+* __Producer__ - publishes messages to Kafka topics
+* __Consumer__ - consumes messages from Kafka topics and stores it's state (current
+  offsets). Leverages ConsumerMetadata API via ConsumerGroup.
+* __Fetcher__ - consumes messages from Kafka without storing state.
+* __OffsetMaster__ - provides convenience on top of Offset API allowing to easily
+  retrieve earliest and latest offsets of particular topic-partitions.
+* __ConsumerGroup__ - provides convenience on top of Consumer Metadata API to easily
+  fetch or commit consumer offsets.
+
+## Producer
+
+Simple implementation of Kafka producer. Supports auto-detection of leaders for
+topic-partitions and creates separate `ProduceRequest`s for each broker.
+Requests are sent in parallel and all responses are aggregated in special
+`ProduceResult` object.
 
 ```dart
 // file:produce.dart
@@ -39,29 +70,38 @@ main(List<String> arguments) async {
 
 Result:
 
-```bash
+```shell
 $ dart produce.dart
 $ false
 $ {dartKafkaTest: {0: 213075, 1: 201680}}
 ```
 
-### Consumer example (with ConsumerGroup offset handling)
+## Consumer
 
-* Consumer also supports "auto-discovery" of brokers and it will start 1 worker
-  per Kafka broker.
-* Each message in the Consumer stream is wrapped in `MessageEnvelope` which
-  provides following methods:
-  * `commit(String metadata)` - signals to worker that message has been processed
-    and the offset should be committed.
-  * `ack()` - signals to worker that message has been processed and we are ready
-    for the next one.
-  * `cancel()` - signals to cancel any further deliveries and close the stream.
-    Note that offset of current message will not be committed in this case!
-* Either `commit()`, `ack()` (or `cancel()`) method on each `MessageEnvelope` must be
-  called in order for consumer to proceed to the next one in the stream.
-* It is possible to configure Consumer behavior when it receives `OffsetOutOfRange`
-  API error. Supported strategies: `resetToEarliest (default)`, `resetToLatest`,
-  `throwError`. See `Consumer.onOffsetOutOfRange` property for details.
+High-level implementation of Kafka consumer which stores it's state using
+Kafka's ConsumerMetadata API.
+
+> If you don't want to keep state of consumed offsets take a look at `Fetcher`
+> which was designed specifically for this use case.
+
+Consumer returns messages as a stream so all standard stream operations
+should be applicable. However there is few important things to know about how
+Consumer works.
+
+1. All messages are returned in special `MessageEnvelope` object which provides
+  some additional information about the message: topicName, partitionId and the
+  offset.
+2. When consuming messages you must signal to the Consumer when to proceed to
+  the next message and whether to commit the offset of the current message. This
+  is possible via two methods provided by `MessageEnvelope`: `commit()` and
+  `ack()`. The `ack()` method only tells to Consumer that we are ready for the
+  next message, therefore offset of the current message will not be committed.
+  The `commit()` method will also tell to Consumer to commit current offset.
+3. There is also `cancel()` method on `MessageEnvelope` which signals to the
+  Consumer to stop the process. No more messages will be added after you call
+  `cancel()` and the stream will be closed.
+
+Simplest example of a consumer:
 
 ```dart
 import 'dart:io';
@@ -77,14 +117,15 @@ void main(List<String> arguments) async {
   };
 
   var consumer = new Consumer(session, group, topics, 100, 1);
-  await for (MessageEnvelope envelope in consumer.consume(limit: 5)) {
+  await for (MessageEnvelope envelope in consumer.consume()) {
     var value = new String.fromCharCodes(envelope.message.value);
     print('Got message: ${envelope.offset}, ${value}');
-    envelope.commit('metadata'); // This is required.
+    envelope.commit('metadata');
   }
   session.close(); // make sure to always close the session when the work is done.
 }
 ```
+
 
 ### Supported protocol versions
 
