@@ -98,7 +98,7 @@ class Message {
 
 /// Kafka MessageSet type as defined in the protocol specification.
 ///
-/// TODO: add partial message information.
+// TODO: add partial message information.
 class MessageSet {
   /// Collection of messages. Keys in the map are message offsets.
   final Map<int, Message> _messages = new Map();

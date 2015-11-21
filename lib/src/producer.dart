@@ -2,10 +2,12 @@ part of kafka;
 
 /// High-level Producer for Kafka.
 ///
-/// This class encapsulates some details of how [ProduceRequest]s work in Kafka
-/// and provides simple API for implementing producers.
+/// Producer encapsulates logic for broker discovery when publishing messages to
+/// multiple topic-partitions. It will send as many ProduceRequests as needed
+/// based on leader assignment for corresponding topic-partitions.
 ///
-/// _It is recommended to use this class instead of [ProduceRequest] directly._
+/// Requests will be send in parallel and results will be aggregated in
+/// [ProduceResult].
 class Producer {
   /// Instance of [KafkaSession] which is used to send requests to Kafka brokers.
   final KafkaSession session;
@@ -22,12 +24,6 @@ class Producer {
   /// number of acknowledgements in [requiredAcks].
   final int timeout;
 
-  /// Map to keep track of which request should go to which broker.
-  Map<KafkaHost, ProduceRequest> _requests = new Map();
-
-  /// Messages to publish grouped by topic and partition.
-  List<Tuple3<String, int, List<Message>>> _messages = new List();
-
   /// Creates new instance of [Producer].
   ///
   /// [requiredAcks] specifies how many acknowledgements the servers should
@@ -37,60 +33,42 @@ class Producer {
   /// the receipt of the number of acknowledgements in [requiredAcks].
   Producer(this.session, this.requiredAcks, this.timeout);
 
-  /// Adds messages to be sent in a [ProduceRequest] to Kafka.
-  ///
-  /// This method will autodetect which broker is currently a leader for
-  /// [topicName] and [partitionId] so that actual request will be sent to
-  /// that particular node.
-  addMessages(String topicName, partitionId, List<Message> messages) {
-    _messages.add(new Tuple3(topicName, partitionId, messages));
-  }
-
-  /// Sends produce data to Kafka.
-  ///
-  /// Depending on number of topics and partitions in the produce data this may
-  /// send multiple [ProduceRequest]s to Kafka.
-  ///
-  /// This method will wait for all [ProduceRequest]s to finish, aggregate the
-  /// results and return instance of [ProduceResult].
-  Future<ProduceResult> send() async {
-    if (_messages.isEmpty) {
-      throw new KafkaClientError('Must add messages to produce.');
-    }
-    var metadata = await session.getMetadata();
-    for (var t in _messages) {
-      var topic = metadata.getTopicMetadata(t.item1);
-      var partition = topic.getPartition(t.item2);
-      var broker = metadata.getBroker(partition.leader);
+  /// Sends messages to Kafka.
+  Future<ProduceResult> produce(List<ProduceEnvelope> messages) async {
+    var meta = await session.getMetadata();
+    Map<KafkaHost, ProduceRequest> requests = new Map();
+    for (var envelope in messages) {
+      var topic = meta.getTopicMetadata(envelope.topicName);
+      var partition = topic.getPartition(envelope.partitionId);
+      var broker = meta.getBroker(partition.leader);
       var host = new KafkaHost(broker.host, broker.port);
-      _getRequestForHost(host).addMessages(t.item1, t.item2, t.item3);
+      if (!requests.containsKey(host)) {
+        requests[host] =
+            new ProduceRequest(session, host, requiredAcks, timeout);
+      }
+      requests[host].addMessages(
+          envelope.topicName, envelope.partitionId, envelope.messages);
     }
 
-    var futures = _requests.values.map((r) => r.send());
     var completer = new Completer();
+    var futures = requests.values.map((r) => r.send());
     Future.wait(futures).then((List<ProduceResponse> responses) {
       completer.complete(new ProduceResult(responses));
     });
 
     return completer.future;
   }
-
-  ProduceRequest _getRequestForHost(KafkaHost host) {
-    if (_requests.containsKey(host) == false) {
-      _requests[host] =
-          new ProduceRequest(session, host, requiredAcks, timeout);
-    }
-
-    return _requests[host];
-  }
 }
 
-/// Result of [KafkaProducer.send()] call.
-///
-/// Provides convenience layer on top of Kafka API [ProduceResponse]:
-///
-/// * Implements auto-discovery of brokers when publishing messages to multiple
-///   topics/partitions.
+class ProduceEnvelope {
+  final String topicName;
+  final int partitionId;
+  final List<Message> messages;
+
+  ProduceEnvelope(this.topicName, this.partitionId, this.messages);
+}
+
+/// Result of producing messages with [Producer].
 class ProduceResult {
   final List<ProduceResponse> responses;
   bool _hasErrors = false;

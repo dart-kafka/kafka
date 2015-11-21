@@ -18,6 +18,7 @@ This package is not published on Pub yet but you can use git dependency in your
 Producer supports "auto-discovery" of brokers for publishing messages.
 
 ```dart
+// file:produce.dart
 import 'dart:io';
 import 'package:kafka/kafka.dart';
 
@@ -26,12 +27,22 @@ main(List<String> arguments) async {
   var session = new KafkaSession([host]);
 
   var producer = new Producer(session, 1, 1000);
-  producer.addMessages('topicName', 0, [new Message('msgForPartition0'.codeUnits)]);
-  producer.addMessages('topicName', 1, [new Message('msgForPartition1'.codeUnits)]);
-  var response = await producer.send();
+  var result = producer.produce([
+    new ProduceEnvelope('topicName', 0, [new Message('msgForPartition0'.codeUnits)]),
+    new ProduceEnvelope('topicName', 1, [new Message('msgForPartition1'.codeUnits)])
+  ]);
   print(response.hasErrors);
+  print(response.offsets);
   session.close(); // make sure to always close the session when the work is done.
 }
+```
+
+Result:
+
+```bash
+$ dart produce.dart
+$ false
+$ {dartKafkaTest: {0: 213075, 1: 201680}}
 ```
 
 ### Consumer example (with ConsumerGroup offset handling)

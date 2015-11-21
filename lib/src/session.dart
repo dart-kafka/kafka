@@ -31,10 +31,9 @@ class KafkaSession {
   /// This is a wrapper around Kafka API [MetadataRequest].
   /// Result will also contain information about all brokers in the Kafka cluster.
   /// See [MetadataResponse] for details.
-  ///
-  /// TODO: actually rotate default hosts on failure.
   Future<MetadataResponse> getMetadata(
       {List<String> topicNames, bool invalidateCache: false}) async {
+    // TODO: actually rotate default hosts on failure.
     if (invalidateCache) _metadata = null;
 
     if (_metadata == null) {
@@ -68,6 +67,9 @@ class KafkaSession {
     return completer.future;
   }
 
+  /// Closes this session and terminates all open socket connections.
+  ///
+  /// After session has been closed it can't be used or re-opened.
   Future close() async {
     for (var h in _sockets.keys) {
       await _subscriptions[h].cancel();

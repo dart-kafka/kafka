@@ -24,10 +24,11 @@ void main() {
       var result;
       for (var i = 0; i < 2000; i++) {
         var producer = new Producer(_client, 1, 100);
-        producer.addMessages(_topicName, 0, [new Message('msg1'.codeUnits)]);
-        producer.addMessages(_topicName, 1, [new Message('msg2'.codeUnits)]);
-        producer.addMessages(_topicName, 2, [new Message('msg3'.codeUnits)]);
-        result = await producer.send();
+        var result = await producer.produce([
+          new ProduceEnvelope(_topicName, 0, [new Message('msg1'.codeUnits)]),
+          new ProduceEnvelope(_topicName, 1, [new Message('msg2'.codeUnits)]),
+          new ProduceEnvelope(_topicName, 2, [new Message('msg3'.codeUnits)]),
+        ]);
         expect(result.hasErrors, isFalse);
       }
 

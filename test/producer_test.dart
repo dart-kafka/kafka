@@ -20,11 +20,15 @@ main() {
 
     test('it can produce messages to multiple brokers', () async {
       var producer = new Producer(_session, 1, 100);
-      producer.addMessages(_topicName, 0, [new Message('test1'.codeUnits)]);
-      producer.addMessages(_topicName, 1, [new Message('test2'.codeUnits)]);
-      producer.addMessages(_topicName, 2, [new Message('test3'.codeUnits)]);
-      var result = await producer.send();
+      var result = await producer.produce([
+        new ProduceEnvelope(_topicName, 0, [new Message('test1'.codeUnits)]),
+        new ProduceEnvelope(_topicName, 1, [new Message('test2'.codeUnits)]),
+        new ProduceEnvelope(_topicName, 2, [new Message('test3'.codeUnits)]),
+      ]);
       expect(result.hasErrors, isFalse);
+      expect(result.offsets[_topicName][0], greaterThan(0));
+      expect(result.offsets[_topicName][1], greaterThan(0));
+      expect(result.offsets[_topicName][2], greaterThan(0));
     });
   });
 }
