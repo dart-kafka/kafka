@@ -8,7 +8,7 @@ Kafka client library written in Dart.
 
 ### Current status
 
-This library has not been used on production yet.
+This library is a work-in-progress and has not been used on production yet.
 
 ## Installation
 
@@ -99,7 +99,7 @@ Consumer works.
   The `commit()` method will also tell to Consumer to commit current offset.
 3. There is also `cancel()` method on `MessageEnvelope` which signals to the
   Consumer to stop the process. No more messages will be added after you call
-  `cancel()` and the stream will be closed.
+  `cancel()` and the consumer stream will be closed.
 
 Simplest example of a consumer:
 
