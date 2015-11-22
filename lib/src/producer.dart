@@ -43,15 +43,17 @@ class Producer {
       var broker = meta.getBroker(partition.leader);
       var host = new KafkaHost(broker.host, broker.port);
       if (!requests.containsKey(host)) {
-        requests[host] =
-            new ProduceRequest(session, host, requiredAcks, timeout);
+        requests[host] = new ProduceRequest(requiredAcks, timeout);
       }
       requests[host].addMessages(
           envelope.topicName, envelope.partitionId, envelope.messages);
     }
 
     var completer = new Completer();
-    var futures = requests.values.map((r) => r.send());
+    var futures = new List();
+    requests.forEach((h, r) {
+      futures.add(session.send(h, r));
+    });
     Future.wait(futures).then((List<ProduceResponse> responses) {
       completer.complete(new ProduceResult(responses));
     });

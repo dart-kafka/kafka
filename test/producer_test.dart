@@ -26,9 +26,9 @@ main() {
         new ProduceEnvelope(_topicName, 2, [new Message('test3'.codeUnits)]),
       ]);
       expect(result.hasErrors, isFalse);
-      expect(result.offsets[_topicName][0], greaterThan(0));
-      expect(result.offsets[_topicName][1], greaterThan(0));
-      expect(result.offsets[_topicName][2], greaterThan(0));
+      expect(result.offsets[_topicName][0], greaterThanOrEqualTo(0));
+      expect(result.offsets[_topicName][1], greaterThanOrEqualTo(0));
+      expect(result.offsets[_topicName][2], greaterThanOrEqualTo(0));
     });
   });
 }

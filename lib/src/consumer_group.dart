@@ -23,8 +23,8 @@ class ConsumerGroup {
       {int retries: 0,
       bool refresh: false}) async {
     var host = await _getCoordinatorHost(refresh: refresh);
-    var request = new OffsetFetchRequest(session, host, name, topicPartitions);
-    var response = await request.send();
+    var request = new OffsetFetchRequest(name, topicPartitions);
+    var response = await session.send(host, request);
     var offsets = new Map<String, List<ConsumerOffset>>.from(response.offsets);
 
     for (var topic in offsets.keys) {
@@ -66,8 +66,8 @@ class ConsumerGroup {
       {int retries: 0, bool refresh: false}) async {
     var host = await _getCoordinatorHost(refresh: refresh);
     var request = new OffsetCommitRequest(
-        session, host, name, offsets, consumerGenerationId, consumerId);
-    var response = await request.send();
+        name, offsets, consumerGenerationId, consumerId);
+    var response = await session.send(host, request);
     for (var topic in response.topics.keys) {
       for (var partition in response.topics[topic]) {
         if (partition.errorCode == 16 && retries > 1) {

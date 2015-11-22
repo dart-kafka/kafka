@@ -35,15 +35,16 @@ class OffsetMaster {
         var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
         var host = meta.getBroker(leader).toKafkaHost();
         if (!requests.containsKey(host)) {
-          requests[host] = new OffsetRequest(session, host, leader);
+          requests[host] = new OffsetRequest(leader);
         }
         requests[host].addTopicPartition(topic, p, time, 1);
       }
     }
 
     var offsets = new List<TopicOffset>();
-    for (var request in requests.values) {
-      var response = await request.send();
+    for (var host in requests.keys) {
+      var request = requests[host];
+      var response = await session.send(host, request);
       for (var topic in response.topics.keys) {
         var partitions = response.topics[topic];
         for (var p in partitions) {

@@ -168,7 +168,7 @@ class _ConsumerWorker {
 
     while (controller.canAdd) {
       var request = await _createRequest();
-      var response = await request.send();
+      var response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
         _logger?.warning('Offsets were reset. Forcing re-fetch.');
@@ -235,7 +235,7 @@ class _ConsumerWorker {
 
   Future<FetchRequest> _createRequest() async {
     var offsets = await group.fetchOffsets(topicPartitions);
-    var request = new FetchRequest(session, host, maxWaitTime, minBytes);
+    var request = new FetchRequest(maxWaitTime, minBytes);
     topicPartitions.forEach((topic, partitions) {
       for (var p in partitions) {
         var offset = offsets[topic].firstWhere((o) => o.partitionId == p);

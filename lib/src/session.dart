@@ -38,8 +38,8 @@ class KafkaSession {
 
     if (_metadata == null) {
       var currentHost = _getCurrentDefaultHost();
-      var request = new MetadataRequest(this, currentHost, topicNames);
-      _metadata = await request.send();
+      var request = new MetadataRequest(topicNames);
+      _metadata = await this.send(currentHost, request);
     }
 
     return _metadata;
@@ -47,12 +47,33 @@ class KafkaSession {
 
   /// Fetches metadata for specified [consumerGroup].
   ///
-  /// TODO: rotate default hosts.
+  /// It handles `ConsumerCoordinatorNotAvailableCode(15)` API error which Kafka
+  /// returns in case [ConsumerMetadataRequest] is sent for the very first time
+  /// to this particular broker (when special topic to store consumer offsets
+  /// does not exist yet).
+  ///
+  /// It will attempt up to 5 retries (with delay) in order to fetch metadata.
   Future<ConsumerMetadataResponse> getConsumerMetadata(
       String consumerGroup) async {
+    // TODO: rotate default hosts.
     var currentHost = _getCurrentDefaultHost();
-    var request = new ConsumerMetadataRequest(this, currentHost, consumerGroup);
-    return request.send();
+    var request = new ConsumerMetadataRequest(consumerGroup);
+
+    var response = await this.send(currentHost, request);
+    var retries = 1;
+    while (response.errorCode == 15 && retries < 5) {
+      var future = new Future.delayed(new Duration(seconds: 1 * retries),
+          () => this.send(currentHost, request));
+
+      response = await future;
+      retries++;
+    }
+
+    if (response.errorCode != 0) {
+      throw new KafkaApiError.fromErrorCode(response.errorCode);
+    }
+
+    return response;
   }
 
   /// Sends request to specified [KafkaHost].

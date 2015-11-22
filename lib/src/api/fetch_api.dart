@@ -29,9 +29,7 @@ class FetchRequest extends KafkaRequest {
   Map<String, List<_FetchPartitionInfo>> _topics = new Map();
 
   /// Creates new instance of FetchRequest.
-  FetchRequest(
-      KafkaSession session, KafkaHost host, this.maxWaitTime, this.minBytes)
-      : super(session, host);
+  FetchRequest(this.maxWaitTime, this.minBytes) : super();
 
   /// Adds [topicName] with [paritionId] to this FetchRequest. [fetchOffset]
   /// defines the offset to begin this fetch from.
@@ -43,10 +41,6 @@ class FetchRequest extends KafkaRequest {
     }
     _topics[topicName]
         .add(new _FetchPartitionInfo(partitionId, fetchOffset, maxBytes));
-  }
-
-  Future<FetchResponse> send() async {
-    return session.send(host, this);
   }
 
   @override

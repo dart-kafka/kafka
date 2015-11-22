@@ -1,43 +1,13 @@
 part of kafka;
 
 /// ConsumerMetadataRequest as defined in Kafka protocol.
-///
-/// For convenience implementation of this request handles
-/// `ConsumerCoordinatorNotAvailableCode(15)` API error which Kafka returns
-/// in case [ConsumerMetadataRequest] is sent for the very first time to this
-/// particular broker (when special topic to store consumer offsets does not
-/// exist yet).
-///
-/// It will attempt up to 5 retries with delay in order to fetch metadata.
 class ConsumerMetadataRequest extends KafkaRequest {
   final int apiKey = 10;
   final int apiVersion = 0;
   final String consumerGroup;
 
   /// Creates new instance of ConsumerMetadataRequest.
-  ConsumerMetadataRequest(
-      KafkaSession session, KafkaHost host, this.consumerGroup)
-      : super(session, host);
-
-  /// Sends this request to Kafka server specified in [host].
-  Future<ConsumerMetadataResponse> send() async {
-    ConsumerMetadataResponse response = await session.send(host, this);
-
-    var retries = 1;
-    while (response.errorCode == 15 && retries < 5) {
-      var future = new Future.delayed(
-          new Duration(seconds: 1 * retries), () => session.send(host, this));
-
-      response = await future;
-      retries++;
-    }
-
-    if (response.errorCode != 0) {
-      throw new KafkaApiError.fromErrorCode(response.errorCode);
-    }
-
-    return response;
-  }
+  ConsumerMetadataRequest(this.consumerGroup) : super();
 
   /// Converts this request into byte list
   @override

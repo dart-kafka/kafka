@@ -22,13 +22,7 @@ class MetadataRequest extends KafkaRequest {
   ///
   /// If [topicNames] is omitted or empty then metadata for all existing topics
   /// will be returned.
-  MetadataRequest(KafkaSession session, KafkaHost host, [this.topicNames])
-      : super(session, host);
-
-  /// Sends the request.
-  Future<MetadataResponse> send() {
-    return session.send(host, this);
-  }
+  MetadataRequest([this.topicNames]) : super();
 
   @override
   List<int> toBytes() {

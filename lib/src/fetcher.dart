@@ -90,7 +90,7 @@ class _FetcherWorker {
 
     while (controller.canAdd) {
       var request = await _createRequest(offsets);
-      var response = await request.send();
+      var response = await session.send(host, request);
       _checkResponseForErrors(response);
 
       for (var item in response.messageSets) {
@@ -122,7 +122,7 @@ class _FetcherWorker {
 
   Future<FetchRequest> _createRequest(List<TopicOffset> offsets) async {
     var offsetMaster = new OffsetMaster(session);
-    var request = new FetchRequest(session, host, maxWaitTime, minBytes);
+    var request = new FetchRequest(maxWaitTime, minBytes);
     for (var o in offsets) {
       if (o.isEarliest) {
         var result = await offsetMaster.fetchEarliest({

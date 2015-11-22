@@ -21,13 +21,7 @@ class OffsetFetchRequest extends KafkaRequest {
   /// Creates new instance of [OffsetFetchRequest].
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
-  OffsetFetchRequest(
-      KafkaSession session, KafkaHost host, this.consumerGroup, this.topics)
-      : super(session, host);
-
-  Future<OffsetFetchResponse> send() async {
-    return this.session.send(host, this);
-  }
+  OffsetFetchRequest(this.consumerGroup, this.topics) : super();
 
   @override
   List<int> toBytes() {

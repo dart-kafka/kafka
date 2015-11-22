@@ -19,8 +19,7 @@ class OffsetRequest extends KafkaRequest {
   ///
   /// The [replicaId] argument indicates unique ID assigned to the [host] within
   /// Kafka cluster. One can obtain this information via [MetadataRequest].
-  OffsetRequest(KafkaSession session, KafkaHost host, this.replicaId)
-      : super(session, host);
+  OffsetRequest(this.replicaId) : super();
 
   /// Adds topic and partition to this requests.
   ///
@@ -38,11 +37,6 @@ class OffsetRequest extends KafkaRequest {
 
     _topics[topicName].add(
         new _PartitionOffsetRequestInfo(partitionId, time, maxNumberOfOffsets));
-  }
-
-  /// Sends this request to the server specified in the [host] property.
-  Future<OffsetResponse> send() async {
-    return session.send(host, this);
   }
 
   /// Converts this request into a byte array.

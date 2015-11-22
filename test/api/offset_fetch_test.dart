@@ -18,13 +18,10 @@ void main() {
       _session = new KafkaSession([_host]);
       var now = new DateTime.now();
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
-      var consumerMetadataRequest =
-          new ConsumerMetadataRequest(_session, _host, _testGroup);
-      var metadata = await consumerMetadataRequest.send();
+      var metadata = await _session.getConsumerMetadata(_testGroup);
       _coordinatorHost =
           new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
-      _request =
-          new OffsetFetchRequest(_session, _coordinatorHost, _testGroup, {
+      _request = new OffsetFetchRequest(_testGroup, {
         'dartKafkaTest': new Set.from([0])
       });
     });
@@ -34,7 +31,7 @@ void main() {
     });
 
     test('it fetches consumer offsets', () async {
-      var response = await _request.send();
+      var response = await _session.send(_coordinatorHost, _request);
       expect(response.offsets, hasLength(equals(1)));
       expect(response.offsets, contains('dartKafkaTest'));
       var partitions = response.offsets['dartKafkaTest'];
