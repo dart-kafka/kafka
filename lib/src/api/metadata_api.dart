@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// MetadataRequest as defined in the Kafka protocol.
 ///
@@ -38,7 +38,7 @@ class MetadataRequest extends KafkaRequest {
   }
 
   @override
-  _createResponse(List<int> data) {
+  createResponse(List<int> data) {
     return new MetadataResponse.fromData(data, correlationId);
   }
 }
@@ -87,10 +87,6 @@ class Broker {
     this.nodeId = reader.readInt32();
     this.host = reader.readString();
     this.port = reader.readInt32();
-  }
-
-  KafkaHost toKafkaHost() {
-    return new KafkaHost(host, port);
   }
 }
 

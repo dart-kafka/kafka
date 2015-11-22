@@ -31,19 +31,19 @@ class ConsumerGroup {
       for (var partition in offsets[topic]) {
         if (partition.errorCode == 16 && retries > 1) {
           // Re-fetch coordinator metadata and try again
-          _logger?.info(
+          kafkaLogger?.info(
               'ConsumerGroup(${name}): encountered API error 16 (NotCoordinatorForConsumerCode) when fetching offsets. Scheduling retry with metadata refresh.');
           return _fetchOffsets(topicPartitions,
               retries: retries - 1, refresh: true);
         } else if (partition.errorCode == 14 && retries > 1) {
           // Wait a little and try again.
-          _logger?.info(
+          kafkaLogger?.info(
               'ConsumerGroup(${name}): encountered API error 14 (OffsetsLoadInProgressCode) when fetching offsets. Scheduling retry after delay.');
           return new Future.delayed(const Duration(seconds: 1), () async {
             return _fetchOffsets(topicPartitions, retries: retries - 1);
           });
         } else if (partition.errorCode != 0) {
-          _logger?.info(
+          kafkaLogger?.info(
               'ConsumerGroup(${name}): fetchOffsets failed. Error code: ${partition.errorCode} for partition ${partition.partitionId} of ${topic}.');
           throw new KafkaApiError.fromErrorCode(partition.errorCode);
         }
@@ -72,12 +72,12 @@ class ConsumerGroup {
       for (var partition in response.topics[topic]) {
         if (partition.errorCode == 16 && retries > 1) {
           // Re-fetch coordinator metadata and try again
-          _logger?.info(
+          kafkaLogger?.info(
               'ConsumerGroup(${name}): encountered API error 16 (NotCoordinatorForConsumerCode) when commiting offsets. Scheduling retry with metadata refresh.');
           return _commitOffsets(offsets, consumerGenerationId, consumerId,
               retries: retries - 1, refresh: true);
         } else if (partition.errorCode != 0) {
-          _logger?.info(
+          kafkaLogger?.info(
               'ConsumerGroup(${name}): commitOffsets failed. Error code: ${partition.errorCode} for partition ${partition.partitionId} of ${topic}.');
           throw new KafkaApiError.fromErrorCode(partition.errorCode);
         }

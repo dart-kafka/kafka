@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// ProduceRequest as defined in Kafka protocol.
 ///
@@ -78,7 +78,7 @@ class ProduceRequest extends KafkaRequest {
   }
 
   @override
-  _createResponse(List<int> data) {
+  createResponse(List<int> data) {
     return new ProduceResponse.fromData(data, correlationId);
   }
 }
@@ -93,12 +93,7 @@ class ProduceResponse {
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var receivedCorrelationId = reader.readInt32();
-    if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError(
-          'Original value: $correlationId, received: $receivedCorrelationId');
-    }
-
+    reader.readInt32(); // correlationId
     this.topics = reader.readArray(
         KafkaType.object, (r) => new TopicProduceResult.readFrom(r));
   }

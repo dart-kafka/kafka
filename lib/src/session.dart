@@ -110,7 +110,8 @@ class KafkaSession {
 
     var extra;
     if (buffer.length > _sizes[host] + 4) {
-      _logger?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
+      kafkaLogger
+          ?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
       extra = buffer.sublist(_sizes[host] + 4);
       buffer.removeRange(_sizes[host] + 4, buffer.length);
     }
@@ -122,7 +123,7 @@ class KafkaSession {
       var request = _inflightRequests.keys
           .firstWhere((r) => r.correlationId == correlationId);
       var completer = _inflightRequests[request];
-      completer.complete(request._createResponse(buffer));
+      completer.complete(request.createResponse(buffer));
       _inflightRequests.remove(request);
       buffer.clear();
       _sizes[host] = -1;

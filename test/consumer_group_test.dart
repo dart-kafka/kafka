@@ -3,6 +3,7 @@ library kafka.test.consumer_group;
 import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:kafka/kafka.dart';
+import 'package:kafka/src/protocol.dart';
 import 'setup.dart';
 
 void main() {

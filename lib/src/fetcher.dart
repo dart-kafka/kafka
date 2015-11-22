@@ -35,7 +35,8 @@ class Fetcher {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
-            _logger?.info('Fetcher: All workers are done. Closing the stream.');
+            kafkaLogger
+                ?.info('Fetcher: All workers are done. Closing the stream.');
             controller.close();
           }
         });
@@ -85,7 +86,8 @@ class _FetcherWorker {
       this.startFromOffsets, this.maxWaitTime, this.minBytes);
 
   Future run() async {
-    _logger?.info('Fetcher: Running worker on host ${host.host}:${host.port}');
+    kafkaLogger
+        ?.info('Fetcher: Running worker on host ${host.host}:${host.port}');
     var offsets = startFromOffsets.toList();
 
     while (controller.canAdd) {

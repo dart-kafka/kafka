@@ -1,21 +1,5 @@
 part of kafka;
 
-/// Compression types supported by Kafka.
-enum KafkaCompression { none, gzip, snappy }
-
-/// Base interface for all Kafka API requests.
-abstract class KafkaRequest {
-  static final _random = new Random();
-
-  final int correlationId;
-
-  KafkaRequest() : correlationId = _random.nextInt(65536);
-
-  List<int> toBytes();
-
-  dynamic _createResponse(List<int> data);
-}
-
 /// Represents individual Kafka broker identified by host and port.
 ///
 // TODO: consolidate with [Broker] (maybe?).
@@ -36,6 +20,9 @@ class KafkaHost {
     }
     return _instances[key];
   }
+
+  factory KafkaHost.fromBroker(Broker broker) =>
+      new KafkaHost(broker.host, broker.port);
 
   KafkaHost._internal(this.host, this.port);
 }

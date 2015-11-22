@@ -33,7 +33,7 @@ class OffsetMaster {
       var partitions = topicPartitions[topic];
       for (var p in partitions) {
         var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
-        var host = meta.getBroker(leader).toKafkaHost();
+        var host = new KafkaHost.fromBroker(meta.getBroker(leader));
         if (!requests.containsKey(host)) {
           requests[host] = new OffsetRequest(leader);
         }

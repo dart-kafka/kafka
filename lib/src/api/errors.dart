@@ -1,4 +1,9 @@
-part of kafka;
+part of kafka.protocol;
+
+/// Used to indicate there is mismatch in CRC sum of a message (message corrupted).
+class MessageCrcMismatchError extends StateError {
+  MessageCrcMismatchError(String message) : super(message);
+}
 
 /// Represents API errors produced by Kafka server.
 class KafkaApiError {

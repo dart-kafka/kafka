@@ -2,6 +2,7 @@ library kafka.test.api.produce;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
+import 'package:kafka/src/protocol.dart';
 import '../setup.dart';
 
 void main() {

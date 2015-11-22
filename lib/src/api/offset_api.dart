@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// OffsetRequest as defined in Kafka protocol spec.
 ///
@@ -64,7 +64,7 @@ class OffsetRequest extends KafkaRequest {
   }
 
   @override
-  _createResponse(List<int> data) {
+  createResponse(List<int> data) {
     return new OffsetResponse.fromData(data, correlationId);
   }
 }
@@ -102,12 +102,7 @@ class OffsetResponse {
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var receivedCorrelationId = reader.readInt32();
-    if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError(
-          'Original value: $correlationId, received: $receivedCorrelationId');
-    }
-
+    reader.readInt32(); // correlationId
     var count = reader.readInt32();
     while (count > 0) {
       var topicName = reader.readString();

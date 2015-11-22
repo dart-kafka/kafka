@@ -72,7 +72,8 @@ class Consumer {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
-            _logger?.info('Consumer: All workers are done. Closing stream.');
+            kafkaLogger
+                ?.info('Consumer: All workers are done. Closing stream.');
             controller.close();
           }
         });
@@ -164,14 +165,15 @@ class _ConsumerWorker {
       {this.group});
 
   Future run() async {
-    _logger?.info('Consumer: Running worker on host ${host.host}:${host.port}');
+    kafkaLogger
+        ?.info('Consumer: Running worker on host ${host.host}:${host.port}');
 
     while (controller.canAdd) {
       var request = await _createRequest();
       var response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
-        _logger?.warning('Offsets were reset. Forcing re-fetch.');
+        kafkaLogger?.warning('Offsets were reset. Forcing re-fetch.');
         continue;
       }
       for (var item in response.messageSets) {
@@ -206,7 +208,7 @@ class _ConsumerWorker {
       var partitions = response.topics[topic];
       for (var p in partitions) {
         if (p.errorCode == 1) {
-          _logger?.warning(
+          kafkaLogger?.warning(
               'Consumer: received API error 1 for topic ${topic}:${p.partitionId}');
           if (!topicsToReset.containsKey(topic)) {
             topicsToReset[topic] = [];

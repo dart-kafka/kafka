@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// FetchRequest as defined in Kafka protocol.
 ///
@@ -70,7 +70,7 @@ class FetchRequest extends KafkaRequest {
   }
 
   @override
-  _createResponse(List<int> data) {
+  createResponse(List<int> data) {
     return new FetchResponse.fromData(data, correlationId);
   }
 }
@@ -106,12 +106,7 @@ class FetchResponse {
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var receivedCorrelationId = reader.readInt32();
-    if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError(
-          'Original value: $correlationId, received: $receivedCorrelationId');
-    }
-
+    reader.readInt32(); // correlationId
     var count = reader.readInt32();
     while (count > 0) {
       var topicName = reader.readString();

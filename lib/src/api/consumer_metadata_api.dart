@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// ConsumerMetadataRequest as defined in Kafka protocol.
 class ConsumerMetadataRequest extends KafkaRequest {
@@ -24,8 +24,8 @@ class ConsumerMetadataRequest extends KafkaRequest {
   }
 
   @override
-  _createResponse(List<int> data) {
-    return ConsumerMetadataResponse.fromData(data, correlationId);
+  createResponse(List<int> data) {
+    return ConsumerMetadataResponse.fromData(data);
   }
 }
 
@@ -41,16 +41,12 @@ class ConsumerMetadataResponse {
       this.coordinatorHost, this.coordinatorPort);
 
   /// Creates response from provided data.
-  static ConsumerMetadataResponse fromData(List<int> data, int correlationId) {
+  static ConsumerMetadataResponse fromData(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var receivedCorrelationId = reader.readInt32();
-    if (receivedCorrelationId != correlationId) {
-      throw new CorrelationIdMismatchError(
-          'Original value: $correlationId, received: $receivedCorrelationId');
-    }
+    reader.readInt32(); // correlationId
     var errorCode = reader.readInt16();
     var id = reader.readInt32();
     var host = reader.readString();

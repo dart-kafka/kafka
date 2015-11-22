@@ -1,4 +1,4 @@
-part of kafka;
+part of kafka.protocol;
 
 /// Kafka Message Attributes. Only [KafkaCompression] is supported by the
 /// server at the moment.
@@ -22,7 +22,7 @@ class MessageAttributes {
       case 2:
         return KafkaCompression.snappy;
       default:
-        throw new KafkaClientError('Unsupported compression codec: ${c}.');
+        throw new ArgumentError('Unsupported compression codec: ${c}.');
     }
   }
 

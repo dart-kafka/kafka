@@ -1,8 +1,8 @@
-part of kafka;
+part of kafka.protocol;
 
 /// CRC32 checksum calculator.
 ///
-/// TODO: extract in it's own package.
+// TODO: extract in it's own package (?)
 class Crc32 {
   static final List<int> _table = const [
     0x00000000,
