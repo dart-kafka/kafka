@@ -8,11 +8,14 @@ Kafka client library written in Dart.
 
 ### Current status
 
-This library is a work-in-progress and has not been used on production yet.
+This library is a work-in-progress and has not been used in production yet.
 
 ## Installation
 
-Use git dependency in your `pubspec.yaml`:
+There is no Pub package yet, but it will be published as soon as APIs are
+stable enough.
+
+For now you can use git dependency in your `pubspec.yaml`:
 
 ```yaml
 dependencies:

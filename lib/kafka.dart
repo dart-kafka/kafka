@@ -15,7 +15,6 @@ export 'src/protocol.dart';
 part 'src/common.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
-part 'src/errors.dart';
 part 'src/fetcher.dart';
 part 'src/offset_master.dart';
 part 'src/producer.dart';
