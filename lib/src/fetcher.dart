@@ -49,23 +49,22 @@ class Fetcher {
   Future<List<_FetcherWorker>> _buildWorkers(
       _MessageStreamController controller) async {
     var meta = await session.getMetadata();
-    var offsetsByHost = new Map<KafkaHost, List<TopicOffset>>();
+    var offsetsByBroker = new Map<Broker, List<TopicOffset>>();
 
     topicOffsets.forEach((offset) {
       var leader = meta
           .getTopicMetadata(offset.topicName)
           .getPartition(offset.partitionId)
           .leader;
-      var host = new KafkaHost(
-          meta.getBroker(leader).host, meta.getBroker(leader).port);
-      if (offsetsByHost.containsKey(host) == false) {
-        offsetsByHost[host] = new List();
+      var broker = meta.getBroker(leader);
+      if (offsetsByBroker.containsKey(broker) == false) {
+        offsetsByBroker[broker] = new List();
       }
-      offsetsByHost[host].add(offset);
+      offsetsByBroker[broker].add(offset);
     });
 
     var workers = new List<_FetcherWorker>();
-    offsetsByHost.forEach((host, offsets) {
+    offsetsByBroker.forEach((host, offsets) {
       workers
           .add(new _FetcherWorker(session, host, controller, offsets, 100, 1));
     });
@@ -76,7 +75,7 @@ class Fetcher {
 
 class _FetcherWorker {
   final KafkaSession session;
-  final KafkaHost host;
+  final Broker host;
   final _MessageStreamController controller;
   final List<TopicOffset> startFromOffsets;
   final int maxWaitTime;

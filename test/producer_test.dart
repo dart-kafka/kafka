@@ -11,7 +11,7 @@ main() {
 
     setUp(() async {
       var host = await getDefaultHost();
-      _session = new KafkaSession([new KafkaHost(host, 9092)]);
+      _session = new KafkaSession([new ContactPoint(host, 9092)]);
     });
 
     tearDown(() async {

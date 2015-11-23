@@ -8,9 +8,12 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
-import 'src/protocol.dart';
+import 'common.dart';
 
-export 'src/protocol.dart';
+import 'protocol.dart';
+
+export 'common.dart';
+export 'protocol.dart';
 
 part 'src/common.dart';
 part 'src/consumer.dart';

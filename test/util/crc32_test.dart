@@ -1,7 +1,7 @@
 library kafka.protocol.crc32.test;
 
 import 'package:test/test.dart';
-import 'package:kafka/src/protocol.dart';
+import 'package:kafka/protocol.dart';
 
 void main() {
   group('Crc32', () {

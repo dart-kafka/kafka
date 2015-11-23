@@ -28,12 +28,12 @@ class OffsetMaster {
       Map<String, Set<int>> topicPartitions, int time,
       {refreshMetadata: false}) async {
     var meta = await session.getMetadata(invalidateCache: refreshMetadata);
-    var requests = new Map<KafkaHost, OffsetRequest>();
+    var requests = new Map<Broker, OffsetRequest>();
     for (var topic in topicPartitions.keys) {
       var partitions = topicPartitions[topic];
       for (var p in partitions) {
         var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
-        var host = new KafkaHost.fromBroker(meta.getBroker(leader));
+        var host = meta.getBroker(leader);
         if (!requests.containsKey(host)) {
           requests[host] = new OffsetRequest(leader);
         }

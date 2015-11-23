@@ -4,7 +4,7 @@ class ConsumerGroup {
   final KafkaSession session;
   final String name;
 
-  KafkaHost _coordinatorHost;
+  Broker _coordinatorHost;
 
   ConsumerGroup(this.session, this.name);
 
@@ -22,7 +22,7 @@ class ConsumerGroup {
       Map<String, Set<int>> topicPartitions,
       {int retries: 0,
       bool refresh: false}) async {
-    var host = await _getCoordinatorHost(refresh: refresh);
+    var host = await _getCoordinator(refresh: refresh);
     var request = new OffsetFetchRequest(name, topicPartitions);
     var response = await session.send(host, request);
     var offsets = new Map<String, List<ConsumerOffset>>.from(response.offsets);
@@ -64,7 +64,7 @@ class ConsumerGroup {
   Future _commitOffsets(Map<String, List<ConsumerOffset>> offsets,
       int consumerGenerationId, String consumerId,
       {int retries: 0, bool refresh: false}) async {
-    var host = await _getCoordinatorHost(refresh: refresh);
+    var host = await _getCoordinator(refresh: refresh);
     var request = new OffsetCommitRequest(
         name, offsets, consumerGenerationId, consumerId);
     var response = await session.send(host, request);
@@ -103,15 +103,15 @@ class ConsumerGroup {
   }
 
   /// Returns instance of coordinator host for this consumer group.
-  Future<KafkaHost> _getCoordinatorHost({bool refresh: false}) async {
+  Future<Broker> _getCoordinator({bool refresh: false}) async {
     if (refresh) {
       _coordinatorHost = null;
     }
 
     if (_coordinatorHost == null) {
       var metadata = await session.getConsumerMetadata(name);
-      _coordinatorHost =
-          new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
+      _coordinatorHost = new Broker(metadata.coordinatorId,
+          metadata.coordinatorHost, metadata.coordinatorPort);
     }
 
     return _coordinatorHost;

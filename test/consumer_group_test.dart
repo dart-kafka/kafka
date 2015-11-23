@@ -3,22 +3,20 @@ library kafka.test.consumer_group;
 import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:kafka/kafka.dart';
-import 'package:kafka/src/protocol.dart';
+import 'package:kafka/protocol.dart';
 import 'setup.dart';
 
 void main() {
   group('ConsumerGroup', () {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
-    KafkaHost _coordinator;
+    Broker _coordinator;
 
     setUp(() async {
       var host = await getDefaultHost();
-      var session = new KafkaSession([new KafkaHost(host, 9092)]);
+      var session = new KafkaSession([new ContactPoint(host, 9092)]);
       var metadata = await session.getConsumerMetadata('testGroup');
-      _coordinator =
-          new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
-
+      _coordinator = metadata.coordinator;
       _session = spy(new KafkaSessionMock(), session);
     });
 
@@ -67,7 +65,7 @@ void main() {
           new ConsumerOffset(2, -1, '', 14)
         ]
       };
-      when(_session.send(argThat(new isInstanceOf<KafkaHost>()),
+      when(_session.send(argThat(new isInstanceOf<Broker>()),
               argThat(new isInstanceOf<OffsetFetchRequest>())))
           .thenReturn(new OffsetFetchResponse.fromOffsets(badOffsets));
 
@@ -87,7 +85,7 @@ void main() {
         expect(e, new isInstanceOf<KafkaApiError>());
         expect(e.errorCode, equals(14));
       }
-      verify(_session.send(argThat(new isInstanceOf<KafkaHost>()),
+      verify(_session.send(argThat(new isInstanceOf<Broker>()),
           argThat(new isInstanceOf<OffsetFetchRequest>()))).called(3);
     });
 

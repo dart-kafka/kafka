@@ -86,25 +86,24 @@ class Consumer {
   Future<List<_ConsumerWorker>> _buildWorkers(
       _MessageStreamController controller) async {
     var meta = await session.getMetadata();
-    var topicsByHost = new Map<KafkaHost, Map<String, Set<int>>>();
+    var topicsByBroker = new Map<Broker, Map<String, Set<int>>>();
 
     topicPartitions.forEach((topic, partitions) {
       partitions.forEach((p) {
         var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
-        var host = new KafkaHost(
-            meta.getBroker(leader).host, meta.getBroker(leader).port);
-        if (topicsByHost.containsKey(host) == false) {
-          topicsByHost[host] = new Map<String, Set<int>>();
+        var broker = meta.getBroker(leader);
+        if (topicsByBroker.containsKey(broker) == false) {
+          topicsByBroker[broker] = new Map<String, Set<int>>();
         }
-        if (topicsByHost[host].containsKey(topic) == false) {
-          topicsByHost[host][topic] = new Set<int>();
+        if (topicsByBroker[broker].containsKey(topic) == false) {
+          topicsByBroker[broker][topic] = new Set<int>();
         }
-        topicsByHost[host][topic].add(p);
+        topicsByBroker[broker][topic].add(p);
       });
     });
 
     var workers = new List<_ConsumerWorker>();
-    topicsByHost.forEach((host, topics) {
+    topicsByBroker.forEach((host, topics) {
       workers.add(new _ConsumerWorker(
           session, host, controller, topics, maxWaitTime, minBytes,
           group: consumerGroup));
@@ -150,7 +149,7 @@ class _MessageStreamController {
 /// Worker responsible for fetching messages from one particular Kafka broker.
 class _ConsumerWorker {
   final KafkaSession session;
-  final KafkaHost host;
+  final Broker host;
   final ConsumerGroup group;
   final _MessageStreamController controller;
   final Map<String, Set<int>> topicPartitions;

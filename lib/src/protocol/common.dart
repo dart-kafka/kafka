@@ -1,8 +1,5 @@
 part of kafka.protocol;
 
-/// Compression types supported by Kafka.
-enum KafkaCompression { none, gzip, snappy }
-
 /// Base interface for all Kafka API requests.
 abstract class KafkaRequest {
   static final _random = new Random();

@@ -2,25 +2,23 @@ library kafka.test.api.produce;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
-import 'package:kafka/src/protocol.dart';
+import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
   group('ProduceApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaHost _host;
+    Broker _broker;
     KafkaSession _session;
     ProduceRequest _request;
 
     setUp(() async {
       var ip = await getDefaultHost();
-      var host = new KafkaHost(ip, 9092);
-      _session = new KafkaSession([host]);
+      _session = new KafkaSession([new ContactPoint(ip, 9092)]);
       var metadata = await _session.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
-      var broker = metadata.brokers.firstWhere((b) => b.nodeId == leaderId);
-      _host = new KafkaHost(broker.host, broker.port);
+      _broker = metadata.getBroker(leaderId);
       _request = new ProduceRequest(1, 1000);
     });
 
@@ -31,7 +29,7 @@ void main() {
     test('it publishes messages to Kafka topic', () async {
       _request.addMessages(
           _topicName, 0, [new Message('hello world'.codeUnits)]);
-      var response = await _session.send(_host, _request);
+      var response = await _session.send(_broker, _request);
       expect(response.topics, hasLength(1));
       expect(response.topics.first.topicName, equals(_topicName));
       expect(response.topics.first.partitions.first.errorCode, equals(0));

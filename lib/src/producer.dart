@@ -36,16 +36,15 @@ class Producer {
   /// Sends messages to Kafka.
   Future<ProduceResult> produce(List<ProduceEnvelope> messages) async {
     var meta = await session.getMetadata();
-    Map<KafkaHost, ProduceRequest> requests = new Map();
+    Map<Broker, ProduceRequest> requests = new Map();
     for (var envelope in messages) {
       var topic = meta.getTopicMetadata(envelope.topicName);
       var partition = topic.getPartition(envelope.partitionId);
       var broker = meta.getBroker(partition.leader);
-      var host = new KafkaHost(broker.host, broker.port);
-      if (!requests.containsKey(host)) {
-        requests[host] = new ProduceRequest(requiredAcks, timeout);
+      if (!requests.containsKey(broker)) {
+        requests[broker] = new ProduceRequest(requiredAcks, timeout);
       }
-      requests[host].addMessages(
+      requests[broker].addMessages(
           envelope.topicName, envelope.partitionId, envelope.messages);
     }
 

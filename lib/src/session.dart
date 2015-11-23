@@ -1,29 +1,37 @@
 part of kafka;
 
+class ContactPoint {
+  final String host;
+  final int port;
+
+  ContactPoint(this.host, this.port);
+}
+
 /// Session responsible for communication with Kafka server(s).
 ///
 /// This is a central hub of this library as it handles socket connections
 /// to Kafka brokers and orchestrates all API communications.
 class KafkaSession {
   /// List of Kafka brokers which are used as initial contact points.
-  final Queue<KafkaHost> contactHosts;
-  final Map<KafkaHost, Socket> _sockets = new Map();
-  final Map<KafkaHost, StreamSubscription> _subscriptions = new Map();
+  final Queue<ContactPoint> contactPoints;
 
+  Map<String, Socket> _sockets = new Map();
+  Map<String, StreamSubscription> _subscriptions = new Map();
+  Map<String, List<int>> _buffers = new Map();
+  Map<String, int> _sizes = new Map();
   Map<KafkaRequest, Completer> _inflightRequests = new Map();
-  Map<KafkaHost, List<int>> _buffers = new Map();
-  Map<KafkaHost, int> _sizes = new Map();
+
   MetadataResponse _metadata;
 
   /// Creates new session.
   ///
-  /// [contactHosts] will be used to fetch Kafka metadata information. At least
+  /// [contactPoints] will be used to fetch Kafka metadata information. At least
   /// one is required. However for production consider having more than 1.
   /// In case of one of the hosts is temporarily unavailable the session will
   /// rotate them until sucessful response is returned. Error will be thrown
   /// when all of the default hosts are unavailable.
-  KafkaSession(List<KafkaHost> contactHosts)
-      : contactHosts = new Queue.from(contactHosts);
+  KafkaSession(List<ContactPoint> contactPoints)
+      : contactPoints = new Queue.from(contactPoints);
 
   /// Fetches Kafka server metadata. If [topicNames] is null then metadata for
   /// all topics will be returned.
@@ -33,13 +41,13 @@ class KafkaSession {
   /// See [MetadataResponse] for details.
   Future<MetadataResponse> getMetadata(
       {List<String> topicNames, bool invalidateCache: false}) async {
-    // TODO: actually rotate default hosts on failure.
     if (invalidateCache) _metadata = null;
 
     if (_metadata == null) {
-      var currentHost = _getCurrentDefaultHost();
+      // TODO: actually rotate default hosts on failure.
+      var contactPoint = _getCurrentContactPoint();
       var request = new MetadataRequest(topicNames);
-      _metadata = await this.send(currentHost, request);
+      _metadata = await _send(contactPoint.host, contactPoint.port, request);
     }
 
     return _metadata;
@@ -52,18 +60,19 @@ class KafkaSession {
   /// to this particular broker (when special topic to store consumer offsets
   /// does not exist yet).
   ///
-  /// It will attempt up to 5 retries (with delay) in order to fetch metadata.
+  /// It will attempt up to 5 retries (with linear delay) in order to fetch
+  /// metadata.
   Future<ConsumerMetadataResponse> getConsumerMetadata(
       String consumerGroup) async {
     // TODO: rotate default hosts.
-    var currentHost = _getCurrentDefaultHost();
+    var contactPoint = _getCurrentContactPoint();
     var request = new ConsumerMetadataRequest(consumerGroup);
 
-    var response = await this.send(currentHost, request);
+    var response = await _send(contactPoint.host, contactPoint.port, request);
     var retries = 1;
     while (response.errorCode == 15 && retries < 5) {
-      var future = new Future.delayed(new Duration(seconds: 1 * retries),
-          () => this.send(currentHost, request));
+      var future = new Future.delayed(new Duration(seconds: retries),
+          () => _send(contactPoint.host, contactPoint.port, request));
 
       response = await future;
       retries++;
@@ -76,9 +85,13 @@ class KafkaSession {
     return response;
   }
 
-  /// Sends request to specified [KafkaHost].
-  Future<dynamic> send(KafkaHost host, KafkaRequest request) async {
-    var socket = await _getSocketForHost(host);
+  /// Sends request to specified [Broker].
+  Future<dynamic> send(Broker broker, KafkaRequest request) {
+    return _send(broker.host, broker.port, request);
+  }
+
+  Future<dynamic> _send(String host, int port, KafkaRequest request) async {
+    var socket = await _getSocket(host, port);
     Completer completer = new Completer();
     _inflightRequests[request] = completer;
     // TODO: add timeout for how long to wait for response.
@@ -98,25 +111,23 @@ class KafkaSession {
     }
   }
 
-  void _handleData(KafkaHost host, List<int> d) {
-    var buffer = _buffers[host];
+  void _handleData(String hostPort, List<int> d) {
+    var buffer = _buffers[hostPort];
 
     buffer.addAll(d);
-    if (buffer.length >= 4 && _sizes[host] == -1) {
+    if (buffer.length >= 4 && _sizes[hostPort] == -1) {
       var sizeBytes = buffer.sublist(0, 4);
       var reader = new KafkaBytesReader.fromBytes(sizeBytes);
-      _sizes[host] = reader.readInt32();
+      _sizes[hostPort] = reader.readInt32();
     }
 
     var extra;
-    if (buffer.length > _sizes[host] + 4) {
-      kafkaLogger
-          ?.finest('Extra data: ${buffer.length}, size: ${_sizes[host]}');
-      extra = buffer.sublist(_sizes[host] + 4);
-      buffer.removeRange(_sizes[host] + 4, buffer.length);
+    if (buffer.length > _sizes[hostPort] + 4) {
+      extra = buffer.sublist(_sizes[hostPort] + 4);
+      buffer.removeRange(_sizes[hostPort] + 4, buffer.length);
     }
 
-    if (buffer.length == _sizes[host] + 4) {
+    if (buffer.length == _sizes[hostPort] + 4) {
       var header = buffer.sublist(4, 8);
       var reader = new KafkaBytesReader.fromBytes(header);
       var correlationId = reader.readInt32();
@@ -126,15 +137,15 @@ class KafkaSession {
       completer.complete(request.createResponse(buffer));
       _inflightRequests.remove(request);
       buffer.clear();
-      _sizes[host] = -1;
+      _sizes[hostPort] = -1;
       if (extra is List && extra.isNotEmpty) {
-        _handleData(host, extra);
+        _handleData(hostPort, extra);
       }
     }
   }
 
-  KafkaHost _getCurrentDefaultHost() {
-    return contactHosts.first;
+  ContactPoint _getCurrentContactPoint() {
+    return contactPoints.first;
   }
 
   // void _rotateDefaultHosts() {
@@ -142,16 +153,17 @@ class KafkaSession {
   //   defaultHosts.addLast(current);
   // }
 
-  Future<Socket> _getSocketForHost(KafkaHost host) async {
-    if (!_sockets.containsKey(host)) {
-      var s = await Socket.connect(host.host, host.port);
-      _buffers[host] = new List();
-      _sizes[host] = -1;
-      _subscriptions[host] = s.listen((d) => _handleData(host, d));
-      _sockets[host] = s;
-      _sockets[host].setOption(SocketOption.TCP_NODELAY, true);
+  Future<Socket> _getSocket(String host, int port) async {
+    var key = '${host}:${port}';
+    if (!_sockets.containsKey(key)) {
+      var s = await Socket.connect(host, port);
+      _buffers[key] = new List();
+      _sizes[key] = -1;
+      _subscriptions[key] = s.listen((d) => _handleData(key, d));
+      _sockets[key] = s;
+      _sockets[key].setOption(SocketOption.TCP_NODELAY, true);
     }
 
-    return _sockets[host];
+    return _sockets[key];
   }
 }

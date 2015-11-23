@@ -57,7 +57,7 @@ import 'dart:io';
 import 'package:kafka/kafka.dart';
 
 main(List<String> arguments) async {
-  var host = new KafkaHost('127.0.0.1', 9092);
+  var host = new ContactPoint('127.0.0.1', 9092);
   var session = new KafkaSession([host]);
 
   var producer = new Producer(session, 1, 1000);
@@ -65,8 +65,8 @@ main(List<String> arguments) async {
     new ProduceEnvelope('topicName', 0, [new Message('msgForPartition0'.codeUnits)]),
     new ProduceEnvelope('topicName', 1, [new Message('msgForPartition1'.codeUnits)])
   ]);
-  print(response.hasErrors);
-  print(response.offsets);
+  print(result.hasErrors);
+  print(result.offsets);
   session.close(); // make sure to always close the session when the work is done.
 }
 ```
@@ -112,7 +112,7 @@ import 'dart:async';
 import 'package:kafka/kafka.dart';
 
 void main(List<String> arguments) async {
-  var host = new KafkaHost('127.0.0.1', 9092);
+  var host = new ContactPoint('127.0.0.1', 9092);
   var session = new KafkaSession([host]);
   var group = new ConsumerGroup(session, 'consumerGroupName');
   var topics = {
@@ -132,7 +132,8 @@ void main(List<String> arguments) async {
 
 ### Supported protocol versions
 
-Current version targets version `0.8.2` of the Kafka protocol. There is no plans to support earlier versions.
+Current version targets version `0.8.2` of the Kafka protocol. There is no plans
+to support earlier versions.
 
 ### License
 

@@ -12,7 +12,7 @@ void main() {
 
     setUp(() async {
       var host = await getDefaultHost();
-      _client = new KafkaSession([new KafkaHost(host, 9092)]);
+      _client = new KafkaSession([new ContactPoint(host, 9092)]);
       _group = new ConsumerGroup(_client, 'functionalTestGroup');
     });
 

@@ -36,6 +36,9 @@ class ConsumerMetadataResponse {
   final String coordinatorHost;
   final int coordinatorPort;
 
+  Broker get coordinator =>
+      new Broker(coordinatorId, coordinatorHost, coordinatorPort);
+
   /// Creates new instance of ConsumerMetadataResponse.
   ConsumerMetadataResponse(this.errorCode, this.coordinatorId,
       this.coordinatorHost, this.coordinatorPort);

@@ -9,19 +9,21 @@ import 'dart:typed_data';
 import 'package:logging/logging.dart';
 import 'package:tuple/tuple.dart';
 
-part 'api/consumer_metadata_api.dart';
-part 'api/errors.dart';
-part 'api/fetch_api.dart';
-part 'api/messages.dart';
-part 'api/metadata_api.dart';
-part 'api/offset_api.dart';
-part 'api/offset_commit_api.dart';
-part 'api/offset_fetch_api.dart';
-part 'api/produce_api.dart';
-part 'protocol/bytes_builder.dart';
-part 'protocol/bytes_reader.dart';
-part 'protocol/common.dart';
-part 'util/crc32.dart';
+import 'common.dart';
+
+part 'src/api/consumer_metadata_api.dart';
+part 'src/api/errors.dart';
+part 'src/api/fetch_api.dart';
+part 'src/api/messages.dart';
+part 'src/api/metadata_api.dart';
+part 'src/api/offset_api.dart';
+part 'src/api/offset_commit_api.dart';
+part 'src/api/offset_fetch_api.dart';
+part 'src/api/produce_api.dart';
+part 'src/protocol/bytes_builder.dart';
+part 'src/protocol/bytes_reader.dart';
+part 'src/protocol/common.dart';
+part 'src/util/crc32.dart';
 
 /// String identifier used to pass to Kafka server in API calls.
 const String dartKafkaId = 'dart_kafka';

@@ -2,13 +2,13 @@ library kafka.test.api.fetch;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
-import 'package:kafka/src/protocol.dart';
+import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
   group('FetchApi', () {
     String _topicName = 'dartKafkaTest';
-    KafkaHost _host;
+    Broker _host;
     KafkaSession _session;
     FetchRequest _request;
     String _message;
@@ -16,19 +16,17 @@ void main() {
 
     setUp(() async {
       var ip = await getDefaultHost();
-      _host = new KafkaHost(ip, 9092);
-      _session = new KafkaSession([_host]);
+      _session = new KafkaSession([new ContactPoint(ip, 9092)]);
       var metadata = await _session.getMetadata();
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
-      var broker = metadata.brokers.firstWhere((b) => b.nodeId == leaderId);
-      var leaderHost = new KafkaHost(broker.host, broker.port);
+      _host = metadata.getBroker(leaderId);
 
       ProduceRequest produce = new ProduceRequest(1, 1000);
       var now = new DateTime.now();
       _message = 'test:' + now.toIso8601String();
       produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
-      var response = await _session.send(leaderHost, produce);
+      var response = await _session.send(_host, produce);
       _offset = response.topics.first.partitions.first.offset;
       _request = new FetchRequest(100, 1);
     });

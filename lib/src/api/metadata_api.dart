@@ -56,37 +56,24 @@ class MetadataResponse {
     var receivedCorrelationId = reader.readInt32();
     assert(receivedCorrelationId == correlationId);
 
-    this.brokers = reader.readArray(
-        KafkaType.object, (reader) => new Broker.readFrom(reader));
+    this.brokers = reader.readArray(KafkaType.object, (reader) {
+      return new Broker(
+          reader.readInt32(), reader.readString(), reader.readInt32());
+    });
+
     this.topicMetadata = reader.readArray(
         KafkaType.object, (reader) => new TopicMetadata.readFrom(reader));
   }
 
-  /// Returns [Broker] by specified [nodeId]. If no broker found will
-  /// throw [StateError].
+  /// Returns [Broker] by specified [nodeId].
   Broker getBroker(int nodeId) {
-    return brokers.firstWhere((b) => b.nodeId == nodeId,
-        orElse: () => throw new StateError(
-            'No broker with ID ${nodeId} found in metadata.'));
+    return brokers.firstWhere((b) => b.id == nodeId);
   }
 
   TopicMetadata getTopicMetadata(String topicName) {
     return topicMetadata.firstWhere((topic) => topic.topicName == topicName,
         orElse: () =>
             throw new StateError('No topic ${topicName} found in metadata.'));
-  }
-}
-
-/// Represents Kafka Broker data structure returned in MetadataResponse.
-class Broker {
-  int nodeId;
-  String host;
-  int port;
-
-  Broker.readFrom(KafkaBytesReader reader) {
-    this.nodeId = reader.readInt32();
-    this.host = reader.readString();
-    this.port = reader.readInt32();
   }
 }
 

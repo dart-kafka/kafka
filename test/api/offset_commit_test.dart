@@ -2,22 +2,24 @@ library kafka.test.api.offset_commit;
 
 import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
-import 'package:kafka/src/protocol.dart';
+import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
   group('OffsetCommitApi', () {
     String _topicName = 'dartKafkaTest';
     KafkaSession _session;
-    KafkaHost _host;
-    KafkaHost _coordinatorHost;
+    Broker _host;
+    Broker _coordinator;
     int _offset;
     String _testGroup;
 
     setUp(() async {
       var ip = await getDefaultHost();
-      _host = new KafkaHost(ip, 9092);
-      _session = new KafkaSession([_host]);
+      _session = new KafkaSession([new ContactPoint(ip, 9092)]);
+      var meta = await _session.getMetadata();
+      var leaderId = meta.getTopicMetadata(_topicName).getPartition(0).leader;
+      _host = meta.getBroker(leaderId);
 
       ProduceRequest produce = new ProduceRequest(1, 1000);
       var now = new DateTime.now();
@@ -28,8 +30,7 @@ void main() {
 
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       var metadata = await _session.getConsumerMetadata(_testGroup);
-      _coordinatorHost =
-          new KafkaHost(metadata.coordinatorHost, metadata.coordinatorPort);
+      _coordinator = metadata.coordinator;
     });
 
     tearDown(() async {
@@ -42,7 +43,7 @@ void main() {
 
       var request = new OffsetCommitRequest(_testGroup, offsets, 0, '');
 
-      var response = await _session.send(_coordinatorHost, request);
+      var response = await _session.send(_coordinator, request);
       expect(response.topics, hasLength(equals(1)));
       expect(response.topics, contains('dartKafkaTest'));
       var partitions = response.topics['dartKafkaTest'];
@@ -54,7 +55,7 @@ void main() {
         _topicName: new Set.from([0])
       });
 
-      var fetchResponse = await _session.send(_coordinatorHost, fetch);
+      var fetchResponse = await _session.send(_coordinator, fetch);
       var info = fetchResponse.offsets[_topicName].first;
       expect(info.errorCode, equals(0));
       expect(info.offset, equals(_offset));

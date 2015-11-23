@@ -13,7 +13,7 @@ void main() {
 
     setUp(() async {
       var host = await getDefaultHost();
-      _session = new KafkaSession([new KafkaHost(host, 9092)]);
+      _session = new KafkaSession([new ContactPoint(host, 9092)]);
       var producer = new Producer(_session, 1, 100);
       var result = await producer.produce([
         new ProduceEnvelope(_topicName, 0, [new Message('msg1'.codeUnits)]),
