@@ -11,12 +11,17 @@ void main() {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
     Broker _coordinator;
+    Broker _badCoordinator;
 
     setUp(() async {
       var host = await getDefaultHost();
       var session = new KafkaSession([new ContactPoint(host, 9092)]);
+      var brokersMetadata = await session.getMetadata();
+
       var metadata = await session.getConsumerMetadata('testGroup');
       _coordinator = metadata.coordinator;
+      _badCoordinator =
+          brokersMetadata.brokers.firstWhere((b) => b.id != _coordinator.id);
       _session = spy(new KafkaSessionMock(), session);
     });
 
@@ -37,9 +42,9 @@ void main() {
 
     test('it tries to refresh coordinator host 3 times on fetchOffsets',
         () async {
-      var badPort = (_coordinator.port == 9092) ? 9093 : 9092;
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new ConsumerMetadataResponse(0, 1, _coordinator.host, badPort));
+          new ConsumerMetadataResponse(0, _badCoordinator.id,
+              _badCoordinator.host, _badCoordinator.port));
 
       var group = new ConsumerGroup(_session, 'testGroup');
       // Can't use expect(throws) here since it's async, so `verify` check below
@@ -91,9 +96,9 @@ void main() {
 
     test('it tries to refresh coordinator host 3 times on commitOffsets',
         () async {
-      var badPort = (_coordinator.port == 9092) ? 9093 : 9092;
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new ConsumerMetadataResponse(0, 1, _coordinator.host, badPort));
+          new ConsumerMetadataResponse(0, _badCoordinator.id,
+              _badCoordinator.host, _badCoordinator.port));
 
       var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = new Map();

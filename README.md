@@ -61,7 +61,7 @@ main(List<String> arguments) async {
   var session = new KafkaSession([host]);
 
   var producer = new Producer(session, 1, 1000);
-  var result = producer.produce([
+  var result = await producer.produce([
     new ProduceEnvelope('topicName', 0, [new Message('msgForPartition0'.codeUnits)]),
     new ProduceEnvelope('topicName', 1, [new Message('msgForPartition1'.codeUnits)])
   ]);
