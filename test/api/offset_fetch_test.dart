@@ -29,13 +29,12 @@ void main() {
     });
 
     test('it fetches consumer offsets', () async {
-      var response = await _session.send(_coordinator, _request);
+      OffsetFetchResponse response =
+          await _session.send(_coordinator, _request);
       expect(response.offsets, hasLength(equals(1)));
-      expect(response.offsets, contains('dartKafkaTest'));
-      var partitions = response.offsets['dartKafkaTest'];
-      expect(partitions, hasLength(1));
-      var p = partitions.first;
-      expect(p.errorCode, equals(0));
+      expect(response.offsets.first.topicName, equals('dartKafkaTest'));
+      expect(response.offsets.first.partitionId, equals(0));
+      expect(response.offsets.first.errorCode, equals(0));
     });
   });
 }

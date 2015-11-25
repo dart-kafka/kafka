@@ -21,10 +21,12 @@ void main() {
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       _broker = metadata.getBroker(leaderId);
 
-      ProduceRequest produce = new ProduceRequest(1, 1000);
       var now = new DateTime.now();
       var _message = 'test:' + now.toIso8601String();
-      produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
+      ProduceRequest produce = new ProduceRequest(1, 1000, [
+        new ProduceEnvelope(_topicName, 0, [new Message(_message.codeUnits)])
+      ]);
+
       var response = await _session.send(_broker, produce);
       _offset = response.topics.first.partitions.first.offset;
       _request = new OffsetRequest(leaderId);

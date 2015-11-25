@@ -29,10 +29,10 @@ void main() {
       var offsets = new List<ConsumerOffset>();
       for (var p in _expectedOffsets.keys) {
         _initialOffsets[p] = _expectedOffsets[p] - 1;
-        offsets.add(new ConsumerOffset(p, _initialOffsets[p], ''));
+        offsets.add(new ConsumerOffset(_topicName, p, _initialOffsets[p], ''));
       }
       var group = new ConsumerGroup(_session, 'cg');
-      await group.commitOffsets({_topicName: offsets}, 0, '');
+      await group.commitOffsets(offsets, 0, '');
     });
 
     tearDown(() async {
@@ -73,8 +73,8 @@ void main() {
 
       var group = new ConsumerGroup(_session, 'cg');
       var offsets = await group.fetchOffsets(topics);
-      expect(offsets[_topicName], hasLength(3));
-      for (var o in offsets[_topicName]) {
+      expect(offsets, hasLength(3));
+      for (var o in offsets) {
         expect(_initialOffsets[o.partitionId], o.offset);
       }
     });

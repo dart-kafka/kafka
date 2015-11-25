@@ -34,8 +34,8 @@ void main() {
       var offsets = await group.fetchOffsets({
         _topicName: [0, 1, 2]
       });
-      expect(offsets[_topicName].length, equals(3));
-      offsets[_topicName].forEach((o) {
+      expect(offsets.length, equals(3));
+      offsets.forEach((o) {
         expect(o.errorCode, 0);
       });
     });
@@ -54,8 +54,8 @@ void main() {
           _topicName: [0, 1, 2]
         });
       } catch (e) {
-        expect(e, new isInstanceOf<KafkaApiError>());
-        expect(e.errorCode, equals(16));
+        expect(e, new isInstanceOf<KafkaServerError>());
+        expect(e.code, equals(16));
       }
       verify(_session.getConsumerMetadata('testGroup')).called(3);
     });
@@ -63,13 +63,11 @@ void main() {
     test(
         'it retries to fetchOffsets 3 times if it gets OffsetLoadInProgress error',
         () async {
-      var badOffsets = {
-        _topicName: [
-          new ConsumerOffset(0, -1, '', 14),
-          new ConsumerOffset(1, -1, '', 14),
-          new ConsumerOffset(2, -1, '', 14)
-        ]
-      };
+      var badOffsets = [
+        new ConsumerOffset(_topicName, 0, -1, '', 14),
+        new ConsumerOffset(_topicName, 1, -1, '', 14),
+        new ConsumerOffset(_topicName, 2, -1, '', 14)
+      ];
       when(_session.send(argThat(new isInstanceOf<Broker>()),
               argThat(new isInstanceOf<OffsetFetchRequest>())))
           .thenReturn(new OffsetFetchResponse.fromOffsets(badOffsets));
@@ -87,8 +85,8 @@ void main() {
         var diff = now.difference(new DateTime.now());
         expect(diff.abs().inSeconds, greaterThanOrEqualTo(2));
 
-        expect(e, new isInstanceOf<KafkaApiError>());
-        expect(e.errorCode, equals(14));
+        expect(e, new isInstanceOf<KafkaServerError>());
+        expect(e.code, equals(14));
       }
       verify(_session.send(argThat(new isInstanceOf<Broker>()),
           argThat(new isInstanceOf<OffsetFetchRequest>()))).called(3);
@@ -101,14 +99,13 @@ void main() {
               _badCoordinator.host, _badCoordinator.port));
 
       var group = new ConsumerGroup(_session, 'testGroup');
-      var offsets = new Map();
-      offsets[_topicName] = [new ConsumerOffset(0, 3, '')];
+      var offsets = [new ConsumerOffset(_topicName, 0, 3, '')];
 
       try {
         await group.commitOffsets(offsets, 0, 'test');
       } catch (e) {
-        expect(e, new isInstanceOf<KafkaApiError>());
-        expect(e.errorCode, equals(16));
+        expect(e, new isInstanceOf<KafkaServerError>());
+        expect(e.code, equals(16));
       }
       verify(_session.getConsumerMetadata('testGroup')).called(3);
     });
@@ -127,9 +124,9 @@ void main() {
       var offsets = await group.fetchOffsets({
         _topicName: [0, 1, 2]
       });
-      expect(offsets[_topicName], hasLength(3));
+      expect(offsets, hasLength(3));
 
-      for (var o in offsets[_topicName]) {
+      for (var o in offsets) {
         var earliest =
             earliestOffsets.firstWhere((to) => to.partitionId == o.partitionId);
         expect(o.offset, equals(earliest.offset));

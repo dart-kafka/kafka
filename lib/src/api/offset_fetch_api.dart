@@ -49,13 +49,16 @@ class OffsetFetchRequest extends KafkaRequest {
 
 /// Result of [OffsetFetchResponse] as defined in Kafka protocol.
 class OffsetFetchResponse {
-  final Map<String, List<ConsumerOffset>> offsets = new Map();
+  final List<ConsumerOffset> offsets;
 
-  OffsetFetchResponse.fromOffsets(Map<String, List<ConsumerOffset>> offsets) {
-    this.offsets.addAll(offsets);
+  OffsetFetchResponse._(this.offsets);
+
+  factory OffsetFetchResponse.fromOffsets(List<ConsumerOffset> offsets) {
+    return new OffsetFetchResponse._(new List.from(offsets));
   }
 
-  OffsetFetchResponse.fromData(List<int> data, int correlationId) {
+  factory OffsetFetchResponse.fromData(List<int> data, int correlationId) {
+    var offsets = [];
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
@@ -64,18 +67,19 @@ class OffsetFetchResponse {
     var count = reader.readInt32();
     while (count > 0) {
       var topicName = reader.readString();
-      offsets[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var id = reader.readInt32();
         var offset = reader.readInt64();
         var metadata = reader.readString();
         var errorCode = reader.readInt16();
-        offsets[topicName]
-            .add(new ConsumerOffset(id, offset, metadata, errorCode));
+        offsets.add(
+            new ConsumerOffset(topicName, id, offset, metadata, errorCode));
         partitionCount--;
       }
       count--;
     }
+
+    return new OffsetFetchResponse._(offsets);
   }
 }

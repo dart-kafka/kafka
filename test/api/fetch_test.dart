@@ -21,14 +21,6 @@ void main() {
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       _host = metadata.getBroker(leaderId);
-
-      ProduceRequest produce = new ProduceRequest(1, 1000);
-      var now = new DateTime.now();
-      _message = 'test:' + now.toIso8601String();
-      produce.addMessages(_topicName, 0, [new Message(_message.codeUnits)]);
-      var response = await _session.send(_host, produce);
-      _offset = response.topics.first.partitions.first.offset;
-      _request = new FetchRequest(100, 1);
     });
 
     tearDown(() async {
@@ -36,6 +28,15 @@ void main() {
     });
 
     test('it fetches messages from Kafka topic', () async {
+      var now = new DateTime.now();
+      _message = 'test:' + now.toIso8601String();
+      ProduceRequest produce = new ProduceRequest(1, 1000, [
+        new ProduceEnvelope(_topicName, 0, [new Message(_message.codeUnits)])
+      ]);
+
+      var produceResponse = await _session.send(_host, produce);
+      _offset = produceResponse.topics.first.partitions.first.offset;
+      _request = new FetchRequest(100, 1);
       _request.add(_topicName, 0, _offset);
       var response = await _session.send(_host, _request);
 
@@ -46,6 +47,39 @@ void main() {
           response.topics[_topicName].first.messages.messages[_offset].value;
       var text = new String.fromCharCodes(value);
       expect(text, equals(_message));
+    });
+
+    test('it fetches GZip encoded messages from Kafka topic', () async {
+      var now = new DateTime.now();
+      _message = 'test:' + now.toIso8601String();
+      ProduceRequest produce = new ProduceRequest(1, 1000, [
+        new ProduceEnvelope(
+            _topicName,
+            0,
+            [
+              new Message('hello world'.codeUnits),
+              new Message('peace and love'.codeUnits)
+            ],
+            compression: KafkaCompression.gzip)
+      ]);
+
+      var produceResponse = await _session.send(_host, produce);
+      _offset = produceResponse.topics.first.partitions.first.offset;
+      _request = new FetchRequest(100, 1);
+      _request.add(_topicName, 0, _offset);
+      var response = await _session.send(_host, _request);
+
+      expect(response.topics, hasLength(1));
+      expect(response.topics[_topicName].first.messages, hasLength(equals(2)));
+      var value =
+          response.topics[_topicName].first.messages.messages[_offset].value;
+      var text = new String.fromCharCodes(value);
+      expect(text, equals('hello world'));
+
+      value = response.topics[_topicName].first.messages.messages[_offset + 1]
+          .value;
+      text = new String.fromCharCodes(value);
+      expect(text, equals('peace and love'));
     });
   });
 }

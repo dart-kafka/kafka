@@ -1,5 +1,6 @@
 part of kafka;
 
+/// Initial contact point with a Kafka cluster.
 class ContactPoint {
   final String host;
   final int port;
@@ -7,10 +8,17 @@ class ContactPoint {
   ContactPoint(this.host, this.port);
 }
 
-/// Session responsible for communication with Kafka server(s).
+/// Session responsible for communication with Kafka cluster.
 ///
-/// This is a central hub of this library as it handles socket connections
-/// to Kafka brokers and orchestrates all API communications.
+/// In order to create new Session you need to pass a list of [ContactPoint]s to
+/// the constructor. Each ContactPoint is defined by a host and a port of one
+/// of the Kafka brokers. At least one ContactPoint is required to connect to
+/// the cluster, all the rest members of the cluster will be automatically
+/// detected by the Session.
+///
+/// For production deployments it is recommended to provide more than one
+/// ContactPoint since this will enable "failover" in case one of the instances
+/// is temporarily unavailable.
 class KafkaSession {
   /// List of Kafka brokers which are used as initial contact points.
   final Queue<ContactPoint> contactPoints;
@@ -68,19 +76,20 @@ class KafkaSession {
     var contactPoint = _getCurrentContactPoint();
     var request = new ConsumerMetadataRequest(consumerGroup);
 
-    var response = await _send(contactPoint.host, contactPoint.port, request);
+    ConsumerMetadataResponse response =
+        await _send(contactPoint.host, contactPoint.port, request);
     var retries = 1;
-    while (response.errorCode == 15 && retries < 5) {
+    var error = new KafkaServerError(response.errorCode);
+    while (error.isConsumerCoordinatorNotAvailable && retries < 5) {
       var future = new Future.delayed(new Duration(seconds: retries),
           () => _send(contactPoint.host, contactPoint.port, request));
 
       response = await future;
+      error = new KafkaServerError(response.errorCode);
       retries++;
     }
 
-    if (response.errorCode != 0) {
-      throw new KafkaApiError.fromErrorCode(response.errorCode);
-    }
+    if (error.isError) throw error;
 
     return response;
   }

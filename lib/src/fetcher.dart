@@ -145,8 +145,8 @@ class _FetcherWorker {
     for (var topic in response.topics.keys) {
       var partitions = response.topics[topic];
       for (var p in partitions) {
-        if (p.errorCode != 0) {
-          throw new KafkaApiError.fromErrorCode(p.errorCode);
+        if (p.errorCode != KafkaServerErrorCode.NoError) {
+          throw new KafkaServerError(p.errorCode);
         }
       }
     }

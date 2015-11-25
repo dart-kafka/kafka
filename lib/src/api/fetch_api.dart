@@ -114,7 +114,7 @@ class FetchResponse {
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var partitionData = new FetchedPartitionData.readFrom(reader);
-        if (partitionData.errorCode != KafkaApiError.NoError) {
+        if (partitionData.errorCode != KafkaServerErrorCode.NoError) {
           _hasErrors = true;
         }
         topics[topicName].add(partitionData);
@@ -140,6 +140,6 @@ class FetchedPartitionData {
     var messageSetSize = reader.readInt32();
     var data = reader.readRaw(messageSetSize);
     var messageReader = new KafkaBytesReader.fromBytes(data);
-    messages = new MessageSet.readFrom(messageReader);
+    messages = new MessageSet.fromBytes(messageReader);
   }
 }

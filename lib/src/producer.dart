@@ -36,37 +36,31 @@ class Producer {
   /// Sends messages to Kafka.
   Future<ProduceResult> produce(List<ProduceEnvelope> messages) async {
     var meta = await session.getMetadata();
-    Map<Broker, ProduceRequest> requests = new Map();
+    Map<Broker, List<ProduceEnvelope>> envelopesByBroker = new Map();
     for (var envelope in messages) {
       var topic = meta.getTopicMetadata(envelope.topicName);
       var partition = topic.getPartition(envelope.partitionId);
       var broker = meta.getBroker(partition.leader);
-      if (!requests.containsKey(broker)) {
-        requests[broker] = new ProduceRequest(requiredAcks, timeout);
+      if (!envelopesByBroker.containsKey(broker)) {
+        envelopesByBroker[broker] = new List();
       }
-      requests[broker].addMessages(
-          envelope.topicName, envelope.partitionId, envelope.messages);
+      envelopesByBroker[broker].add(envelope);
     }
 
     var completer = new Completer();
     var futures = new List();
-    requests.forEach((h, r) {
-      futures.add(session.send(h, r));
-    });
+    for (var broker in envelopesByBroker.keys) {
+      var request =
+          new ProduceRequest(requiredAcks, timeout, envelopesByBroker[broker]);
+      futures.add(session.send(broker, request));
+    }
+
     Future.wait(futures).then((List<ProduceResponse> responses) {
       completer.complete(new ProduceResult(responses));
     });
 
     return completer.future;
   }
-}
-
-class ProduceEnvelope {
-  final String topicName;
-  final int partitionId;
-  final List<Message> messages;
-
-  ProduceEnvelope(this.topicName, this.partitionId, this.messages);
 }
 
 /// Result of producing messages with [Producer].

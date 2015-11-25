@@ -3,7 +3,7 @@ part of kafka;
 /// Determines behavior of [Consumer] when it receives `OffsetOutOfRange` API
 /// error.
 enum OffsetOutOfRangeBehavior {
-  /// Consumer will throw [KafkaApiError] with error code `1`.
+  /// Consumer will throw [KafkaServerError] with error code `1`.
   throwError,
 
   /// Consumer will reset it's offsets to the earliest available for particular
@@ -169,7 +169,7 @@ class _ConsumerWorker {
 
     while (controller.canAdd) {
       var request = await _createRequest();
-      var response = await session.send(host, request);
+      FetchResponse response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
         kafkaLogger?.warning('Offsets were reset. Forcing re-fetch.');
@@ -185,12 +185,11 @@ class _ConsumerWorker {
           } else {
             var result = await envelope.result;
             if (result.status == _ProcessingStatus.commit) {
-              var commitOffset = {
-                item.item1: [
-                  new ConsumerOffset(item.item2, offset, result.commitMetadata)
-                ]
-              };
-              await group.commitOffsets(commitOffset, 0, '');
+              var offsets = [
+                new ConsumerOffset(
+                    item.item1, item.item2, offset, result.commitMetadata)
+              ];
+              await group.commitOffsets(offsets, 0, '');
             } else if (result.status == _ProcessingStatus.cancel) {
               controller.cancel();
               return;
@@ -220,7 +219,7 @@ class _ConsumerWorker {
     if (topicsToReset.isNotEmpty) {
       switch (onOffsetOutOfRange) {
         case OffsetOutOfRangeBehavior.throwError:
-          throw new KafkaApiError.fromErrorCode(1);
+          throw new KafkaServerError(1);
         case OffsetOutOfRangeBehavior.resetToEarliest:
           await group.resetOffsetsToEarliest(topicsToReset);
           break;
@@ -237,12 +236,9 @@ class _ConsumerWorker {
   Future<FetchRequest> _createRequest() async {
     var offsets = await group.fetchOffsets(topicPartitions);
     var request = new FetchRequest(maxWaitTime, minBytes);
-    topicPartitions.forEach((topic, partitions) {
-      for (var p in partitions) {
-        var offset = offsets[topic].firstWhere((o) => o.partitionId == p);
-        request.add(topic, p, offset.offset + 1);
-      }
-    });
+    for (var o in offsets) {
+      request.add(o.topicName, o.partitionId, o.offset + 1);
+    }
 
     return request;
   }

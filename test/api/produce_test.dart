@@ -10,7 +10,6 @@ void main() {
     String _topicName = 'dartKafkaTest';
     Broker _broker;
     KafkaSession _session;
-    ProduceRequest _request;
 
     setUp(() async {
       var ip = await getDefaultHost();
@@ -19,7 +18,6 @@ void main() {
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       _broker = metadata.getBroker(leaderId);
-      _request = new ProduceRequest(1, 1000);
     });
 
     tearDown(() async {
@@ -27,9 +25,30 @@ void main() {
     });
 
     test('it publishes messages to Kafka topic', () async {
-      _request.addMessages(
-          _topicName, 0, [new Message('hello world'.codeUnits)]);
-      var response = await _session.send(_broker, _request);
+      var request = new ProduceRequest(1, 1000, [
+        new ProduceEnvelope(
+            _topicName, 0, [new Message('hello world'.codeUnits)])
+      ]);
+      var response = await _session.send(_broker, request);
+      expect(response.topics, hasLength(1));
+      expect(response.topics.first.topicName, equals(_topicName));
+      expect(response.topics.first.partitions.first.errorCode, equals(0));
+      expect(response.topics.first.partitions.first.offset,
+          greaterThanOrEqualTo(0));
+    });
+
+    test('it publishes GZip encoded messages to Kafka topic', () async {
+      var request = new ProduceRequest(1, 1000, [
+        new ProduceEnvelope(
+            _topicName,
+            0,
+            [
+              new Message('hello world'.codeUnits),
+              new Message('peace and love'.codeUnits)
+            ],
+            compression: KafkaCompression.gzip)
+      ]);
+      var response = await _session.send(_broker, request);
       expect(response.topics, hasLength(1));
       expect(response.topics.first.topicName, equals(_topicName));
       expect(response.topics.first.partitions.first.errorCode, equals(0));

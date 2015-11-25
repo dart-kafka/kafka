@@ -1,6 +1,6 @@
-/// ## Library providing interface to Apache Kafka.
+/// ## Apache Kafka client library.
 ///
-/// This library implements Kafka binary protocol as well as provides some
+/// This library implements Kafka binary protocol and provides
 /// high-level abstractions for producing and consuming messages.
 library kafka;
 
@@ -13,7 +13,7 @@ import 'common.dart';
 import 'protocol.dart';
 
 export 'common.dart';
-export 'protocol.dart';
+export 'protocol.dart' show MetadataResponse;
 
 part 'src/common.dart';
 part 'src/consumer.dart';

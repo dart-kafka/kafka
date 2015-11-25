@@ -48,15 +48,13 @@ class OffsetMaster {
       for (var topic in response.topics.keys) {
         var partitions = response.topics[topic];
         for (var p in partitions) {
-          if (p.errorCode == KafkaApiError.NotLeaderForPartition &&
-              refreshMetadata == false) {
+          var error = new KafkaServerError(p.errorCode);
+          if (error.isNotLeaderForPartition && refreshMetadata == false) {
             // Refresh metadata and try again.
             return _fetch(topicPartitions, time, refreshMetadata: true);
           }
 
-          if (p.errorCode != KafkaApiError.NoError) {
-            throw new KafkaApiError.fromErrorCode(p.errorCode);
-          }
+          if (error.isError) throw error;
           offsets.add(new TopicOffset(topic, p.partitionId, p.offsets.first));
         }
       }

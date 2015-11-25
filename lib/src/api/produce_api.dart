@@ -6,7 +6,7 @@ part of kafka.protocol;
 /// messages in the payload can be published to particular Kafka broker since
 /// this kind of behavior is handled on the Kafka protocol level and any failure
 /// to publish a message due to incorrectly selected broker will result in Kafka
-/// API error which can be handled separately._
+/// API error which must be handled separately._
 class ProduceRequest extends KafkaRequest {
   /// API key of [ProduceRequest]
   final int apiKey = 0;
@@ -14,15 +14,16 @@ class ProduceRequest extends KafkaRequest {
   /// API version of [ProduceRequest]
   final int apiVersion = 0;
 
-  Map<String, Map<int, MessageSet>> _messages = new Map();
-
   /// Indicates how many acknowledgements the servers
   /// should receive before responding to the request.
-  int requiredAcks;
+  final int requiredAcks;
 
   /// Provides a maximum time in milliseconds the server
   /// can await the receipt of the number of acknowledgements in [requiredAcks].
-  int timeout;
+  final int timeout;
+
+  /// List of produce envelopes containing messages to be published.
+  final List<ProduceEnvelope> messages;
 
   /// Creates Kafka [ProduceRequest].
   ///
@@ -30,19 +31,7 @@ class ProduceRequest extends KafkaRequest {
   /// should receive before responding to the request.
   /// The [timeout] field provides a maximum time in milliseconds the server
   /// can await the receipt of the number of acknowledgements in [requiredAcks].
-  ProduceRequest(this.requiredAcks, this.timeout) : super();
-
-  /// Adds messages to be published by this [ProduceRequest] when it's sent.
-  void addMessages(String topicName, int partitionId, List<Message> messages) {
-    var partitions = _getTopicPartitions(topicName);
-    if (!partitions.containsKey(partitionId)) {
-      var messageSet = new MessageSet();
-      messages.forEach((m) => messageSet.addMessage(m));
-      partitions[partitionId] = messageSet;
-    } else {
-      messages.forEach((m) => partitions[partitionId].addMessage(m));
-    }
-  }
+  ProduceRequest(this.requiredAcks, this.timeout, this.messages) : super();
 
   @override
   List<int> toBytes() {
@@ -51,8 +40,17 @@ class ProduceRequest extends KafkaRequest {
     builder.addInt16(requiredAcks);
     builder.addInt32(timeout);
 
-    builder.addInt32(_messages.length);
-    _messages.forEach((topicName, partitions) {
+    var messageSets = new Map<String, Map>();
+    for (var envelope in messages) {
+      if (!messageSets.containsKey(envelope.topicName)) {
+        messageSets[envelope.topicName] = new Map<int, MessageSet>();
+      }
+      messageSets[envelope.topicName]
+          [envelope.partitionId] = new MessageSet.build(envelope);
+    }
+
+    builder.addInt32(messageSets.length);
+    messageSets.forEach((topicName, partitions) {
       builder.addString(topicName);
       builder.addInt32(partitions.length);
       partitions.forEach((partitionId, messageSet) {
@@ -67,14 +65,6 @@ class ProduceRequest extends KafkaRequest {
     builder.addBytes(body);
 
     return builder.takeBytes();
-  }
-
-  Map<int, MessageSet> _getTopicPartitions(topicName) {
-    if (_messages.containsKey(topicName) == false) {
-      _messages[topicName] = new Map();
-    }
-
-    return _messages[topicName];
   }
 
   @override
