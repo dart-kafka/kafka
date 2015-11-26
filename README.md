@@ -10,6 +10,10 @@ Kafka client library written in Dart.
 
 This library is a work-in-progress and has not been used in production yet.
 
+### Things that are not supported yet.
+
+* Snappy compression.
+
 ## Installation
 
 There is no Pub package yet, but it will be published as soon as APIs are
@@ -121,6 +125,7 @@ void main(List<String> arguments) async {
 
   var consumer = new Consumer(session, group, topics, 100, 1);
   await for (MessageEnvelope envelope in consumer.consume()) {
+    // Assuming that messages were produces by Producer from previous example.
     var value = new String.fromCharCodes(envelope.message.value);
     print('Got message: ${envelope.offset}, ${value}');
     envelope.commit('metadata');

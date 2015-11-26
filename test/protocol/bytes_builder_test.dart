@@ -1,4 +1,4 @@
-library kafka.test.bytes_builder;
+library kafka.protocol.test.bytes_builder;
 
 import 'dart:async';
 import 'dart:convert';
@@ -74,7 +74,7 @@ void main() {
       expect(result, hasLength(equals(14))); // 4 + 4 + 1 + 4 + 1
     });
 
-    test('it does not suppor objects in array values', () {
+    test('it does not support objects in array values', () {
       expect(
           new Future(() {
             _builder.addArray(['foo'], KafkaType.object);
