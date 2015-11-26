@@ -6,7 +6,7 @@ import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
-  group('ProduceApi', () {
+  group('ProduceApi:', () {
     String _topicName = 'dartKafkaTest';
     Broker _broker;
     KafkaSession _session;
@@ -29,12 +29,11 @@ void main() {
         new ProduceEnvelope(
             _topicName, 0, [new Message('hello world'.codeUnits)])
       ]);
-      var response = await _session.send(_broker, request);
-      expect(response.topics, hasLength(1));
-      expect(response.topics.first.topicName, equals(_topicName));
-      expect(response.topics.first.partitions.first.errorCode, equals(0));
-      expect(response.topics.first.partitions.first.offset,
-          greaterThanOrEqualTo(0));
+      ProduceResponse response = await _session.send(_broker, request);
+      expect(response.results, hasLength(1));
+      expect(response.results.first.topicName, equals(_topicName));
+      expect(response.results.first.errorCode, equals(0));
+      expect(response.results.first.offset, greaterThanOrEqualTo(0));
     });
 
     test('it publishes GZip encoded messages to Kafka topic', () async {
@@ -48,12 +47,11 @@ void main() {
             ],
             compression: KafkaCompression.gzip)
       ]);
-      var response = await _session.send(_broker, request);
-      expect(response.topics, hasLength(1));
-      expect(response.topics.first.topicName, equals(_topicName));
-      expect(response.topics.first.partitions.first.errorCode, equals(0));
-      expect(response.topics.first.partitions.first.offset,
-          greaterThanOrEqualTo(0));
+      ProduceResponse response = await _session.send(_broker, request);
+      expect(response.results, hasLength(1));
+      expect(response.results.first.topicName, equals(_topicName));
+      expect(response.results.first.errorCode, equals(0));
+      expect(response.results.first.offset, greaterThanOrEqualTo(0));
     });
   });
 }

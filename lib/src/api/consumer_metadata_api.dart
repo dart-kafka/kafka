@@ -1,6 +1,6 @@
 part of kafka.protocol;
 
-/// ConsumerMetadataRequest as defined in Kafka protocol.
+/// Kafka ConsumerMetadataRequest.
 class ConsumerMetadataRequest extends KafkaRequest {
   final int apiKey = 10;
   final int apiVersion = 0;
@@ -25,11 +25,11 @@ class ConsumerMetadataRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return ConsumerMetadataResponse.fromData(data);
+    return new ConsumerMetadataResponse.fromBytes(data);
   }
 }
 
-/// Result of [ConsumerMetadataRequest] as defined in Kafka protocol.
+/// Response for [ConsumerMetadataRequest].
 class ConsumerMetadataResponse {
   final int errorCode;
   final int coordinatorId;
@@ -44,7 +44,7 @@ class ConsumerMetadataResponse {
       this.coordinatorHost, this.coordinatorPort);
 
   /// Creates response from provided data.
-  static ConsumerMetadataResponse fromData(List<int> data) {
+  factory ConsumerMetadataResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);

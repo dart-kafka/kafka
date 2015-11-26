@@ -75,30 +75,30 @@ class Fetcher {
 
 class _FetcherWorker {
   final KafkaSession session;
-  final Broker host;
+  final Broker broker;
   final _MessageStreamController controller;
   final List<TopicOffset> startFromOffsets;
   final int maxWaitTime;
   final int minBytes;
 
-  _FetcherWorker(this.session, this.host, this.controller,
+  _FetcherWorker(this.session, this.broker, this.controller,
       this.startFromOffsets, this.maxWaitTime, this.minBytes);
 
   Future run() async {
-    kafkaLogger
-        ?.info('Fetcher: Running worker on host ${host.host}:${host.port}');
+    kafkaLogger?.info(
+        'Fetcher: Running worker on broker ${broker.host}:${broker.port}');
     var offsets = startFromOffsets.toList();
 
     while (controller.canAdd) {
       var request = await _createRequest(offsets);
-      var response = await session.send(host, request);
+      FetchResponse response = await session.send(broker, request);
       _checkResponseForErrors(response);
 
-      for (var item in response.messageSets) {
-        for (var offset in item.item3.messages.keys) {
-          var message = item.item3.messages[offset];
-          var envelope =
-              new MessageEnvelope(item.item1, item.item2, offset, message);
+      for (var item in response.results) {
+        for (var offset in item.messageSet.messages.keys) {
+          var message = item.messageSet.messages[offset];
+          var envelope = new MessageEnvelope(
+              item.topicName, item.partitionId, offset, message);
           if (!controller.add(envelope)) {
             return;
           } else {
@@ -109,11 +109,12 @@ class _FetcherWorker {
             }
           }
         }
-        if (item.item3.messages.isNotEmpty) {
-          var nextOffset = new TopicOffset(
-              item.item1, item.item2, item.item3.messages.keys.last + 1);
-          var previousOffset = offsets.firstWhere(
-              (o) => o.topicName == item.item1 && o.partitionId == item.item2);
+        if (item.messageSet.messages.isNotEmpty) {
+          var nextOffset = new TopicOffset(item.topicName, item.partitionId,
+              item.messageSet.messages.keys.last + 1);
+          var previousOffset = offsets.firstWhere((o) =>
+              o.topicName == item.topicName &&
+                  o.partitionId == item.partitionId);
           offsets.remove(previousOffset);
           offsets.add(nextOffset);
         }
@@ -142,12 +143,9 @@ class _FetcherWorker {
   _checkResponseForErrors(FetchResponse response) {
     if (!response.hasErrors) return;
 
-    for (var topic in response.topics.keys) {
-      var partitions = response.topics[topic];
-      for (var p in partitions) {
-        if (p.errorCode != KafkaServerErrorCode.NoError) {
-          throw new KafkaServerError(p.errorCode);
-        }
+    for (var result in response.results) {
+      if (result.errorCode != KafkaServerErrorCode.NoError) {
+        throw new KafkaServerError(result.errorCode);
       }
     }
   }

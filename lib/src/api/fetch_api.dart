@@ -1,12 +1,6 @@
 part of kafka.protocol;
 
-/// FetchRequest as defined in Kafka protocol.
-///
-/// Consider using high-level [Consumer] class instead of this class.
-///
-/// It is responsibility of the user of this class to make sure that this request
-/// will be send to the host which actually manages all topics and partitions in
-/// question.
+/// Kafka FetchRequest.
 class FetchRequest extends KafkaRequest {
   /// API key of [FetchRequest]
   final int apiKey = 1;
@@ -71,7 +65,7 @@ class FetchRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new FetchResponse.fromData(data, correlationId);
+    return new FetchResponse.fromBytes(data);
   }
 }
 
@@ -82,64 +76,62 @@ class _FetchPartitionInfo {
   _FetchPartitionInfo(this.partitionId, this.fetchOffset, this.maxBytes);
 }
 
-/// Result of [FetchRequest] as defined in Kafka protocol.
-///
-/// This is a low-level API object.
+/// Kafka FetchResponse.
 class FetchResponse {
-  /// Fetched raw topics data.
-  final Map<String, List<FetchedPartitionData>> topics = new Map();
+  /// List of [FetchResult]s for each topic-partition.
+  final List<FetchResult> results;
 
-  /// List of message sets of all fetched topic-paritions.
+  /// Indicates if server returned any errors in this response.
   ///
-  /// This list contains triplets of <topicName, partitionId, messageSet>.
-  final List<Tuple3<String, int, MessageSet>> messageSets = new List();
+  /// Actual errors can be found in the result object for particular
+  /// topic-partition.
+  final bool hasErrors;
 
-  bool _hasErrors = false;
+  FetchResponse._(this.results, this.hasErrors);
 
-  /// Indicates if there are any errors in this response.
-  ///
-  /// To find out actual errors one must look in the returned partitions data.
-  bool get hasErrors => _hasErrors;
-
-  FetchResponse.fromData(List<int> data, int correlationId) {
+  /// Creates new instance of FetchResponse from binary data.
+  factory FetchResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
+    var results = new List<FetchResult>();
+    var hasErrors = false;
     while (count > 0) {
       var topicName = reader.readString();
-      topics[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        var partitionData = new FetchedPartitionData.readFrom(reader);
-        if (partitionData.errorCode != KafkaServerErrorCode.NoError) {
-          _hasErrors = true;
-        }
-        topics[topicName].add(partitionData);
-        messageSets.add(new Tuple3(
-            topicName, partitionData.partitionId, partitionData.messages));
+        var partitionId = reader.readInt32();
+        var errorCode = reader.readInt16();
+        var highwaterMarkOffset = reader.readInt64();
+        var messageSetSize = reader.readInt32();
+        var data = reader.readRaw(messageSetSize);
+        var messageReader = new KafkaBytesReader.fromBytes(data);
+        var messageSet = new MessageSet.fromBytes(messageReader);
+        if (errorCode != KafkaServerErrorCode.NoError) hasErrors = true;
+
+        results.add(new FetchResult(topicName, partitionId, errorCode,
+            highwaterMarkOffset, messageSet));
         partitionCount--;
       }
       count--;
     }
+
+    return new FetchResponse._(results, hasErrors);
   }
 }
 
-class FetchedPartitionData {
-  int partitionId;
-  int errorCode;
-  int highwaterMarkOffset;
-  MessageSet messages;
+/// Data structure representing result of fetching messages for particular
+/// topic-partition.
+class FetchResult {
+  final String topicName;
+  final int partitionId;
+  final int errorCode;
+  final int highwaterMarkOffset;
+  final MessageSet messageSet;
 
-  FetchedPartitionData.readFrom(KafkaBytesReader reader) {
-    partitionId = reader.readInt32();
-    errorCode = reader.readInt16();
-    highwaterMarkOffset = reader.readInt64();
-    var messageSetSize = reader.readInt32();
-    var data = reader.readRaw(messageSetSize);
-    var messageReader = new KafkaBytesReader.fromBytes(data);
-    messages = new MessageSet.fromBytes(messageReader);
-  }
+  FetchResult(this.topicName, this.partitionId, this.errorCode,
+      this.highwaterMarkOffset, this.messageSet);
 }

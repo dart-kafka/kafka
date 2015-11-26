@@ -1,12 +1,6 @@
 part of kafka.protocol;
 
-/// MetadataRequest as defined in the Kafka protocol.
-///
-/// This is a low-level Kafka API object. Unlike most of the other Kafka APIs
-/// MetadataRequests can be send to any given host.
-///
-/// While you can use this class directly it is recommended to use
-/// [KafkaSession.getMetadata()] instead.
+/// Kafka MetadataRequest.
 class MetadataRequest extends KafkaRequest {
   /// API key of [MetadataRequest]
   final int apiKey = 3;
@@ -39,30 +33,36 @@ class MetadataRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new MetadataResponse.fromData(data, correlationId);
+    return new MetadataResponse.fromBytes(data);
   }
 }
 
-/// Response to Metadata Request.
+/// Kafka MetadataResponse.
 class MetadataResponse {
-  List<Broker> brokers;
-  List<TopicMetadata> topicMetadata;
+  /// List of brokers in the cluster.
+  final List<Broker> brokers;
 
-  MetadataResponse.fromData(List<int> data, int correlationId) {
+  /// List with metadata for each topic.
+  final List<TopicMetadata> topics;
+
+  MetadataResponse._(this.brokers, this.topics);
+
+  /// Creates response from binary data.
+  factory MetadataResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
-    var receivedCorrelationId = reader.readInt32();
-    assert(receivedCorrelationId == correlationId);
+    reader.readInt32(); // correlationId
 
-    this.brokers = reader.readArray(KafkaType.object, (reader) {
+    var brokers = reader.readArray(KafkaType.object, (reader) {
       return new Broker(
           reader.readInt32(), reader.readString(), reader.readInt32());
     });
 
-    this.topicMetadata = reader.readArray(
-        KafkaType.object, (reader) => new TopicMetadata.readFrom(reader));
+    var topicMetadata = reader.readArray(
+        KafkaType.object, (reader) => new TopicMetadata._readFrom(reader));
+    return new MetadataResponse._(brokers, topicMetadata);
   }
 
   /// Returns [Broker] by specified [nodeId].
@@ -71,7 +71,7 @@ class MetadataResponse {
   }
 
   TopicMetadata getTopicMetadata(String topicName) {
-    return topicMetadata.firstWhere((topic) => topic.topicName == topicName,
+    return topics.firstWhere((topic) => topic.topicName == topicName,
         orElse: () =>
             throw new StateError('No topic ${topicName} found in metadata.'));
   }
@@ -79,42 +79,46 @@ class MetadataResponse {
 
 /// Represents Kafka TopicMetadata data structure returned in MetadataResponse.
 class TopicMetadata {
-  int topicErrorCode;
-  String topicName;
-  List<PartitionMetadata> partitionsMetadata;
+  final int errorCode;
+  final String topicName;
+  final List<PartitionMetadata> partitions;
 
-  TopicMetadata.readFrom(KafkaBytesReader reader) {
-    topicErrorCode = reader.readInt16();
-    topicName = reader.readString();
-    partitionsMetadata = reader.readArray(
-        KafkaType.object, (reader) => new PartitionMetadata.readFrom(reader));
+  TopicMetadata._(this.errorCode, this.topicName, this.partitions);
+
+  factory TopicMetadata._readFrom(KafkaBytesReader reader) {
+    var errorCode = reader.readInt16();
+    var topicName = reader.readString();
+    var partitions = reader.readArray(
+        KafkaType.object, (reader) => new PartitionMetadata._readFrom(reader));
+    return new TopicMetadata._(errorCode, topicName, partitions);
   }
 
-  PartitionMetadata getPartition(int partitionId) {
-    return partitionsMetadata.firstWhere((p) => p.partitionId == partitionId,
-        orElse: () => throw new StateError(
-            'No partition ${partitionId} found in metadata for topic ${topicName}.'));
-  }
+  PartitionMetadata getPartition(int partitionId) =>
+      partitions.firstWhere((p) => p.partitionId == partitionId);
 
   @override
-  String toString() {
-    return "TopicMetadata(errorCode: ${topicErrorCode.toString()}, name: ${topicName}, partitions: ${partitionsMetadata.toString()})";
-  }
+  String toString() =>
+      "TopicMetadata(errorCode: ${errorCode}, name: ${topicName}, partitions: ${partitions.length})";
 }
 
-/// Represents Kafka PartitionMetadata data structure returned in MetadataResponse.
+/// Data structure representing partition metadata returned in MetadataResponse.
 class PartitionMetadata {
-  int partitionErrorCode;
-  int partitionId;
-  int leader;
-  List<int> replicas;
-  List<int> inSyncReplicas;
+  final int partitionErrorCode;
+  final int partitionId;
+  final int leader;
+  final List<int> replicas;
+  final List<int> inSyncReplicas;
 
-  PartitionMetadata.readFrom(KafkaBytesReader reader) {
-    partitionErrorCode = reader.readInt16();
-    partitionId = reader.readInt32();
-    leader = reader.readInt32();
-    replicas = reader.readArray(KafkaType.int32);
-    inSyncReplicas = reader.readArray(KafkaType.int32);
+  PartitionMetadata._(this.partitionErrorCode, this.partitionId, this.leader,
+      this.replicas, this.inSyncReplicas);
+
+  factory PartitionMetadata._readFrom(KafkaBytesReader reader) {
+    var errorCode = reader.readInt16();
+    var partitionId = reader.readInt32();
+    var leader = reader.readInt32();
+    var replicas = reader.readArray(KafkaType.int32);
+    var inSyncReplicas = reader.readArray(KafkaType.int32);
+    return new PartitionMetadata._(
+        errorCode, partitionId, leader, replicas, inSyncReplicas);
   }
 }

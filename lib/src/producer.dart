@@ -75,16 +75,11 @@ class ProduceResult {
 
   ProduceResult(this.responses) {
     responses.forEach((response) {
-      response.topics.forEach((topic) {
-        if (_offsets.containsKey(topic.topicName) == false) {
-          _offsets[topic.topicName] = new Map();
+      response.results.forEach((result) {
+        if (_offsets.containsKey(result.topicName) == false) {
+          _offsets[result.topicName] = new Map();
         }
-        topic.partitions.forEach((p) {
-          _offsets[topic.topicName][p.partitionId] = p.offset;
-          if (p.errorCode > 0) {
-            _hasErrors = true;
-          }
-        });
+        _offsets[result.topicName][result.partitionId] = result.offset;
       });
     });
   }

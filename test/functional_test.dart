@@ -5,7 +5,7 @@ import 'package:kafka/kafka.dart';
 import 'setup.dart';
 
 void main() {
-  group('Functional', () {
+  group('Functional:', () {
     KafkaSession _client;
     String _topicName = 'dartKafkaTest';
     ConsumerGroup _group;

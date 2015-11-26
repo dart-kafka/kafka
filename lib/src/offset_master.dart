@@ -44,19 +44,17 @@ class OffsetMaster {
     var offsets = new List<TopicOffset>();
     for (var host in requests.keys) {
       var request = requests[host];
-      var response = await session.send(host, request);
-      for (var topic in response.topics.keys) {
-        var partitions = response.topics[topic];
-        for (var p in partitions) {
-          var error = new KafkaServerError(p.errorCode);
-          if (error.isNotLeaderForPartition && refreshMetadata == false) {
-            // Refresh metadata and try again.
-            return _fetch(topicPartitions, time, refreshMetadata: true);
-          }
-
-          if (error.isError) throw error;
-          offsets.add(new TopicOffset(topic, p.partitionId, p.offsets.first));
+      OffsetResponse response = await session.send(host, request);
+      for (var o in response.offsets) {
+        var error = new KafkaServerError(o.errorCode);
+        if (error.isNotLeaderForPartition && refreshMetadata == false) {
+          // Refresh metadata and try again.
+          return _fetch(topicPartitions, time, refreshMetadata: true);
         }
+
+        if (error.isError) throw error;
+        offsets
+            .add(new TopicOffset(o.topicName, o.partitionId, o.offsets.first));
       }
     }
 

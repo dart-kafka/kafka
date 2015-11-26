@@ -1,10 +1,6 @@
 part of kafka.protocol;
 
-/// OffsetFetchRequest as defined in Kafka protocol.
-///
-/// This is a low-level API object. While it is posible to use this request
-/// directly it is recommended to rely on high-level [Consumer] class which
-/// encapsulates a lot of details about dealing with metadata and offsets.
+/// Kafka OffsetFetchRequest.
 class OffsetFetchRequest extends KafkaRequest {
   /// API key of [OffsetFetchRequest]
   final int apiKey = 9;
@@ -19,8 +15,6 @@ class OffsetFetchRequest extends KafkaRequest {
   final Map<String, Set<int>> topics;
 
   /// Creates new instance of [OffsetFetchRequest].
-  ///
-  /// [host] must be current coordinator broker for [consumerGroup].
   OffsetFetchRequest(this.consumerGroup, this.topics) : super();
 
   @override
@@ -43,11 +37,11 @@ class OffsetFetchRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new OffsetFetchResponse.fromData(data, correlationId);
+    return new OffsetFetchResponse.fromData(data);
   }
 }
 
-/// Result of [OffsetFetchResponse] as defined in Kafka protocol.
+/// Kafka OffsetFetchResponse.
 class OffsetFetchResponse {
   final List<ConsumerOffset> offsets;
 
@@ -57,7 +51,7 @@ class OffsetFetchResponse {
     return new OffsetFetchResponse._(new List.from(offsets));
   }
 
-  factory OffsetFetchResponse.fromData(List<int> data, int correlationId) {
+  factory OffsetFetchResponse.fromData(List<int> data) {
     var offsets = [];
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();

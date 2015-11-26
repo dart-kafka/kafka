@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:kafka/protocol.dart';
 
 void main() {
-  group('Crc32', () {
+  group('Crc32:', () {
     test('it produces valid CRC32 checksums (unsigned)', () {
       _dataProvider().forEach((input, expected) {
         var result = Crc32.unsigned(input);

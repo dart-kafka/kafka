@@ -7,7 +7,7 @@ import 'package:kafka/protocol.dart';
 import 'setup.dart';
 
 void main() {
-  group('ConsumerGroup', () {
+  group('ConsumerGroup:', () {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
     Broker _coordinator;

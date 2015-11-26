@@ -5,7 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:kafka/kafka.dart';
 
 void main() {
-  group('Library', () {
+  group('Library:', () {
     setUp(() {});
 
     test('it has logger', () {

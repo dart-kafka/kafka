@@ -1,21 +1,23 @@
 part of kafka.protocol;
 
-/// OffsetCommitRequest as defined in Kafka protocol spec.
-///
-/// This is a low-level API object. While it is posible to use this request
-/// directly it is recommended to rely on high-level [Consumer] class which
-/// encapsulates a lot of details about dealing with metadata and offsets.
+/// Kafka OffsetCommitRequest.
 class OffsetCommitRequest extends KafkaRequest {
-  /// API key of [OffsetCommitRequest]
+  /// API key of [OffsetCommitRequest].
   final int apiKey = 8;
 
-  /// API version of [OffsetCommitRequest]
+  /// API version of [OffsetCommitRequest].
   final int apiVersion = 1;
 
+  /// Name of the consumer group.
   final String consumerGroup;
+
+  /// Generation ID of the consumer group.
   final int consumerGroupGenerationId;
+
+  /// ID of the consumer.
   final String consumerId;
 
+  /// List of consumer offsets to be committed.
   final List<ConsumerOffset> offsets;
 
   /// Creates new instance of [OffsetCommitRequest].
@@ -60,6 +62,7 @@ class OffsetCommitRequest extends KafkaRequest {
   }
 }
 
+/// Kafka OffsetCommitResponse.
 class OffsetCommitResponse {
   final List<OffsetCommitResult> offsets;
 
@@ -89,6 +92,7 @@ class OffsetCommitResponse {
   }
 }
 
+/// Data structure representing result of commiting of consumer offset.
 class OffsetCommitResult {
   final String topicName;
   final int partitionId;

@@ -1,12 +1,6 @@
 part of kafka.protocol;
 
-/// ProduceRequest as defined in Kafka protocol.
-///
-/// _Important: this class will not perform any checks to validate that
-/// messages in the payload can be published to particular Kafka broker since
-/// this kind of behavior is handled on the Kafka protocol level and any failure
-/// to publish a message due to incorrectly selected broker will result in Kafka
-/// API error which must be handled separately._
+/// Kafka ProduceRequest.
 class ProduceRequest extends KafkaRequest {
   /// API key of [ProduceRequest]
   final int apiKey = 0;
@@ -69,55 +63,62 @@ class ProduceRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new ProduceResponse.fromData(data, correlationId);
+    return new ProduceResponse.fromBytes(data);
   }
 }
 
-/// Result of [ProduceRequest] as defined in Kafka protocol specification.
+/// Kafka ProduceResponse.
 class ProduceResponse {
-  List<TopicProduceResult> topics;
+  /// List of produce results for each topic-partition.
+  final List<TopicProduceResult> results;
 
-  /// Creates response from the provided [data].
-  ProduceResponse.fromData(List<int> data, int correlationId) {
+  ProduceResponse._(this.results);
+
+  /// Creates response from the provided bytes [data].
+  factory ProduceResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
     reader.readInt32(); // correlationId
-    this.topics = reader.readArray(
-        KafkaType.object, (r) => new TopicProduceResult.readFrom(r));
+    var results = new List<TopicProduceResult>();
+    var topicCount = reader.readInt32();
+    while (topicCount > 0) {
+      var topicName = reader.readString();
+      var partitionCount = reader.readInt32();
+      while (partitionCount > 0) {
+        var partitionId = reader.readInt32();
+        var errorCode = reader.readInt16();
+        var offset = reader.readInt64();
+        results.add(new TopicProduceResult._(
+            topicName, partitionId, errorCode, offset));
+        partitionCount--;
+      }
+      topicCount--;
+    }
+    return new ProduceResponse._(results);
   }
 }
 
+/// Data structure representing result of producing messages with
+/// [ProduceRequest].
 class TopicProduceResult {
-  String topicName;
-  List<PartitionProduceResult> partitions;
+  /// Name of the topic.
+  final String topicName;
 
-  TopicProduceResult.readFrom(KafkaBytesReader reader) {
-    this.topicName = reader.readString();
-    this.partitions = reader.readArray(
-        KafkaType.object, (r) => new PartitionProduceResult.readFrom(r));
-  }
+  /// ID of the partition.
+  final int partitionId;
 
-  @override
-  String toString() {
-    return 'Topic: ${topicName}. Partitions: ${partitions}';
-  }
-}
+  /// Error code returned by the server.
+  final int errorCode;
 
-class PartitionProduceResult {
-  int partitionId;
-  int errorCode;
-  int offset;
+  /// Offset of the first message.
+  final int offset;
 
-  PartitionProduceResult.readFrom(KafkaBytesReader reader) {
-    this.partitionId = reader.readInt32();
-    this.errorCode = reader.readInt16();
-    this.offset = reader.readInt64();
-  }
+  TopicProduceResult._(
+      this.topicName, this.partitionId, this.errorCode, this.offset);
 
   @override
-  String toString() {
-    return '(Partition: ${partitionId}, errorCode: ${errorCode}, offset: ${offset} )';
-  }
+  String toString() =>
+      'Topic: ${topicName}, partition: ${partitionId}, errorCode: ${errorCode}, offset: ${offset}';
 }

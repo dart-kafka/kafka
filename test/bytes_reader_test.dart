@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:kafka/protocol.dart';
 
 void main() {
-  group('BytesReader', () {
+  group('BytesReader:', () {
     KafkaBytesReader _reader;
     List<int> _data;
 

@@ -6,7 +6,7 @@ import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
-  group('OffsetCommitApi', () {
+  group('OffsetCommitApi:', () {
     String _topicName = 'dartKafkaTest';
     KafkaSession _session;
     Broker _host;
@@ -26,8 +26,8 @@ void main() {
       ProduceRequest produce = new ProduceRequest(1, 1000, [
         new ProduceEnvelope(_topicName, 0, [new Message(message.codeUnits)])
       ]);
-      var response = await _session.send(_host, produce);
-      _offset = response.topics.first.partitions.first.offset;
+      ProduceResponse response = await _session.send(_host, produce);
+      _offset = response.results.first.offset;
 
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       var metadata = await _session.getConsumerMetadata(_testGroup);

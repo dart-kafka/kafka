@@ -6,7 +6,7 @@ import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
-  group('OffsetFetchApi', () {
+  group('OffsetFetchApi:', () {
     KafkaSession _session;
     OffsetFetchRequest _request;
     Broker _coordinator;

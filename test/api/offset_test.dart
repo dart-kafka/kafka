@@ -6,7 +6,7 @@ import 'package:kafka/protocol.dart';
 import '../setup.dart';
 
 void main() {
-  group('OffsetApi', () {
+  group('OffsetApi:', () {
     String _topicName = 'dartKafkaTest';
     Broker _broker;
     KafkaSession _session;
@@ -27,8 +27,8 @@ void main() {
         new ProduceEnvelope(_topicName, 0, [new Message(_message.codeUnits)])
       ]);
 
-      var response = await _session.send(_broker, produce);
-      _offset = response.topics.first.partitions.first.offset;
+      ProduceResponse response = await _session.send(_broker, produce);
+      _offset = response.results.first.offset;
       _request = new OffsetRequest(leaderId);
     });
 
@@ -38,13 +38,13 @@ void main() {
 
     test('it fetches offset info', () async {
       _request.addTopicPartition(_topicName, 0, -1, 1);
-      var response = await _session.send(_broker, _request);
+      OffsetResponse response = await _session.send(_broker, _request);
 
-      expect(response.topics, hasLength(1));
-      var partition = response.topics[_topicName].first;
-      expect(partition.errorCode, equals(0));
-      expect(partition.offsets, hasLength(1));
-      expect(partition.offsets.first, equals(_offset + 1));
+      expect(response.offsets, hasLength(1));
+      var offset = response.offsets.first;
+      expect(offset.errorCode, equals(0));
+      expect(offset.offsets, hasLength(1));
+      expect(offset.offsets.first, equals(_offset + 1));
     });
   });
 }

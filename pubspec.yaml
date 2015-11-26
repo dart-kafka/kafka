@@ -5,10 +5,9 @@ homepage: https://github.com/pulyaevskiy/dart-kafka
 author: Anatoly Pulyaevskiy <anatoly.pulyaevskiy@gmail.com>
 
 environment:
-  sdk: '>=1.8.0 <2.0.0'
+  sdk: '>=1.9.0 <2.0.0'
 
 dependencies:
-  tuple: "^0.4.0"
   logging: "^0.11.1+1"
 
 dev_dependencies:

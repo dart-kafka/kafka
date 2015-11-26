@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 import 'package:kafka/protocol.dart';
 
 void main() {
-  group('BytesBuilder', () {
+  group('BytesBuilder:', () {
     KafkaBytesBuilder _builder;
 
     setUp(() {

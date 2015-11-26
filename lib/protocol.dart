@@ -7,8 +7,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:tuple/tuple.dart';
-
 import 'common.dart';
 
 part 'src/api/consumer_metadata_api.dart';

@@ -175,19 +175,19 @@ class _ConsumerWorker {
         kafkaLogger?.warning('Offsets were reset. Forcing re-fetch.');
         continue;
       }
-      for (var item in response.messageSets) {
-        for (var offset in item.item3.messages.keys) {
-          var message = item.item3.messages[offset];
-          var envelope =
-              new MessageEnvelope(item.item1, item.item2, offset, message);
+      for (var item in response.results) {
+        for (var offset in item.messageSet.messages.keys) {
+          var message = item.messageSet.messages[offset];
+          var envelope = new MessageEnvelope(
+              item.topicName, item.partitionId, offset, message);
           if (!controller.add(envelope)) {
             return;
           } else {
             var result = await envelope.result;
             if (result.status == _ProcessingStatus.commit) {
               var offsets = [
-                new ConsumerOffset(
-                    item.item1, item.item2, offset, result.commitMetadata)
+                new ConsumerOffset(item.topicName, item.partitionId, offset,
+                    result.commitMetadata)
               ];
               await group.commitOffsets(offsets, 0, '');
             } else if (result.status == _ProcessingStatus.cancel) {
@@ -202,17 +202,14 @@ class _ConsumerWorker {
 
   Future<bool> _checkOffsets(FetchResponse response) async {
     var topicsToReset = new Map<String, Set<int>>();
-    for (var topic in response.topics.keys) {
-      var partitions = response.topics[topic];
-      for (var p in partitions) {
-        if (p.errorCode == 1) {
-          kafkaLogger?.warning(
-              'Consumer: received API error 1 for topic ${topic}:${p.partitionId}');
-          if (!topicsToReset.containsKey(topic)) {
-            topicsToReset[topic] = [];
-          }
-          topicsToReset[topic].add(p.partitionId);
+    for (var result in response.results) {
+      if (result.errorCode == KafkaServerErrorCode.OffsetOutOfRange) {
+        kafkaLogger?.warning(
+            'Consumer: received API error 1 for topic ${result.topicName}:${result.partitionId}');
+        if (!topicsToReset.containsKey(result.topicName)) {
+          topicsToReset[result.topicName] = [];
         }
+        topicsToReset[result].add(result.partitionId);
       }
     }
 

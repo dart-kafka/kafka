@@ -5,7 +5,7 @@ import 'package:kafka/kafka.dart';
 import 'setup.dart';
 
 main() {
-  group('Producer', () {
+  group('Producer:', () {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
 

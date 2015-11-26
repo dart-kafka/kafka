@@ -1,8 +1,6 @@
 part of kafka.protocol;
 
-/// OffsetRequest as defined in Kafka protocol spec.
-///
-/// This is a low-level API object.
+/// Kafka OffsetRequest.
 class OffsetRequest extends KafkaRequest {
   /// API key of [OffsetRequest].
   final int apiKey = 2;
@@ -39,7 +37,8 @@ class OffsetRequest extends KafkaRequest {
         new _PartitionOffsetRequestInfo(partitionId, time, maxNumberOfOffsets));
   }
 
-  /// Converts this request into a byte array.
+  /// Converts this request into a binary representation according to Kafka
+  /// protocol.
   @override
   List<int> toBytes() {
     var builder = new KafkaBytesBuilder.withRequestHeader(
@@ -65,7 +64,7 @@ class OffsetRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new OffsetResponse.fromData(data, correlationId);
+    return new OffsetResponse.fromBytes(data);
   }
 }
 
@@ -88,44 +87,48 @@ class _PartitionOffsetRequestInfo {
       this.partitionId, this.time, this.maxNumberOfOffsets);
 }
 
-/// Result of [OffsetRequest] as defined in Kafka protocol spec.
-///
-/// This is a low-level API object and requires extensive knowledge of Kafka
-/// protocol.
+/// Kafka OffsetResponse.
 class OffsetResponse {
   /// Map of topics and list of partitions with offset details.
-  final Map<String, List<PartitionOffsetsInfo>> topics = new Map();
+  final List<TopicOffsets> offsets;
 
-  /// Creates OffsetResponse from the provided byte array.
-  OffsetResponse.fromData(List<int> data, int correlationId) {
+  OffsetResponse._(this.offsets);
+
+  /// Creates OffsetResponse from the provided binary data.
+  factory OffsetResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
 
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
+    var offsets = new List<TopicOffsets>();
     while (count > 0) {
       var topicName = reader.readString();
-      topics[topicName] = new List();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        topics[topicName].add(new PartitionOffsetsInfo.readFrom(reader));
+        var partitionId = reader.readInt32();
+        var errorCode = reader.readInt16();
+        var partitionOffsets = reader.readArray(KafkaType.int64);
+        offsets.add(new TopicOffsets._(
+            topicName, partitionId, errorCode, partitionOffsets));
         partitionCount--;
       }
       count--;
     }
+
+    return new OffsetResponse._(offsets);
   }
 }
 
-/// Holds information about partition offsets returned from the server in
-/// [OffsetResponse].
-class PartitionOffsetsInfo {
+/// Data structure representing offsets of particular topic-partition returned
+/// by [OffsetRequest].
+class TopicOffsets {
+  final String topicName;
   final int partitionId;
   final int errorCode;
   final List<int> offsets;
 
-  PartitionOffsetsInfo.readFrom(KafkaBytesReader reader)
-      : partitionId = reader.readInt32(),
-        errorCode = reader.readInt16(),
-        offsets = reader.readArray(KafkaType.int64);
+  TopicOffsets._(
+      this.topicName, this.partitionId, this.errorCode, this.offsets);
 }
