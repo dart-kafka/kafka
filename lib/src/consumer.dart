@@ -78,6 +78,8 @@ class Consumer {
           }
         });
       });
+    }, onError: (error, stackTrace) {
+      controller.addError(error, stackTrace);
     });
 
     return controller.stream;
@@ -135,6 +137,10 @@ class _MessageStreamController {
       return true;
     }
     return false;
+  }
+
+  void addError(Object error, [StackTrace stackTrace]) {
+    _controller.addError(error, stackTrace);
   }
 
   void cancel() {
@@ -209,7 +215,7 @@ class _ConsumerWorker {
         if (!topicsToReset.containsKey(result.topicName)) {
           topicsToReset[result.topicName] = [];
         }
-        topicsToReset[result].add(result.partitionId);
+        topicsToReset[result.topicName].add(result.partitionId);
       }
     }
 

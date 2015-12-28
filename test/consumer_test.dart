@@ -69,7 +69,7 @@ void main() {
         expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
         envelope.ack();
       }
-      expect(consumedOffsets.length, _expectedOffsets.length);
+      expect(consumedOffsets, _expectedOffsets);
 
       var group = new ConsumerGroup(_session, 'cg');
       var offsets = await group.fetchOffsets(topics);
@@ -92,6 +92,30 @@ void main() {
         envelope.cancel();
       }
       expect(consumedOffsets.length, equals(1));
+    });
+
+    test('it propagates worker errors via stream controller', () async {
+      var topics = {
+        'noSuchTopic': [0, 1, 2]
+      };
+
+      var consume = () async {
+        try {
+          var consumer = new Consumer(
+              _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
+          var consumedOffsets = new Map();
+          await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
+            envelope.ack();
+          }
+          return false;
+        } catch (e) {
+          return true;
+        }
+      };
+
+      var result = await consume();
+
+      expect(result, isTrue);
     });
   });
 }
