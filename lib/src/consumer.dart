@@ -213,7 +213,7 @@ class _ConsumerWorker {
         kafkaLogger?.warning(
             'Consumer: received API error 1 for topic ${result.topicName}:${result.partitionId}');
         if (!topicsToReset.containsKey(result.topicName)) {
-          topicsToReset[result.topicName] = [];
+          topicsToReset[result.topicName] = new Set();
         }
         topicsToReset[result.topicName].add(result.partitionId);
       }
