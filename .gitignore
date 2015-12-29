@@ -2,6 +2,8 @@ pubspec.lock
 .pub/
 bin/
 doc/api/
+.idea
+.buildlog
 packages
 .packages
 notes.md
