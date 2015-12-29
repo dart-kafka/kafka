@@ -173,12 +173,24 @@ class _ConsumerWorker {
     kafkaLogger
         ?.info('Consumer: Running worker on host ${host.host}:${host.port}');
 
+    var retryCount = 0;
     while (controller.canAdd) {
       var request = await _createRequest();
       FetchResponse response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
         kafkaLogger?.warning('Offsets were reset. Forcing re-fetch.');
+        retryCount++;
+        if (retryCount > 3) {
+          var expiredStream = response.results.firstWhere((el) =>
+            el.errorCode == KafkaServerErrorCode.OffsetOutOfRange);
+          var message = '';
+          if (expiredStream != null) {
+            message = expiredStream.topicName;
+          }
+
+          controller.addError(new RangeError('No messages in stored range: $message'));
+        }
         continue;
       }
       for (var item in response.results) {
