@@ -14,7 +14,7 @@ void main() {
     setUp(() async {
       var ip = await getDefaultHost();
       _session = new KafkaSession([new ContactPoint(ip, 9092)]);
-      var metadata = await _session.getMetadata();
+      var metadata = await _session.getMetadata([_topicName].toSet());
       var leaderId =
           metadata.getTopicMetadata(_topicName).getPartition(0).leader;
       _broker = metadata.getBroker(leaderId);

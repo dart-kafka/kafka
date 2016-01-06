@@ -10,7 +10,7 @@ class MetadataRequest extends KafkaRequest {
 
   /// List of topic names to fetch metadata for. If set to null or empty
   /// this request will fetch metadata for all topics.
-  final List<String> topicNames;
+  final Set<String> topicNames;
 
   /// Creats new instance of Kafka MetadataRequest.
   ///
@@ -22,7 +22,7 @@ class MetadataRequest extends KafkaRequest {
   List<int> toBytes() {
     var builder = new KafkaBytesBuilder.withRequestHeader(
         apiKey, apiVersion, correlationId);
-    List list = (this.topicNames is List) ? this.topicNames : [];
+    Set list = (this.topicNames is Set) ? this.topicNames : new Set();
     builder.addArray(list, KafkaType.string);
 
     var body = builder.takeBytes();

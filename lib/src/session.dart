@@ -29,7 +29,9 @@ class KafkaSession {
   Map<String, int> _sizes = new Map();
   Map<KafkaRequest, Completer> _inflightRequests = new Map();
 
-  MetadataResponse _metadata;
+  // Cluster Metadata
+  List<Broker> _brokers = new List();
+  List<TopicMetadata> _topics = new List();
 
   /// Creates new session.
   ///
@@ -41,24 +43,53 @@ class KafkaSession {
   KafkaSession(List<ContactPoint> contactPoints)
       : contactPoints = new Queue.from(contactPoints);
 
-  /// Fetches Kafka server metadata. If [topicNames] is null then metadata for
+  /// Returns names of all existing topics in the Kafka cluster.
+  Future<Set<String>> listTopics() async {
+    // TODO: actually rotate default hosts on failure.
+    var contactPoint = _getCurrentContactPoint();
+    var request = new MetadataRequest();
+    MetadataResponse response =
+        await _send(contactPoint.host, contactPoint.port, request);
+
+    return response.topics.map((_) => _.topicName).toSet();
+  }
+
+  /// Fetches Kafka cluster metadata. If [topicNames] is null then metadata for
   /// all topics will be returned.
   ///
-  /// This is a wrapper around Kafka API [MetadataRequest].
-  /// Result will also contain information about all brokers in the Kafka cluster.
-  /// See [MetadataResponse] for details.
-  Future<MetadataResponse> getMetadata(
-      {List<String> topicNames, bool invalidateCache: false}) async {
-    if (invalidateCache) _metadata = null;
+  /// Please note that requests to fetch __all__ topics can not be cached by
+  /// the client, so it may not be as performant as requesting topics
+  /// explicitely.
+  ///
+  /// Also, if Kafka server is configured to auto-create topics you must
+  /// explicitely specify topic name in metadata request, otherwise topic
+  /// will not be created.
+  Future<ClusterMetadata> getMetadata(Set<String> topicNames,
+      {bool invalidateCache: false}) async {
+    if (topicNames.isEmpty) throw new ArgumentError.value(
+        topicNames, 'topicNames', 'List of topic names can not be empty');
 
-    if (_metadata == null) {
-      // TODO: actually rotate default hosts on failure.
-      var contactPoint = _getCurrentContactPoint();
-      var request = new MetadataRequest(topicNames);
-      _metadata = await _send(contactPoint.host, contactPoint.port, request);
+    if (invalidateCache) {
+      _brokers = new List();
+      _topics = new List();
     }
+    // TODO: actually rotate default hosts on failure.
+    var contactPoint = _getCurrentContactPoint();
 
-    return _metadata;
+    var cachedTopics = _topics
+        .where((t) => topicNames.contains(t.topicName))
+        .map((t) => t.topicName);
+    var topicsToFetch = topicNames.where((t) => !cachedTopics.contains(t));
+    if (topicsToFetch.length > 0) {
+      var request = new MetadataRequest(topicsToFetch.toSet());
+      MetadataResponse response =
+          await _send(contactPoint.host, contactPoint.port, request);
+      _topics.addAll(response.topics);
+      _brokers = new List.unmodifiable(response.brokers);
+    }
+    var topicsMetadata = _topics.where((t) => topicNames.contains(t.topicName));
+
+    return new ClusterMetadata(_brokers, new List.unmodifiable(topicsMetadata));
   }
 
   /// Fetches metadata for specified [consumerGroup].
@@ -174,5 +205,32 @@ class KafkaSession {
     }
 
     return _sockets[key];
+  }
+}
+
+/// Stores metadata information about cluster including available brokers
+/// and topics.
+class ClusterMetadata {
+  /// List of brokers in the cluster.
+  final List<Broker> brokers;
+
+  /// List with metadata for each topic.
+  final List<TopicMetadata> topics;
+
+  /// Creates new instance of cluster metadata.
+  ClusterMetadata(this.brokers, this.topics);
+
+  /// Returns [Broker] by specified [nodeId].
+  Broker getBroker(int nodeId) {
+    return brokers.firstWhere((b) => b.id == nodeId);
+  }
+
+  /// Returns [TopicMetadata] for specified [topicName].
+  ///
+  /// If no topic is found will throw `StateError`.
+  TopicMetadata getTopicMetadata(String topicName) {
+    return topics.firstWhere((topic) => topic.topicName == topicName,
+        orElse: () =>
+            throw new StateError('No topic ${topicName} found in metadata.'));
   }
 }

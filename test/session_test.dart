@@ -7,6 +7,7 @@ import 'setup.dart';
 void main() {
   group('Session:', () {
     KafkaSession _session;
+    String _topicName = 'dartKafkaTest';
 
     setUp(() async {
       var host = await getDefaultHost();
@@ -17,26 +18,18 @@ void main() {
       await _session.close();
     });
 
+    test('it can list existing topics', () async {
+      var topics = await _session.listTopics();
+      expect(topics, new isInstanceOf<Set>());
+      expect(topics, isNotEmpty);
+      expect(topics, contains(_topicName));
+      print(topics);
+    });
+
     test('it can fetch topic metadata', () async {
-      var response = await _session.getMetadata();
-      expect(response, new isInstanceOf<MetadataResponse>());
+      var response = await _session.getMetadata([_topicName].toSet());
+      expect(response, new isInstanceOf<ClusterMetadata>());
       expect(response.brokers, isNotEmpty);
-    });
-
-    test('it caches metadata', () async {
-      var response = await _session.getMetadata();
-      expect(response, new isInstanceOf<MetadataResponse>());
-
-      var response2 = await _session.getMetadata();
-      expect(response2, same(response));
-    });
-
-    test('it invalidates cached metadata', () async {
-      var response = await _session.getMetadata();
-      expect(response, new isInstanceOf<MetadataResponse>());
-
-      var response2 = await _session.getMetadata(invalidateCache: true);
-      expect(response2, isNot(same(response)));
     });
 
     test('it can fetch consumer metadata', () async {

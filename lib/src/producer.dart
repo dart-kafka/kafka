@@ -35,7 +35,8 @@ class Producer {
 
   /// Sends messages to Kafka.
   Future<ProduceResult> produce(List<ProduceEnvelope> messages) async {
-    var meta = await session.getMetadata();
+    var topicNames = messages.map((_) => _.topicName).toSet();
+    var meta = await session.getMetadata(topicNames);
     Map<Broker, List<ProduceEnvelope>> envelopesByBroker = new Map();
     for (var envelope in messages) {
       var topic = meta.getTopicMetadata(envelope.topicName);
