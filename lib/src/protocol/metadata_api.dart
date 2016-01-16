@@ -64,17 +64,6 @@ class MetadataResponse {
         KafkaType.object, (reader) => new TopicMetadata._readFrom(reader));
     return new MetadataResponse._(brokers, topicMetadata);
   }
-
-  /// Returns [Broker] by specified [nodeId].
-  Broker getBroker(int nodeId) {
-    return brokers.firstWhere((b) => b.id == nodeId);
-  }
-
-  TopicMetadata getTopicMetadata(String topicName) {
-    return topics.firstWhere((topic) => topic.topicName == topicName,
-        orElse: () =>
-            throw new StateError('No topic ${topicName} found in metadata.'));
-  }
 }
 
 /// Represents Kafka TopicMetadata data structure returned in MetadataResponse.
