@@ -84,6 +84,31 @@ class KafkaSession {
       var request = new MetadataRequest(topicsToFetch.toSet());
       MetadataResponse response =
           await _send(contactPoint.host, contactPoint.port, request);
+
+      var topicWithError = response.topics.firstWhere(
+          (_) => _.errorCode != KafkaServerErrorCode.NoError,
+          orElse: () => null);
+
+      if (topicWithError is TopicMetadata) {
+        var retries = 1;
+        var error = new KafkaServerError(topicWithError.errorCode);
+        while (error.isLeaderNotAvailable && retries < 5) {
+          var future = new Future.delayed(new Duration(seconds: retries),
+              () => _send(contactPoint.host, contactPoint.port, request));
+
+          response = await future;
+          topicWithError = response.topics.firstWhere(
+              (_) => _.errorCode != KafkaServerErrorCode.NoError,
+              orElse: () => null);
+          var errorCode =
+              (topicWithError is TopicMetadata) ? topicWithError.errorCode : 0;
+          error = new KafkaServerError(errorCode);
+          retries++;
+        }
+
+        if (error.isError) throw error;
+      }
+
       _topics.addAll(response.topics);
       _brokers = new List.unmodifiable(response.brokers);
     }

@@ -13,7 +13,7 @@ import 'common.dart';
 import 'protocol.dart';
 
 export 'common.dart';
-export 'protocol.dart' show MetadataResponse;
+export 'protocol.dart' show TopicMetadata;
 
 part 'src/common.dart';
 part 'src/consumer.dart';
