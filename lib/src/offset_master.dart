@@ -27,7 +27,8 @@ class OffsetMaster {
   Future<List<TopicOffset>> _fetch(
       Map<String, Set<int>> topicPartitions, int time,
       {refreshMetadata: false}) async {
-    var meta = await session.getMetadata(invalidateCache: refreshMetadata);
+    var meta = await session.getMetadata(topicPartitions.keys.toSet(),
+        invalidateCache: refreshMetadata);
     var requests = new Map<Broker, OffsetRequest>();
     for (var topic in topicPartitions.keys) {
       var partitions = topicPartitions[topic];

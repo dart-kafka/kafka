@@ -17,16 +17,12 @@ class MessageAttributes {
 
   static KafkaCompression getCompression(int byte) {
     var c = byte & 3;
-    switch (c) {
-      case 0:
-        return KafkaCompression.none;
-      case 1:
-        return KafkaCompression.gzip;
-      case 2:
-        return KafkaCompression.snappy;
-      default:
-        throw new ArgumentError('Unsupported compression codec: ${c}.');
-    }
+    var map = {
+      0: KafkaCompression.none,
+      1: KafkaCompression.gzip,
+      2: KafkaCompression.snappy,
+    };
+    return map[c];
   }
 
   /// Converts this attributes into byte.

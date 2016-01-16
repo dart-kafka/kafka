@@ -48,7 +48,8 @@ class Fetcher {
 
   Future<List<_FetcherWorker>> _buildWorkers(
       _MessageStreamController controller) async {
-    var meta = await session.getMetadata();
+    var topicNames = topicOffsets.map((_) => _.topicName).toSet();
+    var meta = await session.getMetadata(topicNames);
     var offsetsByBroker = new Map<Broker, List<TopicOffset>>();
 
     topicOffsets.forEach((offset) {

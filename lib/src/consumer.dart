@@ -87,7 +87,7 @@ class Consumer {
 
   Future<List<_ConsumerWorker>> _buildWorkers(
       _MessageStreamController controller) async {
-    var meta = await session.getMetadata();
+    var meta = await session.getMetadata(topicPartitions.keys.toSet());
     var topicsByBroker = new Map<Broker, Map<String, Set<int>>>();
 
     topicPartitions.forEach((topic, partitions) {

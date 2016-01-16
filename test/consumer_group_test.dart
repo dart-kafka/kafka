@@ -16,7 +16,7 @@ void main() {
     setUp(() async {
       var host = await getDefaultHost();
       var session = new KafkaSession([new ContactPoint(host, 9092)]);
-      var brokersMetadata = await session.getMetadata();
+      var brokersMetadata = await session.getMetadata([_topicName].toSet());
 
       var metadata = await session.getConsumerMetadata('testGroup');
       _coordinator = metadata.coordinator;
