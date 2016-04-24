@@ -46,6 +46,7 @@ class Consumer {
   /// available.
   ///
   /// See [OffsetOutOfRangeBehavior] for details on each value.
+  // TODO: actually use this value in _ConsumerWorker
   OffsetOutOfRangeBehavior onOffsetOutOfRange =
       OffsetOutOfRangeBehavior.resetToEarliest;
 
@@ -60,14 +61,14 @@ class Consumer {
   Stream<MessageEnvelope> consume({int limit: -1}) {
     var controller = new _MessageStreamController(limit);
 
-    Future<List<_ConsumerWorker>> list = _buildWorkers(controller);
+    Future<List<_ConsumerWorker>> list = _buildWorkers();
     list.then((workers) {
       if (workers.isEmpty) {
         controller.close();
         return;
       }
       var remaining = workers.length;
-      List<Future> futures = workers.map((w) => w.run()).toList();
+      List<Future> futures = workers.map((w) => w.run(controller)).toList();
       futures.forEach((f) {
         f.then((_) {
           remaining--;
@@ -76,6 +77,8 @@ class Consumer {
                 ?.info('Consumer: All workers are done. Closing stream.');
             controller.close();
           }
+        }, onError: (error, stackTrace) {
+          controller.addError(error, stackTrace);
         });
       });
     }, onError: (error, stackTrace) {
@@ -85,8 +88,49 @@ class Consumer {
     return controller.stream;
   }
 
-  Future<List<_ConsumerWorker>> _buildWorkers(
-      _MessageStreamController controller) async {
+  /// Consume messages in batches.
+  ///
+  /// This will create a stream of [BatchEnvelope] objects. Each batch
+  /// will contain up to [maxBatchSize] of `MessageEnvelope`s.
+  ///
+  /// Note that calling `commit`, `ack`, or `cancel` on individual message
+  /// envelope will take no effect. Instead one should use corresponding methods
+  /// on the BatchEnvelope itself.
+  ///
+  /// Currently batches are formed on per broker basis, meaning each batch will
+  /// always contain messages from one particular broker.
+  Stream<BatchEnvelope> batchConsume(int maxBatchSize) {
+    var controller = new _BatchStreamController();
+
+    Future<List<_ConsumerWorker>> list = _buildWorkers();
+    list.then((workers) {
+      if (workers.isEmpty) {
+        controller.close();
+        return;
+      }
+      var remaining = workers.length;
+      List<Future> futures =
+          workers.map((w) => w.runBatched(controller, maxBatchSize)).toList();
+      futures.forEach((f) {
+        f.then((_) {
+          remaining--;
+          if (remaining == 0) {
+            kafkaLogger
+                ?.info('Consumer: All workers are done. Closing stream.');
+            controller.close();
+          }
+        }, onError: (error, stackTrace) {
+          controller.addError(error, stackTrace);
+        });
+      });
+    }, onError: (error, stackTrace) {
+      controller.addError(error, stackTrace);
+    });
+
+    return controller.stream;
+  }
+
+  Future<List<_ConsumerWorker>> _buildWorkers() async {
     var meta = await session.getMetadata(topicPartitions.keys.toSet());
     var topicsByBroker = new Map<Broker, Map<String, Set<int>>>();
 
@@ -107,7 +151,7 @@ class Consumer {
     var workers = new List<_ConsumerWorker>();
     topicsByBroker.forEach((host, topics) {
       workers.add(new _ConsumerWorker(
-          session, host, controller, topics, maxWaitTime, minBytes,
+          session, host, topics, maxWaitTime, minBytes,
           group: consumerGroup));
     });
 
@@ -157,7 +201,6 @@ class _ConsumerWorker {
   final KafkaSession session;
   final Broker host;
   final ConsumerGroup group;
-  final _MessageStreamController controller;
   final Map<String, Set<int>> topicPartitions;
   final int maxWaitTime;
   final int minBytes;
@@ -165,11 +208,11 @@ class _ConsumerWorker {
   OffsetOutOfRangeBehavior onOffsetOutOfRange =
       OffsetOutOfRangeBehavior.resetToEarliest;
 
-  _ConsumerWorker(this.session, this.host, this.controller,
-      this.topicPartitions, this.maxWaitTime, this.minBytes,
+  _ConsumerWorker(this.session, this.host, this.topicPartitions,
+      this.maxWaitTime, this.minBytes,
       {this.group});
 
-  Future run() async {
+  Future run(_MessageStreamController controller) async {
     kafkaLogger
         ?.info('Consumer: Running worker on host ${host.host}:${host.port}');
 
@@ -178,7 +221,8 @@ class _ConsumerWorker {
       FetchResponse response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
-        kafkaLogger?.warning('Offsets were reset. Forcing re-fetch.');
+        kafkaLogger?.warning(
+            'Offsets were reset to ${onOffsetOutOfRange}. Forcing re-fetch.');
         continue;
       }
       for (var item in response.results) {
@@ -203,6 +247,58 @@ class _ConsumerWorker {
           }
         }
       }
+    }
+  }
+
+  Future runBatched(_BatchStreamController controller, int maxBatchSize) async {
+    kafkaLogger?.info(
+        'Consumer: Running batch worker on host ${host.host}:${host.port}');
+
+    while (controller.canAdd) {
+      var request = await _createRequest();
+      FetchResponse response = await session.send(host, request);
+      var didReset = await _checkOffsets(response);
+      if (didReset) {
+        kafkaLogger?.warning(
+            'Offsets were reset to ${onOffsetOutOfRange}. Forcing re-fetch.');
+        continue;
+      }
+
+      for (var batch in responseToBatches(response, maxBatchSize)) {
+        if (!controller.add(batch)) return;
+        var result = await batch.result;
+        if (result.status == _ProcessingStatus.commit) {
+          await group.commitOffsets(batch.offsetsToCommit, 0, '');
+        } else if (result.status == _ProcessingStatus.cancel) {
+          controller.cancel();
+          return;
+        }
+      }
+    }
+  }
+
+  Iterable<BatchEnvelope> responseToBatches(
+      FetchResponse response, int maxBatchSize) sync* {
+    BatchEnvelope batch;
+    for (var item in response.results) {
+      for (var offset in item.messageSet.messages.keys) {
+        var message = item.messageSet.messages[offset];
+        var envelope = new MessageEnvelope(
+            item.topicName, item.partitionId, offset, message);
+
+        if (batch == null) batch = new BatchEnvelope();
+        if (batch.items.length < maxBatchSize) {
+          batch.items.add(envelope);
+        }
+        if (batch.items.length == maxBatchSize) {
+          yield batch;
+          batch = null;
+        }
+      }
+    }
+    if (batch is BatchEnvelope && batch.items.isNotEmpty) {
+      yield batch;
+      batch = null;
     }
   }
 
@@ -295,5 +391,88 @@ class MessageEnvelope {
   /// Signals to consumer to cancel any further deliveries and close the stream.
   void cancel() {
     _completer.complete(new _ProcessingResult.cancel());
+  }
+}
+
+/// StreamController for batch consuming of messages.
+class _BatchStreamController {
+  final StreamController<BatchEnvelope> _controller =
+      new StreamController<BatchEnvelope>();
+  bool _cancelled = false;
+
+  bool get canAdd => (_cancelled == false);
+  Stream<BatchEnvelope> get stream => _controller.stream;
+
+  /// Attempts to add [batch] to the stream.
+  /// Returns true if adding event succeeded, false otherwise.
+  bool add(BatchEnvelope batch) {
+    if (canAdd) {
+      _controller.add(batch);
+      return true;
+    }
+    return false;
+  }
+
+  void addError(Object error, [StackTrace stackTrace]) {
+    _controller.addError(error, stackTrace);
+  }
+
+  void cancel() {
+    _cancelled = true;
+  }
+
+  void close() {
+    _controller.close();
+  }
+}
+
+/// Envelope for message batches used by `Consumer.batchConsume`.
+class BatchEnvelope {
+  final List<MessageEnvelope> items = new List();
+
+  Completer<_ProcessingResult> _completer = new Completer<_ProcessingResult>();
+  Future<_ProcessingResult> get result => _completer.future;
+
+  String commitMetadata;
+
+  /// Signals that batch has been processed and it's offsets can
+  /// be committed. In case if
+  /// consumerGroup functionality is not used (like in the [Fetcher]) then
+  /// this method's behaviour will be the same as in [ack] method.
+  void commit(String metadata) {
+    commitMetadata = metadata;
+    _completer.complete(new _ProcessingResult.commit(metadata));
+  }
+
+  /// Signals that batch has been processed and we are ready for
+  /// the next one. This method will **not** trigger offset commit if this
+  /// envelope has been created by a high-level [Consumer].
+  void ack() {
+    _completer.complete(new _ProcessingResult.ack());
+  }
+
+  /// Signals to consumer to cancel any further deliveries and close the stream.
+  void cancel() {
+    _completer.complete(new _ProcessingResult.cancel());
+  }
+
+  Iterable<ConsumerOffset> get offsetsToCommit {
+    var grouped = new Map<TopicPartition, int>();
+    for (var envelope in items) {
+      var key = new TopicPartition(envelope.topicName, envelope.partitionId);
+      if (!grouped.containsKey(key)) {
+        grouped[key] = envelope.offset;
+      } else if (grouped[key] < envelope.offset) {
+        grouped[key] = envelope.offset;
+      }
+    }
+
+    var offsets = [];
+    for (var key in grouped.keys) {
+      offsets.add(new ConsumerOffset(
+          key.topicName, key.partitionId, grouped[key], commitMetadata));
+    }
+
+    return offsets;
   }
 }

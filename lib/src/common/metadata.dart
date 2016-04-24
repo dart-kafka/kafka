@@ -27,3 +27,31 @@ class Broker {
 
   Broker._(this.id, this.host, this.port);
 }
+
+class TopicPartition {
+  final String topicName;
+  final int partitionId;
+
+  static final Map<String, TopicPartition> _cache = new Map();
+
+  TopicPartition._(this.topicName, this.partitionId);
+
+  factory TopicPartition(String topicName, int partitionId) {
+    var key = topicName + partitionId.toString();
+    if (!_cache.containsKey(key)) {
+      _cache[key] = new TopicPartition._(topicName, partitionId);
+    }
+
+    return _cache[key];
+  }
+
+  @override
+  bool operator ==(TopicPartition other) {
+    return (other.topicName == topicName && other.partitionId == partitionId);
+  }
+
+  @override
+  int hashCode() {
+    return (topicName + partitionId.toString()).hashCode;
+  }
+}
