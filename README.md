@@ -134,6 +134,32 @@ void main(List<String> arguments) async {
 }
 ```
 
+It is also possible to consume messages in batches for improved efficiency:
+
+```dart
+import 'dart:io';
+import 'dart:async';
+import 'package:kafka/kafka.dart';
+
+void main(List<String> arguments) async {
+  var host = new ContactPoint('127.0.0.1', 9092);
+  var session = new KafkaSession([host]);
+  var group = new ConsumerGroup(session, 'consumerGroupName');
+  var topics = {
+    'topicName': [0, 1] // list of partitions to consume from.
+  };
+
+  var consumer = new Consumer(session, group, topics, 100, 1);
+  await for (BatchEnvelope batch in consumer.batchConsume(20)) {
+    batch.items.forEach((MessageEnvelope envelope) {
+      // use envelope as usual
+    });
+    batch.commit('metadata'); // use batch control methods instead of individual messages.
+  }
+  session.close(); // make sure to always close the session when the work is done.
+}
+```
+
 
 ### Supported protocol versions
 

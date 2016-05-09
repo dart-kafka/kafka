@@ -117,5 +117,38 @@ void main() {
 
       expect(result, isTrue);
     });
+
+    test('it can consume batches of messages from multiple brokers', () async {
+      var topics = {
+        _topicName: [0, 1, 2]
+      };
+      var consumer = new Consumer(
+          _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
+      var consumedOffsets = new Map();
+
+      var first, last;
+      await for (var batch in consumer.batchConsume(3)) {
+        if (first == null) {
+          first = batch;
+          first.ack();
+        } else if (last == null) {
+          last = batch;
+          last.cancel();
+        }
+      }
+
+      expect(first.items.length + last.items.length, 3);
+
+      for (var i in first.items) {
+        consumedOffsets[i.partitionId] = i.offset;
+        expect(i.offset, _expectedOffsets[i.partitionId]);
+      }
+      for (var i in last.items) {
+        consumedOffsets[i.partitionId] = i.offset;
+        expect(i.offset, _expectedOffsets[i.partitionId]);
+      }
+
+      expect(consumedOffsets.length, _expectedOffsets.length);
+    });
   });
 }
