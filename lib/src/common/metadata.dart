@@ -51,7 +51,5 @@ class TopicPartition {
   }
 
   @override
-  int hashCode() {
-    return (topicName + partitionId.toString()).hashCode;
-  }
+  int get hashCode => (topicName + partitionId.toString()).hashCode;
 }
