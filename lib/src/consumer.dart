@@ -218,6 +218,7 @@ class _ConsumerWorker {
 
     while (controller.canAdd) {
       var request = await _createRequest();
+      kafkaLogger?.fine('Consumer: Sending fetch request.');
       FetchResponse response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
@@ -312,6 +313,7 @@ class _ConsumerWorker {
           topicsToReset[result.topicName] = new Set();
         }
         topicsToReset[result.topicName].add(result.partitionId);
+        kafkaLogger?.info('Topics to reset: ${topicsToReset}');
       }
     }
 
