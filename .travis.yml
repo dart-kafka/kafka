@@ -1,6 +1,14 @@
-sudo: false
+sudo: required
+
+dist: trusty
 
 language: dart
+
+services:
+  - docker
+
+dart:
+  - stable
 
 before_install:
   - docker build -t kafka-cluster tool/kafka-cluster/
