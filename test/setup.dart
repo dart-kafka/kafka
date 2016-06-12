@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:logging/logging.dart';
 
 /// Returns default host's IP address depending on current environment.
 ///
@@ -13,4 +14,8 @@ Future<String> getDefaultHost() async {
     var res = await Process.run('docker-machine', ['ip', 'default']);
     return res.stdout.toString().trim();
   }
+}
+
+void enableLogs() {
+  Logger.root.onRecord.listen(print);
 }
