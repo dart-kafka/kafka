@@ -66,8 +66,9 @@ class KafkaSession {
   /// will not be created.
   Future<ClusterMetadata> getMetadata(Set<String> topicNames,
       {bool invalidateCache: false}) async {
-    if (topicNames.isEmpty) throw new ArgumentError.value(
-        topicNames, 'topicNames', 'List of topic names can not be empty');
+    if (topicNames.isEmpty)
+      throw new ArgumentError.value(
+          topicNames, 'topicNames', 'List of topic names can not be empty');
 
     if (invalidateCache) {
       _brokers = new List();
@@ -86,7 +87,7 @@ class KafkaSession {
           await _send(contactPoint.host, contactPoint.port, request);
 
       var topicWithError = response.topics.firstWhere(
-          (_) => _.errorCode != KafkaServerErrorCode.NoError,
+          (_) => _.errorCode != KafkaServerError.NoError,
           orElse: () => null);
 
       if (topicWithError is TopicMetadata) {
@@ -98,7 +99,7 @@ class KafkaSession {
 
           response = await future;
           topicWithError = response.topics.firstWhere(
-              (_) => _.errorCode != KafkaServerErrorCode.NoError,
+              (_) => _.errorCode != KafkaServerError.NoError,
               orElse: () => null);
           var errorCode =
               (topicWithError is TopicMetadata) ? topicWithError.errorCode : 0;

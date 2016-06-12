@@ -306,7 +306,7 @@ class _ConsumerWorker {
   Future<bool> _checkOffsets(FetchResponse response) async {
     var topicsToReset = new Map<String, Set<int>>();
     for (var result in response.results) {
-      if (result.errorCode == KafkaServerErrorCode.OffsetOutOfRange) {
+      if (result.errorCode == KafkaServerError.OffsetOutOfRange) {
         kafkaLogger?.warning(
             'Consumer: received API error 1 for topic ${result.topicName}:${result.partitionId}');
         if (!topicsToReset.containsKey(result.topicName)) {

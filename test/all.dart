@@ -10,7 +10,6 @@ import 'protocol/offset_commit_test.dart' as offset_commit_test;
 import 'protocol/offset_fetch_test.dart' as offset_fetch_test;
 import 'protocol/offset_test.dart' as offset_test;
 import 'protocol/produce_test.dart' as produce_test;
-import 'library_test.dart' as library_test;
 import 'session_test.dart' as session_test;
 import 'consumer_group_test.dart' as consumer_group_test;
 import 'producer_test.dart' as producer_test;
@@ -18,7 +17,6 @@ import 'consumer_test.dart' as consumer_test;
 import 'fetcher_test.dart' as fetcher_test;
 
 void main() {
-  library_test.main();
   errors_test.main();
   messages_test.main();
   bytes_builder_test.main();

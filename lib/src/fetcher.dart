@@ -115,7 +115,7 @@ class _FetcherWorker {
               item.messageSet.messages.keys.last + 1);
           var previousOffset = offsets.firstWhere((o) =>
               o.topicName == item.topicName &&
-                  o.partitionId == item.partitionId);
+              o.partitionId == item.partitionId);
           offsets.remove(previousOffset);
           offsets.add(nextOffset);
         }
@@ -145,7 +145,7 @@ class _FetcherWorker {
     if (!response.hasErrors) return;
 
     for (var result in response.results) {
-      if (result.errorCode != KafkaServerErrorCode.NoError) {
+      if (result.errorCode != KafkaServerError.NoError) {
         throw new KafkaServerError(result.errorCode);
       }
     }

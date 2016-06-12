@@ -136,6 +136,4 @@ void main() {
   });
 }
 
-class KafkaSessionMock extends Mock implements KafkaSession {
-  noSuchMethod(i) => super.noSuchMethod(i);
-}
+class KafkaSessionMock extends Mock implements KafkaSession {}
