@@ -11,14 +11,20 @@ dart:
   - stable
 
 before_install:
-  - sudo service docker restart ; sleep 10
   - docker build -t kafka-cluster tool/kafka-cluster/
   - docker run -d --name kafka-cluster -p 2181:2181 -p 9092:9092 -p 9093:9093 --env ADVERTISED_HOST=127.0.0.1 kafka-cluster
   - docker ps -a
-  - sleep 10
+  - sleep 5
   - docker exec kafka-cluster bash -c '$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper=localhost:2181 --topic dartKafkaTest --partitions 3 --replication-factor 2'
   - docker exec kafka-cluster bash -c '$KAFKA_HOME/bin/kafka-topics.sh --list --zookeeper=localhost:2181'
 
 script:
   - pub run test -r expanded test/all.dart
-  - pub run dart_coveralls report -T --retry 2 --debug test/all.dart
+  - pub global activate coverage
+  - dart --observe=8111 test/all.dart &
+  - sleep 20
+  - pub global run coverage:collect_coverage --port=8111 -o coverage.json --resume-isolates
+  - pub global run coverage:format_coverage --package-root=packages --report-on lib --in coverage.json --out lcov.info --lcov
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
