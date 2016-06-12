@@ -90,8 +90,25 @@ class ConsumerGroup {
     var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
     var offsets = new List<ConsumerOffset>();
     for (var earliest in earliestOffsets) {
+      // When consuming we always pass `currentOffset + 1` to fetch next
+      // message so here we need to substract 1 from earliest offset, otherwise
+      // we'll end up in an infinite loop of "InvalidOffset" errors.
+      var actualOffset = earliest.offset - 1;
       offsets.add(new ConsumerOffset(earliest.topicName, earliest.partitionId,
-          earliest.offset, 'resetToEarliest'));
+          actualOffset, 'resetToEarliest'));
+    }
+
+    return commitOffsets(offsets, 0, '');
+  }
+
+  Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions) async {
+    var offsetMaster = new OffsetMaster(session);
+    var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
+    var offsets = new List<ConsumerOffset>();
+    for (var latest in latestOffsets) {
+      var actualOffset = latest.offset - 1;
+      offsets.add(new ConsumerOffset(latest.topicName, latest.partitionId,
+          actualOffset, 'resetToEarliest'));
     }
 
     return commitOffsets(offsets, 0, '');

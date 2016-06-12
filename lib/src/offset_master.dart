@@ -1,6 +1,6 @@
 part of kafka;
 
-/// Master of Offsets (\m/).
+/// Master of Offsets.
 ///
 /// Encapsulates auto-discovery logic for fetching topic offsets.
 class OffsetMaster {

@@ -89,7 +89,8 @@ void main() {
         expect(e.code, equals(14));
       }
       verify(_session.send(argThat(new isInstanceOf<Broker>()),
-          argThat(new isInstanceOf<OffsetFetchRequest>()))).called(3);
+              argThat(new isInstanceOf<OffsetFetchRequest>())))
+          .called(3);
     });
 
     test('it tries to refresh coordinator host 3 times on commitOffsets',
@@ -129,12 +130,10 @@ void main() {
       for (var o in offsets) {
         var earliest =
             earliestOffsets.firstWhere((to) => to.partitionId == o.partitionId);
-        expect(o.offset, equals(earliest.offset));
+        expect(o.offset, equals(earliest.offset - 1));
       }
     });
   });
 }
 
-class KafkaSessionMock extends Mock implements KafkaSession {
-  noSuchMethod(i) => super.noSuchMethod(i);
-}
+class KafkaSessionMock extends Mock implements KafkaSession {}

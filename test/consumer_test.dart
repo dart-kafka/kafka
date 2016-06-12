@@ -9,9 +9,10 @@ void main() {
     KafkaSession _session;
     String _topicName = 'dartKafkaTest';
     Map<int, int> _expectedOffsets = new Map();
-    Map<int, int> _initialOffsets = new Map();
 
     setUp(() async {
+      var date = new DateTime.now().millisecondsSinceEpoch;
+      _topicName = 'testTopic-${date}';
       var host = await getDefaultHost();
       _session = new KafkaSession([new ContactPoint(host, 9092)]);
       var producer = new Producer(_session, 1, 100);
@@ -25,14 +26,6 @@ void main() {
             'Consumer test: setUp failed to produce messages.');
       }
       _expectedOffsets = result.offsets[_topicName];
-
-      var offsets = new List<ConsumerOffset>();
-      for (var p in _expectedOffsets.keys) {
-        _initialOffsets[p] = _expectedOffsets[p] - 1;
-        offsets.add(new ConsumerOffset(_topicName, p, _initialOffsets[p], ''));
-      }
-      var group = new ConsumerGroup(_session, 'cg');
-      await group.commitOffsets(offsets, 0, '');
     });
 
     tearDown(() async {
@@ -75,7 +68,7 @@ void main() {
       var offsets = await group.fetchOffsets(topics);
       expect(offsets, hasLength(3));
       for (var o in offsets) {
-        expect(_initialOffsets[o.partitionId], o.offset);
+        expect(-1, o.offset);
       }
     });
 
@@ -96,7 +89,7 @@ void main() {
 
     test('it propagates worker errors via stream controller', () async {
       var topics = {
-        'noSuchTopic': [0, 1, 2]
+        'someTopic': [0, 1, 2, 3] // request partition which does not exist.
       };
 
       var consume = () async {

@@ -1,13 +1,7 @@
 /// Subpackage with implementation of Kafka protocol.
 ///
-/// Users of this library are not supposed to import this package directly and
+/// Users of this package are not supposed to import this library directly and
 /// use main 'kafka' package instead.
-///
-/// However if you really know what you're doing you can use it with:
-///
-/// ```dart
-/// import 'package:kafka/protocol.dart';
-/// ```
 library kafka.protocol;
 
 import 'dart:collection';

@@ -1,4 +1,4 @@
-/// ## Apache Kafka client library.
+/// ## Apache Kafka client library for Dartlang
 ///
 /// This library implements Kafka binary protocol and provides
 /// high-level abstractions for producing and consuming messages.
@@ -12,10 +12,9 @@ import 'common.dart';
 
 import 'protocol.dart';
 
-export 'common.dart';
+export 'common.dart' hide groupBy, kafkaLogger;
 export 'protocol.dart' show TopicMetadata;
 
-part 'src/common.dart';
 part 'src/consumer.dart';
 part 'src/consumer_group.dart';
 part 'src/fetcher.dart';

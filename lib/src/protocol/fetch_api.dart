@@ -110,7 +110,7 @@ class FetchResponse {
         var data = reader.readRaw(messageSetSize);
         var messageReader = new KafkaBytesReader.fromBytes(data);
         var messageSet = new MessageSet.fromBytes(messageReader);
-        if (errorCode != KafkaServerErrorCode.NoError) hasErrors = true;
+        if (errorCode != KafkaServerError.NoError) hasErrors = true;
 
         results.add(new FetchResult(topicName, partitionId, errorCode,
             highwaterMarkOffset, messageSet));

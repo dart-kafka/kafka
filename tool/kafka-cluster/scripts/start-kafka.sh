@@ -29,6 +29,10 @@ if [ ! -z "$ADVERTISED_PORT" ]; then
     sed -r -i "s/#(advertised.port)=(.*)/\1=$ADVERTISED_PORT/g" $KAFKA_HOME/config/server$BROKER_ID.properties
 fi
 
+sed -r -i "s/log.retention.hours=168/log.retention.minutes=1/g" $KAFKA_HOME/config/server$BROKER_ID.properties
+sed -r -i "s/log.retention.check.interval.ms=300000/log.retention.check.interval.ms=10000/g" $KAFKA_HOME/config/server$BROKER_ID.properties
+sed -r -i "s/num.partitions=1/num.partitions=3/g" $KAFKA_HOME/config/server$BROKER_ID.properties
+
 # Set the zookeeper chroot
 if [ ! -z "$ZK_CHROOT" ]; then
     # wait for zookeeper to start up

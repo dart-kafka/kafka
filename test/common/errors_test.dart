@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:kafka/common.dart';
 
 void main() {
-  group('Errors:', () {
+  group('KafkaServerError:', () {
     test('it handles error codes correctly', () {
       expect(new KafkaServerError(0).isNoError, isTrue);
       expect(new KafkaServerError(-1).isUnknown, isTrue);
@@ -25,6 +25,15 @@ void main() {
       expect(
           new KafkaServerError(15).isConsumerCoordinatorNotAvailable, isTrue);
       expect(new KafkaServerError(16).isNotCoordinatorForConsumer, isTrue);
+    });
+
+    test('it can be converted to string', () {
+      expect(
+          new KafkaServerError(0).toString(), 'KafkaServerError: NoError(0)');
+    });
+
+    test('it provides error message', () {
+      expect(new KafkaServerError(1).message, 'OffsetOutOfRange');
     });
   });
 }

@@ -6,8 +6,8 @@ class MessageCrcMismatchError extends StateError {
   MessageCrcMismatchError(String message) : super(message);
 }
 
-/// List of error codes returned by Kafka server.
-class KafkaServerErrorCode {
+/// Represents error returned by Kafka server.
+class KafkaServerError {
   static const int NoError = 0;
   static const int Unknown = -1;
   static const int OffsetOutOfRange = 1;
@@ -25,15 +25,38 @@ class KafkaServerErrorCode {
   static const int OffsetsLoadInProgress = 14;
   static const int ConsumerCoordinatorNotAvailable = 15;
   static const int NotCoordinatorForConsumer = 16;
-}
 
-class KafkaServerError {
+  /// Numeric code of this server error.
   final int code;
 
   static final Map<int, KafkaServerError> _instances = new Map();
 
+  static const Map<int, String> _errorTexts = const {
+    0: 'NoError',
+    -1: 'Unknown',
+    1: 'OffsetOutOfRange',
+    2: 'InvalidMessage',
+    3: 'UnknownTopicOrPartition',
+    4: 'InvalidMessageSize',
+    5: 'LeaderNotAvailable',
+    6: 'NotLeaderForPartition',
+    7: 'RequestTimedOut',
+    8: 'BrokerNotAvailable',
+    9: 'ReplicaNotAvailable',
+    10: 'MessageSizeTooLarge',
+    11: 'StaleControllerEpoch',
+    12: 'OffsetMetadataTooLarge',
+    14: 'OffsetsLoadInProgress',
+    15: 'ConsumerCoordinatorNotAvailable',
+    16: 'NotCoordinatorForConsumer',
+  };
+
+  /// String representation of this server error.
+  String get message => _errorTexts[code];
+
   KafkaServerError._(this.code);
 
+  /// Creates instance of KafkaServerError from numeric error code.
   factory KafkaServerError(int code) {
     if (!_instances.containsKey(code)) {
       _instances[code] = new KafkaServerError._(code);
@@ -42,22 +65,26 @@ class KafkaServerError {
     return _instances[code];
   }
 
-  bool get isError => code != 0;
-  bool get isNoError => code == 0;
-  bool get isUnknown => code == -1;
-  bool get isOffsetOutOfRange => code == 1;
-  bool get isInvalidMessage => code == 2;
-  bool get isUnknownTopicOrPartition => code == 3;
-  bool get isInvalidMessageSize => code == 4;
-  bool get isLeaderNotAvailable => code == 5;
-  bool get isNotLeaderForPartition => code == 6;
-  bool get isRequestTimedOut => code == 7;
-  bool get isBrokerNotAvailable => code == 8;
-  bool get isReplicaNotAvailable => code == 9;
-  bool get isMessageSizeTooLarge => code == 10;
-  bool get isStaleControllerEpoch => code == 11;
-  bool get isOffsetMetadataTooLarge => code == 12;
-  bool get isOffsetsLoadInProgress => code == 14;
-  bool get isConsumerCoordinatorNotAvailable => code == 15;
-  bool get isNotCoordinatorForConsumer => code == 16;
+  @override
+  String toString() => 'KafkaServerError: ${message}(${code})';
+
+  bool get isError => code != NoError;
+  bool get isNoError => code == NoError;
+  bool get isUnknown => code == Unknown;
+  bool get isOffsetOutOfRange => code == OffsetOutOfRange;
+  bool get isInvalidMessage => code == InvalidMessage;
+  bool get isUnknownTopicOrPartition => code == UnknownTopicOrPartition;
+  bool get isInvalidMessageSize => code == InvalidMessageSize;
+  bool get isLeaderNotAvailable => code == LeaderNotAvailable;
+  bool get isNotLeaderForPartition => code == NotLeaderForPartition;
+  bool get isRequestTimedOut => code == RequestTimedOut;
+  bool get isBrokerNotAvailable => code == BrokerNotAvailable;
+  bool get isReplicaNotAvailable => code == ReplicaNotAvailable;
+  bool get isMessageSizeTooLarge => code == MessageSizeTooLarge;
+  bool get isStaleControllerEpoch => code == StaleControllerEpoch;
+  bool get isOffsetMetadataTooLarge => code == OffsetMetadataTooLarge;
+  bool get isOffsetsLoadInProgress => code == OffsetsLoadInProgress;
+  bool get isConsumerCoordinatorNotAvailable =>
+      code == ConsumerCoordinatorNotAvailable;
+  bool get isNotCoordinatorForConsumer => code == NotCoordinatorForConsumer;
 }
