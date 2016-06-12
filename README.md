@@ -1,8 +1,8 @@
 # Dart Kafka
 
-[![Build Status](https://img.shields.io/travis-ci/pulyaevskiy/dart-kafka.svg?branch=master&style=flat-square)](https://travis-ci.org/pulyaevskiy/dart-kafka)
-[![Coverage Status](https://img.shields.io/coveralls/pulyaevskiy/dart-kafka.svg?branch=master&style=flat-square)](https://coveralls.io/github/pulyaevskiy/dart-kafka?branch=master)
-[![License](https://img.shields.io/badge/license-BSD--2-blue.svg?style=flat-square)](https://raw.githubusercontent.com/pulyaevskiy/dart-kafka/master/LICENSE)
+[![Build Status](https://travis-ci.org/pulyaevskiy/dart-kafka.svg?branch=master)](https://travis-ci.org/pulyaevskiy/dart-kafka)
+[![Coverage](https://codecov.io/gh/pulyaevskiy/dart-kafka/branch/master/graph/badge.svg)](https://codecov.io/gh/pulyaevskiy/dart-kafka)
+[![License](https://img.shields.io/badge/license-BSD--2-blue.svg)](https://raw.githubusercontent.com/pulyaevskiy/dart-kafka/master/LICENSE)
 
 Kafka client library written in Dart.
 
