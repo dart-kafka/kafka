@@ -18,8 +18,6 @@ enum OffsetOutOfRangeBehavior {
 /// High-level Kafka consumer class.
 ///
 /// Provides convenience layer on top of Kafka's low-level APIs.
-///
-/// TODO: add `consumeBatch(int maxBatchSize)`
 class Consumer {
   /// Instance of [KafkaSession] used to send requests.
   final KafkaSession session;
@@ -46,7 +44,6 @@ class Consumer {
   /// available.
   ///
   /// See [OffsetOutOfRangeBehavior] for details on each value.
-  // TODO: actually use this value in _ConsumerWorker
   OffsetOutOfRangeBehavior onOffsetOutOfRange =
       OffsetOutOfRangeBehavior.resetToEarliest;
 
@@ -150,9 +147,11 @@ class Consumer {
 
     var workers = new List<_ConsumerWorker>();
     topicsByBroker.forEach((host, topics) {
-      workers.add(new _ConsumerWorker(
+      var worker = new _ConsumerWorker(
           session, host, topics, maxWaitTime, minBytes,
-          group: consumerGroup));
+          group: consumerGroup);
+      worker.onOffsetOutOfRange = onOffsetOutOfRange;
+      workers.add(worker);
     });
 
     return workers;
@@ -325,7 +324,7 @@ class _ConsumerWorker {
           await group.resetOffsetsToEarliest(topicsToReset);
           break;
         case OffsetOutOfRangeBehavior.resetToLatest:
-          await group.resetOffsetsToEarliest(topicsToReset);
+          await group.resetOffsetsToLatest(topicsToReset);
           break;
       }
       return true;
@@ -364,13 +363,21 @@ class _ProcessingResult {
 
 /// Envelope for a [Message] used by high-level consumer.
 class MessageEnvelope {
+  /// Topic name of this message.
   final String topicName;
+
+  /// Partition ID of this message.
   final int partitionId;
+
+  /// This message's offset
   final int offset;
+
+  /// Actual message received from Kafka broker.
   final Message message;
 
   Completer<_ProcessingResult> _completer = new Completer<_ProcessingResult>();
 
+  /// Creates new envelope.
   MessageEnvelope(this.topicName, this.partitionId, this.offset, this.message);
 
   Future<_ProcessingResult> get result => _completer.future;

@@ -101,6 +101,19 @@ class ConsumerGroup {
     return commitOffsets(offsets, 0, '');
   }
 
+  Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions) async {
+    var offsetMaster = new OffsetMaster(session);
+    var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
+    var offsets = new List<ConsumerOffset>();
+    for (var latest in latestOffsets) {
+      var actualOffset = latest.offset - 1;
+      offsets.add(new ConsumerOffset(latest.topicName, latest.partitionId,
+          actualOffset, 'resetToEarliest'));
+    }
+
+    return commitOffsets(offsets, 0, '');
+  }
+
   /// Returns instance of coordinator host for this consumer group.
   Future<Broker> _getCoordinator({bool refresh: false}) async {
     if (refresh) {

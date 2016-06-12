@@ -91,22 +91,27 @@ Kafka's ConsumerMetadata API.
 > If you don't want to keep state of consumed offsets take a look at `Fetcher`
 > which was designed specifically for this use case.
 
-Consumer returns messages as a stream so all standard stream operations
-should be applicable. However there is few important things to know about how
-Consumer works.
+Consumer returns messages as a `Stream`, so all standard stream operations
+should be applicable. However Kafka topics are ordered streams of messages
+with sequential offsets. Consumer implementation allows to preserve order of
+messages received from server. For this purpose all messages are wrapped in
+special `MessageEnvelope` object with following methods:
 
-1. All messages are returned in special `MessageEnvelope` object which provides
-  some additional information about the message: topicName, partitionId and the
-  offset.
-2. When consuming messages you must signal to the Consumer when to proceed to
-  the next message and whether to commit the offset of the current message. This
-  is possible via two methods provided by `MessageEnvelope`: `commit()` and
-  `ack()`. The `ack()` method only tells to Consumer that we are ready for the
-  next message, therefore offset of the current message will not be committed.
-  The `commit()` method will also tell to Consumer to commit current offset.
-3. There is also `cancel()` method on `MessageEnvelope` which signals to the
-  Consumer to stop the process. No more messages will be added after you call
-  `cancel()` and the consumer stream will be closed.
+```
+/// Signals to consumer that message has been processed and it's offset can
+/// be committed.
+void commit(String metadata);
+
+/// Signals that message has been processed and we are ready for
+/// the next one. Offset of this message will **not** be committed.
+void ack();
+
+/// Signals to consumer to cancel any further deliveries and close the stream.
+void cancel();
+```
+
+One must call `commit()` or `ack()` for each processed message, otherwise
+Consumer won't send the next message to the stream.
 
 Simplest example of a consumer:
 
@@ -124,11 +129,11 @@ void main(List<String> arguments) async {
   };
 
   var consumer = new Consumer(session, group, topics, 100, 1);
-  await for (MessageEnvelope envelope in consumer.consume()) {
+  await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
     // Assuming that messages were produces by Producer from previous example.
     var value = new String.fromCharCodes(envelope.message.value);
     print('Got message: ${envelope.offset}, ${value}');
-    envelope.commit('metadata');
+    envelope.commit('metadata'); // Important.
   }
   session.close(); // make sure to always close the session when the work is done.
 }
@@ -160,12 +165,35 @@ void main(List<String> arguments) async {
 }
 ```
 
+### Consumer offset reset strategy
 
-### Supported protocol versions
+Due to the fact that Kafka topics can be configured to delete old messages
+periodically, it is possible that your consumer offset may become invalid (
+just because there is no such message/offset in Kafka topic anymore).
+
+In such cases `Consumer` provides configurable strategy with following options:
+
+* `OffsetOutOfRangeBehavior.throwError`
+* `OffsetOutOfRangeBehavior.resetToEarliest` (default)
+* `OffsetOutOfRangeBehavior.resetToLatest`
+
+By default if it gets `OffsetOutOfRange` server error it will reset it's offsets
+to earliest available in the consumed topic and partitions, which essentially
+means consuming all available messages from the beginning.
+
+To modify this behavior simply set `onOffsetOutOfRange` property of consumer to
+one of the above values:
+
+```
+var consumer = new Consumer(session, group, topics, 100, 1);
+consumer.onOffsetOutOfRange = OffsetOutOfRangeBehavior.throwError;
+```
+
+## Supported protocol versions
 
 Current version targets version `0.8.2` of the Kafka protocol. There is no plans
 to support earlier versions.
 
-### License
+## License
 
 BSD-2
