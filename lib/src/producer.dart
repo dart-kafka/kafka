@@ -37,27 +37,23 @@ class Producer {
   Future<ProduceResult> produce(List<ProduceEnvelope> messages) async {
     var topicNames = messages.map((_) => _.topicName).toSet();
     var meta = await session.getMetadata(topicNames);
-    Map<Broker, List<ProduceEnvelope>> envelopesByBroker = new Map();
-    for (var envelope in messages) {
-      var topic = meta.getTopicMetadata(envelope.topicName);
-      var partition = topic.getPartition(envelope.partitionId);
-      var broker = meta.getBroker(partition.leader);
-      if (!envelopesByBroker.containsKey(broker)) {
-        envelopesByBroker[broker] = new List();
-      }
-      envelopesByBroker[broker].add(envelope);
-    }
+
+    var byBroker =
+        new ListMultimap.fromIterable(messages, key: (ProduceEnvelope _) {
+      var leaderId =
+          meta.getTopicMetadata(_.topicName).getPartition(_.partitionId).leader;
+      return meta.getBroker(leaderId);
+    });
 
     var completer = new Completer();
     var futures = new List();
-    for (var broker in envelopesByBroker.keys) {
-      var request =
-          new ProduceRequest(requiredAcks, timeout, envelopesByBroker[broker]);
+    for (var broker in byBroker.keys) {
+      var request = new ProduceRequest(requiredAcks, timeout, byBroker[broker]);
       futures.add(session.send(broker, request));
     }
 
     Future.wait(futures).then((List<ProduceResponse> responses) {
-      completer.complete(new ProduceResult(responses));
+      completer.complete(new ProduceResult.fromResponses(responses));
     });
 
     return completer.future;
@@ -66,22 +62,35 @@ class Producer {
 
 /// Result of producing messages with [Producer].
 class ProduceResult {
+  /// List of actual ProduceResponse objects returned by the server.
   final List<ProduceResponse> responses;
-  bool _hasErrors = false;
 
-  bool get hasErrors => _hasErrors;
-  Map<String, Map<int, int>> _offsets = new Map();
+  /// Indicates whether any of server responses contain errors.
+  final bool hasErrors;
 
-  Map<String, Map<int, int>> get offsets => _offsets;
+  /// Collection of all unique errors returned by the server.
+  final Iterable<KafkaServerError> errors;
 
-  ProduceResult(this.responses) {
-    responses.forEach((response) {
-      response.results.forEach((result) {
-        if (_offsets.containsKey(result.topicName) == false) {
-          _offsets[result.topicName] = new Map();
-        }
-        _offsets[result.topicName][result.partitionId] = result.offset;
+  /// Offsets for latest messages for each topic-partition assigned by the server.
+  final Map<String, Map<int, int>> offsets;
+
+  ProduceResult._(this.responses, Set<KafkaServerError> errors, this.offsets)
+      : hasErrors = errors.isNotEmpty,
+        errors = new UnmodifiableListView(errors);
+
+  factory ProduceResult.fromResponses(Iterable<ProduceResponse> responses) {
+    var errors = new Set<KafkaServerError>();
+    var offsets = new Map();
+    for (var r in responses) {
+      errors.addAll(r.results
+          .where((_) => _.errorCode != KafkaServerError.NoError)
+          .map((result) => new KafkaServerError(result.errorCode)));
+      r.results.forEach((result) {
+        offsets.putIfAbsent(result.topicName, () => new Map());
+        offsets[result.topicName][result.partitionId] = result.offset;
       });
-    });
+    }
+
+    return new ProduceResult._(responses, errors, offsets);
   }
 }
