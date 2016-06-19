@@ -171,6 +171,7 @@ class KafkaSession {
       return socket.flush().catchError((error) {
         _inflightRequests.remove(request);
         completer.completeError(error);
+        return new Future.value();
       });
     });
 
@@ -185,6 +186,7 @@ class KafkaSession {
       await _subscriptions[h].cancel();
       _sockets[h].destroy();
     }
+    _sockets.clear();
   }
 
   void _handleData(String hostPort, List<int> d) {
