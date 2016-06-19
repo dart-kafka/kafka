@@ -28,6 +28,7 @@ class KafkaSession {
   Map<String, List<int>> _buffers = new Map();
   Map<String, int> _sizes = new Map();
   Map<KafkaRequest, Completer> _inflightRequests = new Map();
+  Map<Socket, Future> _flushFutures = new Map();
 
   // Cluster Metadata
   List<Broker> _brokers = new List();
@@ -160,9 +161,18 @@ class KafkaSession {
     var socket = await _getSocket(host, port);
     Completer completer = new Completer();
     _inflightRequests[request] = completer;
-    // TODO: add timeout for how long to wait for response.
-    // TODO: add error handling.
-    socket.add(request.toBytes());
+
+    /// Writing to socket is synchronous, so we need to remember future
+    /// returned by last call to `flush` and only write this request after
+    /// previous one has been flushed.
+    var flushFuture = _flushFutures[socket];
+    _flushFutures[socket] = flushFuture.then((_) {
+      socket.add(request.toBytes());
+      return socket.flush().catchError((error) {
+        _inflightRequests.remove(request);
+        completer.completeError(error);
+      });
+    });
 
     return completer.future;
   }
@@ -200,10 +210,12 @@ class KafkaSession {
       var request = _inflightRequests.keys
           .firstWhere((r) => r.correlationId == correlationId);
       var completer = _inflightRequests[request];
-      completer.complete(request.createResponse(buffer));
+      var response = request.createResponse(buffer);
       _inflightRequests.remove(request);
       buffer.clear();
       _sizes[hostPort] = -1;
+
+      completer.complete(response);
       if (extra is List && extra.isNotEmpty) {
         _handleData(hostPort, extra);
       }
@@ -228,6 +240,7 @@ class KafkaSession {
       _subscriptions[key] = s.listen((d) => _handleData(key, d));
       _sockets[key] = s;
       _sockets[key].setOption(SocketOption.TCP_NODELAY, true);
+      _flushFutures[s] = new Future.value();
     }
 
     return _sockets[key];
