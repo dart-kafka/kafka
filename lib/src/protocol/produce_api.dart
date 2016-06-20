@@ -34,13 +34,13 @@ class ProduceRequest extends KafkaRequest {
     builder.addInt16(requiredAcks);
     builder.addInt32(timeout);
 
-    var messageSets = new Map<String, Map>();
+    Map<String, Map<int, MessageSet>> messageSets = new Map();
     for (var envelope in messages) {
       if (!messageSets.containsKey(envelope.topicName)) {
         messageSets[envelope.topicName] = new Map<int, MessageSet>();
       }
-      messageSets[envelope.topicName]
-          [envelope.partitionId] = new MessageSet.build(envelope);
+      messageSets[envelope.topicName][envelope.partitionId] =
+          new MessageSet.build(envelope);
     }
 
     builder.addInt32(messageSets.length);

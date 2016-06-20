@@ -25,6 +25,10 @@ class KafkaServerError {
   static const int OffsetsLoadInProgress = 14;
   static const int ConsumerCoordinatorNotAvailable = 15;
   static const int NotCoordinatorForConsumer = 16;
+  static const int InvalidTopicCode = 17;
+  static const int RecordListTooLargeCode = 18;
+  static const int NotEnoughReplicasCode = 19;
+  static const int NotEnoughReplicasAfterAppendCode = 20;
 
   /// Numeric code of this server error.
   final int code;
@@ -49,6 +53,10 @@ class KafkaServerError {
     14: 'OffsetsLoadInProgress',
     15: 'ConsumerCoordinatorNotAvailable',
     16: 'NotCoordinatorForConsumer',
+    17: 'InvalidTopicCode',
+    18: 'RecordListTooLargeCode',
+    19: 'NotEnoughReplicasCode',
+    20: 'NotEnoughReplicasAfterAppendCode',
   };
 
   /// String representation of this server error.

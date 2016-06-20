@@ -26,6 +26,9 @@ class Broker {
   }
 
   Broker._(this.id, this.host, this.port);
+
+  @override
+  toString() => 'KafkaBroker: ${host}:${port} (id: ${id})';
 }
 
 class TopicPartition {
@@ -46,7 +49,7 @@ class TopicPartition {
   }
 
   @override
-  bool operator ==(TopicPartition other) {
+  bool operator ==(other) {
     return (other.topicName == topicName && other.partitionId == partitionId);
   }
 

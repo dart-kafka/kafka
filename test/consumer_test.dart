@@ -35,7 +35,7 @@ void main() {
     test('it can consume messages from multiple brokers and commit offsets',
         () async {
       var topics = {
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       };
       var consumer = new Consumer(
           _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
@@ -52,7 +52,7 @@ void main() {
         'it can consume messages from multiple brokers without commiting offsets',
         () async {
       var topics = {
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       };
       var consumer = new Consumer(
           _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
@@ -74,7 +74,7 @@ void main() {
 
     test('it can handle cancelation request', () async {
       var topics = {
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       };
       var consumer = new Consumer(
           _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
@@ -89,7 +89,8 @@ void main() {
 
     test('it propagates worker errors via stream controller', () async {
       var topics = {
-        'someTopic': [0, 1, 2, 3] // request partition which does not exist.
+        'someTopic':
+            [0, 1, 2, 3].toSet() // request partition which does not exist.
       };
 
       var consume = () async {
@@ -113,7 +114,7 @@ void main() {
 
     test('it can consume batches of messages from multiple brokers', () async {
       var topics = {
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       };
       var consumer = new Consumer(
           _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);

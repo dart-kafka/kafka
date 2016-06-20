@@ -30,8 +30,8 @@ class Fetcher {
         return;
       }
       var remaining = workers.length;
-      List<Future> futures = workers.map((w) => w.run()).toList();
-      futures.forEach((f) {
+      var futures = workers.map((w) => w.run()).toList();
+      futures.forEach((Future f) {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
@@ -48,7 +48,7 @@ class Fetcher {
 
   Future<List<_FetcherWorker>> _buildWorkers(
       _MessageStreamController controller) async {
-    var topicNames = topicOffsets.map((_) => _.topicName).toSet();
+    var topicNames = new Set<String>.from(topicOffsets.map((_) => _.topicName));
     var meta = await session.getMetadata(topicNames);
     var offsetsByBroker = new Map<Broker, List<TopicOffset>>();
 
@@ -129,7 +129,7 @@ class _FetcherWorker {
     for (var o in offsets) {
       if (o.isEarliest) {
         var result = await offsetMaster.fetchEarliest({
-          o.topicName: [o.partitionId]
+          o.topicName: [o.partitionId].toSet()
         });
         request.add(result.first.topicName, result.first.partitionId,
             result.first.offset);

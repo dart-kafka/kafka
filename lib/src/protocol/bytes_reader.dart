@@ -61,10 +61,10 @@ class KafkaBytesReader {
   String readString() {
     var length = readInt16();
     var value = _data.buffer.asInt8List(_offset, length).toList();
-    value = UTF8.decode(value);
+    var valueAsString = UTF8.decode(value);
     _offset += length;
 
-    return value;
+    return valueAsString;
   }
 
   List<int> readBytes() {

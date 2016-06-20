@@ -39,7 +39,8 @@ class ConsumerGroup {
         // Wait a little and try again.
         kafkaLogger?.info(
             'ConsumerGroup(${name}): encountered API error 14 (OffsetsLoadInProgressCode) when fetching offsets. Scheduling retry after delay.');
-        return new Future.delayed(const Duration(seconds: 1), () async {
+        return new Future<List<ConsumerOffset>>.delayed(
+            const Duration(seconds: 1), () async {
           return _fetchOffsets(topicPartitions, retries: retries - 1);
         });
       } else if (error.isError) {

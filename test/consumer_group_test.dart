@@ -32,7 +32,7 @@ void main() {
     test('it fetches offsets', () async {
       var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = await group.fetchOffsets({
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       });
       expect(offsets.length, equals(3));
       offsets.forEach((o) {
@@ -51,7 +51,7 @@ void main() {
       // fails.
       try {
         await group.fetchOffsets({
-          _topicName: [0, 1, 2]
+          _topicName: [0, 1, 2].toSet()
         });
       } catch (e) {
         expect(e, new isInstanceOf<KafkaServerError>());
@@ -78,7 +78,7 @@ void main() {
       var now = new DateTime.now();
       try {
         await group.fetchOffsets({
-          _topicName: [0, 1, 2]
+          _topicName: [0, 1, 2].toSet()
         });
         fail('fetchOffsets must throw an error.');
       } catch (e) {
@@ -114,16 +114,16 @@ void main() {
     test('it can reset offsets to earliest', () async {
       var offsetMaster = new OffsetMaster(_session);
       var earliestOffsets = await offsetMaster.fetchEarliest({
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       });
 
       var group = new ConsumerGroup(_session, 'testGroup');
       await group.resetOffsetsToEarliest({
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       });
 
       var offsets = await group.fetchOffsets({
-        _topicName: [0, 1, 2]
+        _topicName: [0, 1, 2].toSet()
       });
       expect(offsets, hasLength(3));
 

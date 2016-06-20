@@ -65,8 +65,8 @@ class Consumer {
         return;
       }
       var remaining = workers.length;
-      List<Future> futures = workers.map((w) => w.run(controller)).toList();
-      futures.forEach((f) {
+      var futures = workers.map((w) => w.run(controller)).toList();
+      futures.forEach((Future f) {
         f.then((_) {
           remaining--;
           if (remaining == 0) {
@@ -106,10 +106,11 @@ class Consumer {
         return;
       }
       var remaining = workers.length;
-      List<Future> futures =
+      var futures =
           workers.map((w) => w.runBatched(controller, maxBatchSize)).toList();
-      futures.forEach((f) {
+      futures.forEach((Future f) {
         f.then((_) {
+          kafkaLogger.info('Consumer: worker finished.');
           remaining--;
           if (remaining == 0) {
             kafkaLogger
@@ -217,7 +218,7 @@ class _ConsumerWorker {
 
     while (controller.canAdd) {
       var request = await _createRequest();
-      kafkaLogger?.fine('Consumer: Sending fetch request.');
+      kafkaLogger?.fine('Consumer: Sending fetch request to ${host}.');
       FetchResponse response = await session.send(host, request);
       var didReset = await _checkOffsets(response);
       if (didReset) {
@@ -476,7 +477,7 @@ class BatchEnvelope {
       }
     }
 
-    var offsets = [];
+    List<ConsumerOffset> offsets = [];
     for (var key in grouped.keys) {
       offsets.add(new ConsumerOffset(
           key.topicName, key.partitionId, grouped[key], commitMetadata));

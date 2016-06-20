@@ -85,7 +85,7 @@ class KafkaBytesBuilder {
           addString(item);
           break;
         case KafkaType.bytes:
-          addBytes(item);
+          addBytes(new List<int>.from(item));
           break;
         case KafkaType.object:
           throw new StateError('Objects are not supported yet');

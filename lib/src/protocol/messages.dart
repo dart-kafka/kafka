@@ -18,9 +18,9 @@ class MessageSet {
     if (envelope.compression == KafkaCompression.none) {
       return new MessageSet._(envelope.messages.asMap());
     } else {
-      if (envelope.compression ==
-          KafkaCompression.snappy) throw new ArgumentError(
-          'Snappy compression is not supported yet by the client.');
+      if (envelope.compression == KafkaCompression.snappy)
+        throw new ArgumentError(
+            'Snappy compression is not supported yet by the client.');
 
       var codec = new GZipCodec();
       var innerEnvelope = new ProduceEnvelope(
@@ -36,7 +36,7 @@ class MessageSet {
   /// Creates new MessageSet from provided data.
   factory MessageSet.fromBytes(KafkaBytesReader reader) {
     int messageSize = -1;
-    var messages = new Map();
+    var messages = new Map<int, Message>();
     while (reader.isNotEOF) {
       try {
         int offset = reader.readInt64();
@@ -56,9 +56,9 @@ class MessageSet {
         if (message.attributes.compression == KafkaCompression.none) {
           messages[offset] = message;
         } else {
-          if (message.attributes.compression ==
-              KafkaCompression.snappy) throw new ArgumentError(
-              'Snappy compression is not supported yet by the client.');
+          if (message.attributes.compression == KafkaCompression.snappy)
+            throw new ArgumentError(
+                'Snappy compression is not supported yet by the client.');
 
           var codec = new GZipCodec();
           var innerReader =

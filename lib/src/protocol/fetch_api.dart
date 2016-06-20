@@ -25,6 +25,9 @@ class FetchRequest extends KafkaRequest {
   /// Creates new instance of FetchRequest.
   FetchRequest(this.maxWaitTime, this.minBytes) : super();
 
+  @override
+  toString() => 'FetchRequest(${maxWaitTime}, ${minBytes}, ${_topics})';
+
   /// Adds [topicName] with [paritionId] to this FetchRequest. [fetchOffset]
   /// defines the offset to begin this fetch from.
   void add(String topicName, int partitionId, int fetchOffset,

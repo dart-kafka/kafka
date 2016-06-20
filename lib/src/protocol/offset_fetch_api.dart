@@ -52,7 +52,7 @@ class OffsetFetchResponse {
   }
 
   factory OffsetFetchResponse.fromData(List<int> data) {
-    var offsets = [];
+    List<ConsumerOffset> offsets = [];
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);

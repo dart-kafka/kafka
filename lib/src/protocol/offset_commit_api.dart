@@ -32,8 +32,10 @@ class OffsetCommitRequest extends KafkaRequest {
     var builder = new KafkaBytesBuilder.withRequestHeader(
         apiKey, apiVersion, correlationId);
 
-    Map<String, List<ConsumerOffset>> groupedByTopic =
-        groupBy(offsets, (o) => o.topicName);
+    // TODO: replace groupBy with ListMultimap
+    // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
+    Map<String, List<ConsumerOffset>> groupedByTopic = groupBy(
+        offsets, (o) => o.topicName); // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
     var timestamp = new DateTime.now().millisecondsSinceEpoch;
     builder.addString(consumerGroup);
     builder.addInt32(consumerGroupGenerationId);
@@ -69,7 +71,7 @@ class OffsetCommitResponse {
   OffsetCommitResponse._(this.offsets);
 
   factory OffsetCommitResponse.fromData(List<int> data) {
-    var offsets = [];
+    List<OffsetCommitResult> offsets = [];
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);

@@ -23,7 +23,7 @@ class KafkaSession {
   /// List of Kafka brokers which are used as initial contact points.
   final Queue<ContactPoint> contactPoints;
 
-  Map<String, Socket> _sockets = new Map();
+  Map<String, Future<Socket>> _sockets = new Map();
   Map<String, StreamSubscription> _subscriptions = new Map();
   Map<String, List<int>> _buffers = new Map();
   Map<String, int> _sizes = new Map();
@@ -31,8 +31,8 @@ class KafkaSession {
   Map<Socket, Future> _flushFutures = new Map();
 
   // Cluster Metadata
-  List<Broker> _brokers = new List();
-  List<TopicMetadata> _topics = new List();
+  Future<List<Broker>> _brokers;
+  Map<String, Future<TopicMetadata>> _topicsMetadata = new Map();
 
   /// Creates new session.
   ///
@@ -72,51 +72,62 @@ class KafkaSession {
           topicNames, 'topicNames', 'List of topic names can not be empty');
 
     if (invalidateCache) {
-      _brokers = new List();
-      _topics = new List();
+      _brokers = null;
+      _topicsMetadata = new Map();
     }
     // TODO: actually rotate default hosts on failure.
     var contactPoint = _getCurrentContactPoint();
 
-    var cachedTopics = _topics
-        .where((t) => topicNames.contains(t.topicName))
-        .map((t) => t.topicName);
-    var topicsToFetch = topicNames.where((t) => !cachedTopics.contains(t));
+    var topicsToFetch =
+        topicNames.where((t) => !_topicsMetadata.keys.contains(t));
     if (topicsToFetch.length > 0) {
-      var request = new MetadataRequest(topicsToFetch.toSet());
-      MetadataResponse response =
-          await _send(contactPoint.host, contactPoint.port, request);
-
-      var topicWithError = response.topics.firstWhere(
-          (_) => _.errorCode != KafkaServerError.NoError,
-          orElse: () => null);
-
-      if (topicWithError is TopicMetadata) {
-        var retries = 1;
-        var error = new KafkaServerError(topicWithError.errorCode);
-        while (error.isLeaderNotAvailable && retries < 5) {
-          var future = new Future.delayed(new Duration(seconds: retries),
-              () => _send(contactPoint.host, contactPoint.port, request));
-
-          response = await future;
-          topicWithError = response.topics.firstWhere(
-              (_) => _.errorCode != KafkaServerError.NoError,
-              orElse: () => null);
-          var errorCode =
-              (topicWithError is TopicMetadata) ? topicWithError.errorCode : 0;
-          error = new KafkaServerError(errorCode);
-          retries++;
-        }
-
-        if (error.isError) throw error;
+      Future<MetadataResponse> responseFuture = _sendMetadataRequest(
+          topicsToFetch.toSet(), contactPoint.host, contactPoint.port);
+      for (var name in topicsToFetch) {
+        _topicsMetadata[name] = responseFuture.then((response) {
+          return response.topics.firstWhere((_) => _.topicName == name);
+        });
       }
 
-      _topics.addAll(response.topics);
-      _brokers = new List.unmodifiable(response.brokers);
+      _brokers = responseFuture.then((response) => response.brokers);
     }
-    var topicsMetadata = _topics.where((t) => topicNames.contains(t.topicName));
+    List<TopicMetadata> allMetadata = await Future.wait(_topicsMetadata.values);
+    var metadata = allMetadata.where((_) => topicNames.contains(_.topicName));
+    var brokers = await _brokers;
 
-    return new ClusterMetadata(_brokers, new List.unmodifiable(topicsMetadata));
+    return new ClusterMetadata(brokers, new List.unmodifiable(metadata));
+  }
+
+  Future<MetadataResponse> _sendMetadataRequest(
+      Set<String> topics, String host, int port) async {
+    var request = new MetadataRequest(topics);
+    MetadataResponse response = await _send(host, port, request);
+
+    var topicWithError = response.topics.firstWhere(
+        (_) => _.errorCode != KafkaServerError.NoError,
+        orElse: () => null);
+
+    if (topicWithError is TopicMetadata) {
+      var retries = 1;
+      var error = new KafkaServerError(topicWithError.errorCode);
+      while (error.isLeaderNotAvailable && retries < 5) {
+        var future = new Future.delayed(
+            new Duration(seconds: retries), () => _send(host, port, request));
+
+        response = await future;
+        topicWithError = response.topics.firstWhere(
+            (_) => _.errorCode != KafkaServerError.NoError,
+            orElse: () => null);
+        var errorCode =
+            (topicWithError is TopicMetadata) ? topicWithError.errorCode : 0;
+        error = new KafkaServerError(errorCode);
+        retries++;
+      }
+
+      if (error.isError) throw error;
+    }
+
+    return response;
   }
 
   /// Fetches metadata for specified [consumerGroup].
@@ -158,6 +169,7 @@ class KafkaSession {
   }
 
   Future<dynamic> _send(String host, int port, KafkaRequest request) async {
+    kafkaLogger.finer('Session: Sending request ${request} to ${host}:${port}');
     var socket = await _getSocket(host, port);
     Completer completer = new Completer();
     _inflightRequests[request] = completer;
@@ -184,7 +196,7 @@ class KafkaSession {
   Future close() async {
     for (var h in _sockets.keys) {
       await _subscriptions[h].cancel();
-      _sockets[h].destroy();
+      (await _sockets[h]).destroy();
     }
     _sockets.clear();
   }
@@ -199,7 +211,7 @@ class KafkaSession {
       _sizes[hostPort] = reader.readInt32();
     }
 
-    var extra;
+    List<int> extra;
     if (buffer.length > _sizes[hostPort] + 4) {
       extra = buffer.sublist(_sizes[hostPort] + 4);
       buffer.removeRange(_sizes[hostPort] + 4, buffer.length);
@@ -233,16 +245,19 @@ class KafkaSession {
   //   defaultHosts.addLast(current);
   // }
 
-  Future<Socket> _getSocket(String host, int port) async {
+  Future<Socket> _getSocket(String host, int port) {
     var key = '${host}:${port}';
     if (!_sockets.containsKey(key)) {
-      var s = await Socket.connect(host, port);
-      _buffers[key] = new List();
-      _sizes[key] = -1;
-      _subscriptions[key] = s.listen((d) => _handleData(key, d));
-      _sockets[key] = s;
-      _sockets[key].setOption(SocketOption.TCP_NODELAY, true);
-      _flushFutures[s] = new Future.value();
+      _sockets[key] = Socket.connect(host, port);
+      _sockets[key].then((socket) {
+        socket.setOption(SocketOption.TCP_NODELAY, true);
+        _buffers[key] = new List();
+        _sizes[key] = -1;
+        _subscriptions[key] = socket.listen((d) => _handleData(key, d));
+        _flushFutures[socket] = new Future.value();
+      }, onError: (error) {
+        _sockets.remove(key);
+      });
     }
 
     return _sockets[key];
