@@ -1,13 +1,13 @@
 part of kafka.protocol;
 
 /// Kafka ConsumerMetadataRequest.
-class ConsumerMetadataRequest extends KafkaRequest {
+class GroupCoordinatorRequest extends KafkaRequest {
   final int apiKey = 10;
   final int apiVersion = 0;
   final String consumerGroup;
 
   /// Creates new instance of ConsumerMetadataRequest.
-  ConsumerMetadataRequest(this.consumerGroup) : super();
+  GroupCoordinatorRequest(this.consumerGroup) : super();
 
   /// Converts this request into byte list
   @override
@@ -25,12 +25,12 @@ class ConsumerMetadataRequest extends KafkaRequest {
 
   @override
   createResponse(List<int> data) {
-    return new ConsumerMetadataResponse.fromBytes(data);
+    return new GroupCoordinatorResponse.fromBytes(data);
   }
 }
 
-/// Response for [ConsumerMetadataRequest].
-class ConsumerMetadataResponse {
+/// Response for [GroupCoordinatorRequest].
+class GroupCoordinatorResponse {
   final int errorCode;
   final int coordinatorId;
   final String coordinatorHost;
@@ -40,11 +40,11 @@ class ConsumerMetadataResponse {
       new Broker(coordinatorId, coordinatorHost, coordinatorPort);
 
   /// Creates new instance of ConsumerMetadataResponse.
-  ConsumerMetadataResponse(this.errorCode, this.coordinatorId,
+  GroupCoordinatorResponse(this.errorCode, this.coordinatorId,
       this.coordinatorHost, this.coordinatorPort);
 
   /// Creates response from provided data.
-  factory ConsumerMetadataResponse.fromBytes(List<int> data) {
+  factory GroupCoordinatorResponse.fromBytes(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var size = reader.readInt32();
     assert(size == data.length - 4);
@@ -55,6 +55,6 @@ class ConsumerMetadataResponse {
     var host = reader.readString();
     var port = reader.readInt32();
 
-    return new ConsumerMetadataResponse(errorCode, id, host, port);
+    return new GroupCoordinatorResponse(errorCode, id, host, port);
   }
 }

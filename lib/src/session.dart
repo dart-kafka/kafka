@@ -133,19 +133,19 @@ class KafkaSession {
   /// Fetches metadata for specified [consumerGroup].
   ///
   /// It handles `ConsumerCoordinatorNotAvailableCode(15)` API error which Kafka
-  /// returns in case [ConsumerMetadataRequest] is sent for the very first time
+  /// returns in case [GroupCoordinatorRequest] is sent for the very first time
   /// to this particular broker (when special topic to store consumer offsets
   /// does not exist yet).
   ///
   /// It will attempt up to 5 retries (with linear delay) in order to fetch
   /// metadata.
-  Future<ConsumerMetadataResponse> getConsumerMetadata(
+  Future<GroupCoordinatorResponse> getConsumerMetadata(
       String consumerGroup) async {
     // TODO: rotate default hosts.
     var contactPoint = _getCurrentContactPoint();
-    var request = new ConsumerMetadataRequest(consumerGroup);
+    var request = new GroupCoordinatorRequest(consumerGroup);
 
-    ConsumerMetadataResponse response =
+    GroupCoordinatorResponse response =
         await _send(contactPoint.host, contactPoint.port, request);
     var retries = 1;
     var error = new KafkaServerError(response.errorCode);

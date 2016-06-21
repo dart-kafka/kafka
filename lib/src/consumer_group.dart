@@ -65,8 +65,8 @@ class ConsumerGroup {
       List<ConsumerOffset> offsets, int consumerGenerationId, String consumerId,
       {int retries: 0, bool refresh: false}) async {
     var host = await _getCoordinator(refresh: refresh);
-    var request = new OffsetCommitRequest(
-        name, offsets, consumerGenerationId, consumerId);
+    var request = new OffsetCommitRequest(name, offsets, consumerGenerationId,
+        consumerId, -1); // TODO: allow to customize retention time.
     OffsetCommitResponse response = await session.send(host, request);
     for (var offset in response.offsets) {
       var error = new KafkaServerError(offset.errorCode);
@@ -99,7 +99,7 @@ class ConsumerGroup {
           actualOffset, 'resetToEarliest'));
     }
 
-    return commitOffsets(offsets, 0, '');
+    return commitOffsets(offsets, -1, '');
   }
 
   Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions) async {
@@ -112,7 +112,7 @@ class ConsumerGroup {
           actualOffset, 'resetToEarliest'));
     }
 
-    return commitOffsets(offsets, 0, '');
+    return commitOffsets(offsets, -1, '');
   }
 
   /// Returns instance of coordinator host for this consumer group.

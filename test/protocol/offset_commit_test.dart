@@ -43,7 +43,7 @@ void main() {
         new ConsumerOffset('dartKafkaTest', 0, _offset, 'helloworld')
       ];
 
-      var request = new OffsetCommitRequest(_testGroup, offsets, 0, '');
+      var request = new OffsetCommitRequest(_testGroup, offsets, -1, '', -1);
 
       OffsetCommitResponse response =
           await _session.send(_coordinator, request);

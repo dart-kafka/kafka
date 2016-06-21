@@ -240,7 +240,7 @@ class _ConsumerWorker {
                 new ConsumerOffset(item.topicName, item.partitionId, offset,
                     result.commitMetadata)
               ];
-              await group.commitOffsets(offsets, 0, '');
+              await group.commitOffsets(offsets, -1, '');
             } else if (result.status == _ProcessingStatus.cancel) {
               controller.cancel();
               return;
@@ -269,7 +269,7 @@ class _ConsumerWorker {
         if (!controller.add(batch)) return;
         var result = await batch.result;
         if (result.status == _ProcessingStatus.commit) {
-          await group.commitOffsets(batch.offsetsToCommit, 0, '');
+          await group.commitOffsets(batch.offsetsToCommit, -1, '');
         } else if (result.status == _ProcessingStatus.cancel) {
           controller.cancel();
           return;

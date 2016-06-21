@@ -43,7 +43,7 @@ void main() {
     test('it tries to refresh coordinator host 3 times on fetchOffsets',
         () async {
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new ConsumerMetadataResponse(0, _badCoordinator.id,
+          new GroupCoordinatorResponse(0, _badCoordinator.id,
               _badCoordinator.host, _badCoordinator.port));
 
       var group = new ConsumerGroup(_session, 'testGroup');
@@ -96,14 +96,14 @@ void main() {
     test('it tries to refresh coordinator host 3 times on commitOffsets',
         () async {
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new ConsumerMetadataResponse(0, _badCoordinator.id,
+          new GroupCoordinatorResponse(0, _badCoordinator.id,
               _badCoordinator.host, _badCoordinator.port));
 
       var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = [new ConsumerOffset(_topicName, 0, 3, '')];
 
       try {
-        await group.commitOffsets(offsets, 0, 'test');
+        await group.commitOffsets(offsets, -1, '');
       } catch (e) {
         expect(e, new isInstanceOf<KafkaServerError>());
         expect(e.code, equals(16));

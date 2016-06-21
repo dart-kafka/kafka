@@ -29,6 +29,21 @@ class KafkaServerError {
   static const int RecordListTooLargeCode = 18;
   static const int NotEnoughReplicasCode = 19;
   static const int NotEnoughReplicasAfterAppendCode = 20;
+  static const int InvalidRequiredAcksCode = 21;
+  static const int IllegalGenerationCode = 22;
+  static const int InconsistentGroupProtocolCode = 23;
+  static const int InvalidGroupIdCode = 24;
+  static const int UnknownMemberIdCode = 25;
+  static const int InvalidSessionTimeoutCode = 26;
+  static const int RebalanceInProgressCode = 27;
+  static const int InvalidCommitOffsetSizeCode = 28;
+  static const int TopicAuthorizationFailedCode = 29;
+  static const int GroupAuthorizationFailedCode = 30;
+  static const int ClusterAuthorizationFailedCode = 31;
+  static const int InvalidTimestamp = 32;
+  static const int UnsupportedSaslMechanism = 33;
+  static const int IllegalSaslState = 34;
+  static const int UnsupportedVersion = 35;
 
   /// Numeric code of this server error.
   final int code;
@@ -57,6 +72,21 @@ class KafkaServerError {
     18: 'RecordListTooLargeCode',
     19: 'NotEnoughReplicasCode',
     20: 'NotEnoughReplicasAfterAppendCode',
+    21: 'InvalidRequiredAcksCode',
+    22: 'IllegalGenerationCode',
+    23: 'InconsistentGroupProtocolCode',
+    24: 'InvalidGroupIdCode',
+    25: 'UnknownMemberIdCode',
+    26: 'InvalidSessionTimeoutCode',
+    27: 'RebalanceInProgressCode',
+    28: 'InvalidCommitOffsetSizeCode',
+    29: 'TopicAuthorizationFailedCode',
+    30: 'GroupAuthorizationFailedCode',
+    31: 'ClusterAuthorizationFailedCode',
+    32: 'InvalidTimestamp',
+    33: 'UnsupportedSaslMechanism',
+    34: 'IllegalSaslState',
+    35: 'UnsupportedVersion',
   };
 
   /// String representation of this server error.

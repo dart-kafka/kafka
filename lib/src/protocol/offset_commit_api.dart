@@ -17,6 +17,9 @@ class OffsetCommitRequest extends KafkaRequest {
   /// ID of the consumer.
   final String consumerId;
 
+  /// Time period in msec to retain the offset.
+  final int retentionTime;
+
   /// List of consumer offsets to be committed.
   final List<ConsumerOffset> offsets;
 
@@ -24,7 +27,7 @@ class OffsetCommitRequest extends KafkaRequest {
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
   OffsetCommitRequest(this.consumerGroup, this.offsets,
-      this.consumerGroupGenerationId, this.consumerId)
+      this.consumerGroupGenerationId, this.consumerId, this.retentionTime)
       : super();
 
   @override
