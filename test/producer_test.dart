@@ -25,7 +25,6 @@ main() {
         new ProduceEnvelope(_topicName, 1, [new Message('test2'.codeUnits)]),
         new ProduceEnvelope(_topicName, 2, [new Message('test3'.codeUnits)]),
       ]);
-      expect(result.hasErrors, isFalse);
       expect(result.offsets[_topicName][0], greaterThanOrEqualTo(0));
       expect(result.offsets[_topicName][1], greaterThanOrEqualTo(0));
       expect(result.offsets[_topicName][2], greaterThanOrEqualTo(0));

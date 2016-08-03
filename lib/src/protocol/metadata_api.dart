@@ -60,10 +60,23 @@ class MetadataResponse {
           reader.readInt32(), reader.readString(), reader.readInt32());
     });
 
-    var topicMetadata = reader.readArray(
-        KafkaType.object, (reader) => new TopicMetadata._readFrom(reader));
-    return new MetadataResponse._(new List<Broker>.from(brokers),
-        new List<TopicMetadata>.from(topicMetadata));
+    var topicMetadata = new List<TopicMetadata>.from(reader.readArray(
+        KafkaType.object, (reader) => new TopicMetadata._readFrom(reader)));
+
+    var firstErrorCode = topicMetadata.map((_) {
+      if (_.errorCode != KafkaServerError.NoError_) return _.errorCode;
+      return _.partitions.firstWhere(
+          (p) => p.errorCode != KafkaServerError.NoError_,
+          orElse: () => null);
+    }).firstWhere((_) => _ != null, orElse: () => null);
+    var response =
+        new MetadataResponse._(new List<Broker>.from(brokers), topicMetadata);
+
+    if (firstErrorCode == null) {
+      return response;
+    } else {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
   }
 }
 
@@ -73,7 +86,7 @@ class TopicMetadata {
   final String topicName;
   final List<PartitionMetadata> partitions;
 
-  TopicMetadata._(this.errorCode, this.topicName, this.partitions);
+  TopicMetadata(this.errorCode, this.topicName, this.partitions);
 
   factory TopicMetadata._readFrom(KafkaBytesReader reader) {
     var errorCode = reader.readInt16();
@@ -81,7 +94,7 @@ class TopicMetadata {
     List partitions = reader.readArray(
         KafkaType.object, (reader) => new PartitionMetadata._readFrom(reader));
     // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
-    return new TopicMetadata._(errorCode, topicName, partitions);
+    return new TopicMetadata(errorCode, topicName, partitions);
   }
 
   PartitionMetadata getPartition(int partitionId) =>
@@ -94,13 +107,13 @@ class TopicMetadata {
 
 /// Data structure representing partition metadata returned in MetadataResponse.
 class PartitionMetadata {
-  final int partitionErrorCode;
+  final int errorCode;
   final int partitionId;
   final int leader;
   final List<int> replicas;
   final List<int> inSyncReplicas;
 
-  PartitionMetadata._(this.partitionErrorCode, this.partitionId, this.leader,
+  PartitionMetadata(this.errorCode, this.partitionId, this.leader,
       this.replicas, this.inSyncReplicas);
 
   factory PartitionMetadata._readFrom(KafkaBytesReader reader) {
@@ -110,11 +123,15 @@ class PartitionMetadata {
     var replicas = reader.readArray(KafkaType.int32);
     var inSyncReplicas = reader.readArray(KafkaType.int32);
 
-    return new PartitionMetadata._(
+    return new PartitionMetadata(
         errorCode,
         partitionId,
         leader,
         replicas, // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
         inSyncReplicas);
   }
+
+  @override
+  toString() =>
+      'Partition $partitionId(error: $errorCode, leader: $leader, replicas: $replicas)';
 }

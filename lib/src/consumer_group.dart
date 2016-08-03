@@ -1,12 +1,21 @@
 part of kafka;
 
 class ConsumerGroup {
+  static final Logger _logger = new Logger('ConsumerGroup');
+
+  /// The session to communicate with Kafka cluster.
   final KafkaSession session;
+
+  /// The unique name of this group.
   final String name;
 
-  Broker _coordinatorHost;
+  /// Optional retention time for committed offsets. If `null` then broker's
+  /// offset retention time will be used as default.
+  final Duration retentionTime;
 
-  ConsumerGroup(this.session, this.name);
+  Future<Broker> _coordinatorHost;
+
+  ConsumerGroup(this.session, this.name, {this.retentionTime});
 
   /// Retrieves offsets of this consumer group from the server.
   ///
@@ -24,69 +33,68 @@ class ConsumerGroup {
       bool refresh: false}) async {
     var host = await _getCoordinator(refresh: refresh);
     var request = new OffsetFetchRequest(name, topicPartitions);
-    var response = await session.send(host, request);
-    var offsets = new List<ConsumerOffset>.from(response.offsets);
-
-    for (var offset in offsets) {
-      var error = new KafkaServerError(offset.errorCode);
-      if (error.isNotCoordinatorForConsumer && retries > 1) {
-        // Re-fetch coordinator metadata and try again
-        kafkaLogger?.info(
-            'ConsumerGroup(${name}): encountered API error 16 (NotCoordinatorForConsumerCode) when fetching offsets. Scheduling retry with metadata refresh.');
+    try {
+      var response = await session.send(host, request);
+      return new List<ConsumerOffset>.from(response.offsets);
+    } on NotCoordinatorForConsumerError {
+      if (retries > 1) {
+        _logger.info(
+            'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when fetching offsets. '
+            'Scheduling retry with metadata refresh.');
         return _fetchOffsets(topicPartitions,
             retries: retries - 1, refresh: true);
-      } else if (error.isOffsetsLoadInProgress && retries > 1) {
-        // Wait a little and try again.
-        kafkaLogger?.info(
-            'ConsumerGroup(${name}): encountered API error 14 (OffsetsLoadInProgressCode) when fetching offsets. Scheduling retry after delay.');
+      } else {
+        rethrow;
+      }
+    } on OffsetsLoadInProgressError {
+      if (retries > 1) {
+        _logger.info(
+            'ConsumerGroup(${name}): encountered OffsetsLoadInProgressError(14) when fetching offsets. '
+            'Scheduling retry after delay.');
         return new Future<List<ConsumerOffset>>.delayed(
             const Duration(seconds: 1), () async {
           return _fetchOffsets(topicPartitions, retries: retries - 1);
         });
-      } else if (error.isError) {
-        kafkaLogger?.info(
-            'ConsumerGroup(${name}): fetchOffsets failed. Error code: ${offset.errorCode} for partition ${offset.partitionId} of ${offset.topicName}.');
-        throw error;
+      } else {
+        rethrow;
       }
     }
-
-    return offsets;
   }
 
   /// Commits provided [offsets] to the server for this consumer group.
-  Future commitOffsets(List<ConsumerOffset> offsets, int consumerGenerationId,
-      String consumerId) async {
-    return _commitOffsets(offsets, consumerGenerationId, consumerId,
-        retries: 3);
+  Future commitOffsets(List<ConsumerOffset> offsets,
+      {GroupMembership membership}) {
+    return _commitOffsets(offsets, membership: membership, retries: 3);
   }
 
   /// Internal method for commiting offsets with retries.
-  Future _commitOffsets(
-      List<ConsumerOffset> offsets, int consumerGenerationId, String consumerId,
-      {int retries: 0, bool refresh: false}) async {
-    var host = await _getCoordinator(refresh: refresh);
-    var request = new OffsetCommitRequest(name, offsets, consumerGenerationId,
-        consumerId, -1); // TODO: allow to customize retention time.
-    OffsetCommitResponse response = await session.send(host, request);
-    for (var offset in response.offsets) {
-      var error = new KafkaServerError(offset.errorCode);
-      if (error.isNotCoordinatorForConsumer && retries > 1) {
-        // Re-fetch coordinator metadata and try again
-        kafkaLogger?.info(
-            'ConsumerGroup(${name}): encountered API error 16 (NotCoordinatorForConsumerCode) when commiting offsets. Scheduling retry with metadata refresh.');
-        return _commitOffsets(offsets, consumerGenerationId, consumerId,
-            retries: retries - 1, refresh: true);
-      } else if (error.isError) {
-        kafkaLogger?.info(
-            'ConsumerGroup(${name}): commitOffsets failed. Error code: ${offset.errorCode} for partition ${offset.partitionId} of ${offset.topicName}.');
-        throw error;
+  Future _commitOffsets(List<ConsumerOffset> offsets,
+      {GroupMembership membership, int retries: 0, bool refresh: false}) async {
+    try {
+      var host = await _getCoordinator(refresh: refresh);
+      var generationId =
+          (membership is GroupMembership) ? membership.generationId : -1;
+      var memberId = (membership is GroupMembership) ? membership.memberId : '';
+      var retentionInMsecs =
+          (retentionTime is Duration) ? retentionTime.inMilliseconds : -1;
+      var request = new OffsetCommitRequest(
+          name, offsets, generationId, memberId, retentionInMsecs);
+      await session.send(host, request);
+    } on NotCoordinatorForConsumerError {
+      if (retries > 1) {
+        _logger.info(
+            'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when commiting offsets. '
+            'Scheduling retry with metadata refresh.');
+        return _commitOffsets(offsets,
+            membership: membership, retries: retries - 1, refresh: true);
+      } else {
+        rethrow;
       }
     }
-
-    return null;
   }
 
-  Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions) async {
+  Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions,
+      {GroupMembership membership}) async {
     var offsetMaster = new OffsetMaster(session);
     var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
     var offsets = new List<ConsumerOffset>();
@@ -99,10 +107,11 @@ class ConsumerGroup {
           actualOffset, 'resetToEarliest'));
     }
 
-    return commitOffsets(offsets, -1, '');
+    return commitOffsets(offsets, membership: membership);
   }
 
-  Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions) async {
+  Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions,
+      {GroupMembership membership}) async {
     var offsetMaster = new OffsetMaster(session);
     var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
     var offsets = new List<ConsumerOffset>();
@@ -112,21 +121,127 @@ class ConsumerGroup {
           actualOffset, 'resetToEarliest'));
     }
 
-    return commitOffsets(offsets, -1, '');
+    return commitOffsets(offsets, membership: membership);
   }
 
   /// Returns instance of coordinator host for this consumer group.
-  Future<Broker> _getCoordinator({bool refresh: false}) async {
+  Future<Broker> _getCoordinator({bool refresh: false}) {
     if (refresh) {
       _coordinatorHost = null;
     }
 
     if (_coordinatorHost == null) {
-      var metadata = await session.getConsumerMetadata(name);
-      _coordinatorHost = new Broker(metadata.coordinatorId,
-          metadata.coordinatorHost, metadata.coordinatorPort);
+      _coordinatorHost = session.getConsumerMetadata(name).then((response) {
+        return new Broker(response.coordinatorId, response.coordinatorHost,
+            response.coordinatorPort);
+      }).catchError((error) {
+        _coordinatorHost = null;
+        throw error;
+      });
     }
 
     return _coordinatorHost;
   }
+
+  Future<GroupMembership> join(int sessionTimeout, String memberId,
+      String protocolType, Iterable<GroupProtocol> groupProtocols) async {
+    var broker = await _getCoordinator();
+    var joinRequest = new JoinGroupRequest(
+        name, sessionTimeout, memberId, protocolType, groupProtocols);
+    JoinGroupResponse joinResponse = await session.send(broker, joinRequest);
+    var protocol = joinResponse.groupProtocol;
+    var isLeader = joinResponse.leaderId == joinResponse.memberId;
+
+    var groupAssignments = new List<GroupAssignment>();
+    if (isLeader) {
+      groupAssignments = await _assignPartitions(protocol, joinResponse);
+    }
+
+    var syncRequest = new SyncGroupRequest(name, joinResponse.generationId,
+        joinResponse.memberId, groupAssignments);
+    SyncGroupResponse syncResponse;
+    try {
+      // Wait before sending SyncRequest to give the server some time to respond
+      // to all the rest JoinRequests.
+      syncResponse = await new Future.delayed(new Duration(seconds: 1), () {
+        return session.send(broker, syncRequest);
+      });
+
+      return new GroupMembership(
+          joinResponse.memberId,
+          joinResponse.leaderId,
+          syncResponse.assignment,
+          joinResponse.generationId,
+          joinResponse.groupProtocol);
+    } on RebalanceInProgressError {
+      _logger.warning(
+          'Received "RebalanceInProgress" error code for SyncRequest, will attempt to rejoin again now.');
+      return join(sessionTimeout, memberId, protocolType, groupProtocols);
+    }
+  }
+
+  Future<List<GroupAssignment>> _assignPartitions(
+      String protocol, JoinGroupResponse joinResponse) async {
+    var groupAssignments = new List<GroupAssignment>();
+    var assignor = new PartitionAssignor.forStrategy(protocol);
+    var topics = new Set<String>();
+    Map<String, Set<String>> subscriptions = new Map();
+    joinResponse.members.forEach((m) {
+      var memberProtocol = new GroupProtocol.fromBytes(protocol, m.metadata);
+      subscriptions[m.id] = memberProtocol.topics;
+    });
+    subscriptions.values.forEach(topics.addAll);
+
+    var meta = await session.getMetadata(topics);
+    var partitionsPerTopic = new Map<String, int>.fromIterable(meta.topics,
+        key: (_) => _.topicName, value: (_) => _.partitions.length);
+
+    Map<String, List<TopicPartition>> assignments =
+        assignor.assign(partitionsPerTopic, subscriptions);
+    for (var memberId in assignments.keys) {
+      var partitionAssignment = new Map<String, List<int>>();
+      assignments[memberId].forEach((topicPartition) {
+        partitionAssignment.putIfAbsent(
+            topicPartition.topicName, () => new List<int>());
+        partitionAssignment[topicPartition.topicName]
+            .add(topicPartition.partitionId);
+      });
+      groupAssignments.add(new GroupAssignment(
+          memberId, new MemberAssignment(0, partitionAssignment, null)));
+    }
+
+    return groupAssignments;
+  }
+
+  Future heartbeat(GroupMembership membership) async {
+    var host = await _getCoordinator();
+    var request = new HeartbeatRequest(
+        name, membership.generationId, membership.memberId);
+    _logger.fine(
+        'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
+    await session.send(host, request);
+  }
+
+  Future leave(GroupMembership membership) async {
+    _logger.info('Attempting to leave group "${name}".');
+    var host = await _getCoordinator();
+    var request = new LeaveGroupRequest(name, membership.memberId);
+    return session.send(host, request).catchError((error) {
+      _logger.warning('Received ${error} on attempt to leave group gracefully. '
+          'Ignoring the error to let current session timeout.');
+    });
+  }
+}
+
+class GroupMembership {
+  final String memberId;
+  final String leaderId;
+  final MemberAssignment assignment;
+  final int generationId;
+  final String groupProtocol;
+
+  GroupMembership(this.memberId, this.leaderId, this.assignment,
+      this.generationId, this.groupProtocol);
+
+  bool get isLeader => leaderId == memberId;
 }

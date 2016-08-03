@@ -55,6 +55,11 @@ class GroupCoordinatorResponse {
     var host = reader.readString();
     var port = reader.readInt32();
 
-    return new GroupCoordinatorResponse(errorCode, id, host, port);
+    var response = new GroupCoordinatorResponse(errorCode, id, host, port);
+    if (errorCode == KafkaServerError.NoError_) {
+      return response;
+    } else {
+      throw new KafkaServerError.fromCode(errorCode, response);
+    }
   }
 }

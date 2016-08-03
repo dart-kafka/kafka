@@ -35,31 +35,30 @@ class OffsetMaster {
       for (var p in partitions) {
         var leader = meta.getTopicMetadata(topic).getPartition(p).leader;
         var host = meta.getBroker(leader);
-        if (!requests.containsKey(host)) {
-          requests[host] = new OffsetRequest(leader);
-        }
+        requests.putIfAbsent(host, () => new OffsetRequest(leader));
         requests[host].addTopicPartition(topic, p, time, 1);
       }
     }
 
-    var offsets = new List<TopicOffset>();
-    for (var host in requests.keys) {
-      var request = requests[host];
-      OffsetResponse response = await session.send(host, request);
-      for (var o in response.offsets) {
-        var error = new KafkaServerError(o.errorCode);
-        if (error.isNotLeaderForPartition && refreshMetadata == false) {
-          // Refresh metadata and try again.
-          return _fetch(topicPartitions, time, refreshMetadata: true);
-        }
-
-        if (error.isError) throw error;
-        offsets
-            .add(new TopicOffset(o.topicName, o.partitionId, o.offsets.first));
+    try {
+      List<Future> futures = [];
+      for (var host in requests.keys) {
+        futures.add(session.send(host, requests[host]));
+      }
+      // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
+      List<OffsetResponse> responses = await Future.wait(futures);
+      var offsets = responses.expand((_) => _.offsets);
+      return offsets
+          .map((_) =>
+              new TopicOffset(_.topicName, _.partitionId, _.offsets.first))
+          .toList();
+    } on NotLeaderForPartitionError {
+      if (!refreshMetadata) {
+        return _fetch(topicPartitions, time, refreshMetadata: true);
+      } else {
+        rethrow;
       }
     }
-
-    return offsets;
   }
 }
 

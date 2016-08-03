@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
+import 'package:logging/logging.dart';
 import 'package:quiver/collection.dart';
 
 import 'common.dart';
@@ -23,3 +24,5 @@ part 'src/fetcher.dart';
 part 'src/offset_master.dart';
 part 'src/producer.dart';
 part 'src/session.dart';
+part 'src/partition_assignor.dart';
+part 'src/high_level_consumer.dart';

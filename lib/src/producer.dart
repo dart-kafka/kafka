@@ -9,6 +9,8 @@ part of kafka;
 /// Requests will be send in parallel and results will be aggregated in
 /// [ProduceResult].
 class Producer {
+  Logger _logger = new Logger('Producer');
+
   /// Instance of [KafkaSession] which is used to send requests to Kafka brokers.
   final KafkaSession session;
 
@@ -52,63 +54,66 @@ class Producer {
     return _produce(messages);
   }
 
-  Future<ProduceResult> _produce(List<ProduceEnvelope> messages,
-      {bool refreshMetadata: false,
-      int retryTimes: 3,
-      Duration retryInterval: const Duration(seconds: 1)}) async {
+  Future<ProduceResult> _produce(List<ProduceEnvelope> messages) async {
+    var retriesLeft = 3;
+    Duration delay;
+    ProduceResult result;
+    var refreshMetadata = false;
+
     var topicNames = new Set<String>.from(messages.map((_) => _.topicName));
-    var meta =
-        await session.getMetadata(topicNames, invalidateCache: refreshMetadata);
+    ListMultimap<Broker, ProduceEnvelope> messagesByBroker;
+    while (retriesLeft > 0) {
+      try {
+        if (delay is Duration) {
+          await new Future.delayed(delay, () => null);
+        }
+        if (messagesByBroker == null || refreshMetadata) {
+          var meta = await session.getMetadata(topicNames,
+              invalidateCache: refreshMetadata);
 
-    var byBroker = new ListMultimap<Broker, ProduceEnvelope>.fromIterable(
-        messages, key: (ProduceEnvelope _) {
-      var leaderId =
-          meta.getTopicMetadata(_.topicName).getPartition(_.partitionId).leader;
-      return meta.getBroker(leaderId);
-    });
-    kafkaLogger.fine('Producer: sending ProduceRequests');
+          messagesByBroker =
+              new ListMultimap<Broker, ProduceEnvelope>.fromIterable(messages,
+                  key: (ProduceEnvelope _) {
+            var leaderId = meta
+                .getTopicMetadata(_.topicName)
+                .getPartition(_.partitionId)
+                .leader;
+            return meta.getBroker(leaderId);
+          });
+        }
+        _logger
+            .fine('Sending ${messagesByBroker.keys.length} ProduceRequest(s).');
 
-    Iterable<Future> futures = new List<Future>.from(byBroker.keys.map(
-        (broker) => session.send(broker,
-            new ProduceRequest(requiredAcks, timeout, byBroker[broker]))));
+        Iterable<Future> responseFutures = new List<Future>.from(
+            messagesByBroker.keys.map((broker) => session.send(
+                broker,
+                new ProduceRequest(
+                    requiredAcks, timeout, messagesByBroker[broker]))));
 
-    var result = await Future.wait(futures).then((responses) =>
-        new ProduceResult.fromResponses(
-            new List<ProduceResponse>.from(responses)));
-
-    if (!result.hasErrors) return result;
-    if (retryTimes <= 0) return result;
-
-    if (result.hasRetriableErrors) {
-      kafkaLogger.warning(
-          'Producer: server returned errors which can be retried. All returned errors are: ${result.errors}');
-      kafkaLogger.info(
-          'Producer: will retry after ${retryInterval.inSeconds} seconds.');
-      var retriesLeft = retryTimes - 1;
-      var newInterval = new Duration(seconds: retryInterval.inSeconds * 2);
-      return new Future<ProduceResult>.delayed(
-          retryInterval,
-          () => _produce(messages,
-              refreshMetadata: true,
-              retryTimes: retriesLeft,
-              retryInterval: newInterval));
-    } else if (result.hasErrors) {
-      throw new ProduceError(result);
-    } else {
-      return result;
+        // responseFutures
+        result = await Future.wait(responseFutures).then((responses) =>
+            new ProduceResult.fromResponses(
+                new List<ProduceResponse>.from(responses)));
+        break;
+      } catch (error) {
+        // Handle "retriable" errors
+        if (error is LeaderNotAvailableError ||
+            error is NotLeaderForPartitionError ||
+            error is RequestTimedOutError ||
+            error is NotEnoughReplicasError ||
+            error is NotEnoughReplicasAfterAppendError) {
+          retriesLeft--;
+          refreshMetadata = true;
+          delay = (delay == null)
+              ? new Duration(seconds: 1)
+              : new Duration(seconds: delay.inSeconds * 2);
+        } else {
+          rethrow;
+        }
+      }
     }
+    return result;
   }
-}
-
-/// Exception thrown in case when server returned errors in response to
-/// `Producer.produce()`.
-class ProduceError implements Exception {
-  final ProduceResult result;
-
-  ProduceError(this.result);
-
-  @override
-  toString() => 'ProduceError: ${result.errors}';
 }
 
 /// Result of producing messages with [Producer].
@@ -116,45 +121,20 @@ class ProduceResult {
   /// List of actual ProduceResponse objects returned by the server.
   final List<ProduceResponse> responses;
 
-  /// Indicates whether any of server responses contain errors.
-  final bool hasErrors;
-
-  /// Collection of all unique errors returned by the server.
-  final Iterable<KafkaServerError> errors;
-
   /// Offsets for latest messages for each topic-partition assigned by the server.
   final Map<String, Map<int, int>> offsets;
 
-  ProduceResult._(this.responses, Set<KafkaServerError> errors, this.offsets)
-      : hasErrors = errors.isNotEmpty,
-        errors = new UnmodifiableListView(errors);
+  ProduceResult._(this.responses, this.offsets);
 
   factory ProduceResult.fromResponses(Iterable<ProduceResponse> responses) {
-    var errors = new Set<KafkaServerError>();
     var offsets = new Map<String, Map<int, int>>();
     for (var r in responses) {
-      var er = r.results
-          .where((_) => _.errorCode != KafkaServerError.NoError)
-          .map((result) => new KafkaServerError(result.errorCode));
-      errors.addAll(new Set<KafkaServerError>.from(er));
       r.results.forEach((result) {
         offsets.putIfAbsent(result.topicName, () => new Map());
         offsets[result.topicName][result.partitionId] = result.offset;
       });
     }
 
-    return new ProduceResult._(responses, errors, offsets);
-  }
-
-  /// Returns `true` if this result contains server error with specified [code].
-  bool hasError(int code) => errors.contains(new KafkaServerError(code));
-
-  /// Returns `true` if at least one server error in this result can be retried.
-  bool get hasRetriableErrors {
-    return hasError(KafkaServerError.LeaderNotAvailable) ||
-        hasError(KafkaServerError.NotLeaderForPartition) ||
-        hasError(KafkaServerError.RequestTimedOut) ||
-        hasError(KafkaServerError.NotEnoughReplicasCode) ||
-        hasError(KafkaServerError.NotEnoughReplicasAfterAppendCode);
+    return new ProduceResult._(responses, offsets);
   }
 }

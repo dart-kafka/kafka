@@ -1,20 +1,5 @@
 part of kafka;
 
-/// Determines behavior of [Consumer] when it receives `OffsetOutOfRange` API
-/// error.
-enum OffsetOutOfRangeBehavior {
-  /// Consumer will throw [KafkaServerError] with error code `1`.
-  throwError,
-
-  /// Consumer will reset it's offsets to the earliest available for particular
-  /// topic-partition.
-  resetToEarliest,
-
-  /// Consumer will reset it's offsets to the latest available for particular
-  /// topic-partition.
-  resetToLatest
-}
-
 /// High-level Kafka consumer class.
 ///
 /// Provides convenience layer on top of Kafka's low-level APIs.
@@ -36,17 +21,6 @@ class Consumer {
   /// to give a response.
   final int minBytes;
 
-  /// Determines this consumer's strategy of handling `OffsetOutOfRange` API
-  /// errors.
-  ///
-  /// Default value is `resetToEarliest` which will automatically reset offset
-  /// of ConsumerGroup for particular topic-partition to the earliest offset
-  /// available.
-  ///
-  /// See [OffsetOutOfRangeBehavior] for details on each value.
-  OffsetOutOfRangeBehavior onOffsetOutOfRange =
-      OffsetOutOfRangeBehavior.resetToEarliest;
-
   /// Creates new consumer identified by [consumerGroup].
   Consumer(this.session, this.consumerGroup, this.topicPartitions,
       this.maxWaitTime, this.minBytes);
@@ -67,19 +41,20 @@ class Consumer {
       var remaining = workers.length;
       var futures = workers.map((w) => w.run(controller)).toList();
       futures.forEach((Future f) {
-        f.then((_) {
+        f.catchError((error) {
+          controller.addError(error);
+        }).whenComplete(() {
           remaining--;
           if (remaining == 0) {
             kafkaLogger
                 ?.info('Consumer: All workers are done. Closing stream.');
             controller.close();
           }
-        }, onError: (error, stackTrace) {
-          controller.addError(error, stackTrace);
         });
       });
-    }, onError: (error, stackTrace) {
-      controller.addError(error, stackTrace);
+    }, onError: (error) {
+      controller.addError(error);
+      controller.close();
     });
 
     return controller.stream;
@@ -151,7 +126,6 @@ class Consumer {
       var worker = new _ConsumerWorker(
           session, host, topics, maxWaitTime, minBytes,
           group: consumerGroup);
-      worker.onOffsetOutOfRange = onOffsetOutOfRange;
       workers.add(worker);
     });
 
@@ -205,9 +179,6 @@ class _ConsumerWorker {
   final int maxWaitTime;
   final int minBytes;
 
-  OffsetOutOfRangeBehavior onOffsetOutOfRange =
-      OffsetOutOfRangeBehavior.resetToEarliest;
-
   _ConsumerWorker(this.session, this.host, this.topicPartitions,
       this.maxWaitTime, this.minBytes,
       {this.group});
@@ -220,12 +191,7 @@ class _ConsumerWorker {
       var request = await _createRequest();
       kafkaLogger?.fine('Consumer: Sending fetch request to ${host}.');
       FetchResponse response = await session.send(host, request);
-      var didReset = await _checkOffsets(response);
-      if (didReset) {
-        kafkaLogger?.warning(
-            'Offsets were reset to ${onOffsetOutOfRange}. Forcing re-fetch.');
-        continue;
-      }
+
       for (var item in response.results) {
         for (var offset in item.messageSet.messages.keys) {
           var message = item.messageSet.messages[offset];
@@ -240,7 +206,7 @@ class _ConsumerWorker {
                 new ConsumerOffset(item.topicName, item.partitionId, offset,
                     result.commitMetadata)
               ];
-              await group.commitOffsets(offsets, -1, '');
+              await group.commitOffsets(offsets);
             } else if (result.status == _ProcessingStatus.cancel) {
               controller.cancel();
               return;
@@ -258,18 +224,12 @@ class _ConsumerWorker {
     while (controller.canAdd) {
       var request = await _createRequest();
       FetchResponse response = await session.send(host, request);
-      var didReset = await _checkOffsets(response);
-      if (didReset) {
-        kafkaLogger?.warning(
-            'Offsets were reset to ${onOffsetOutOfRange}. Forcing re-fetch.');
-        continue;
-      }
 
       for (var batch in responseToBatches(response, maxBatchSize)) {
         if (!controller.add(batch)) return;
         var result = await batch.result;
         if (result.status == _ProcessingStatus.commit) {
-          await group.commitOffsets(batch.offsetsToCommit, -1, '');
+          await group.commitOffsets(batch.offsetsToCommit);
         } else if (result.status == _ProcessingStatus.cancel) {
           controller.cancel();
           return;
@@ -300,37 +260,6 @@ class _ConsumerWorker {
     if (batch is BatchEnvelope && batch.items.isNotEmpty) {
       yield batch;
       batch = null;
-    }
-  }
-
-  Future<bool> _checkOffsets(FetchResponse response) async {
-    var topicsToReset = new Map<String, Set<int>>();
-    for (var result in response.results) {
-      if (result.errorCode == KafkaServerError.OffsetOutOfRange) {
-        kafkaLogger?.warning(
-            'Consumer: received API error 1 for topic ${result.topicName}:${result.partitionId}');
-        if (!topicsToReset.containsKey(result.topicName)) {
-          topicsToReset[result.topicName] = new Set();
-        }
-        topicsToReset[result.topicName].add(result.partitionId);
-        kafkaLogger?.info('Topics to reset: ${topicsToReset}');
-      }
-    }
-
-    if (topicsToReset.isNotEmpty) {
-      switch (onOffsetOutOfRange) {
-        case OffsetOutOfRangeBehavior.throwError:
-          throw new KafkaServerError(1);
-        case OffsetOutOfRangeBehavior.resetToEarliest:
-          await group.resetOffsetsToEarliest(topicsToReset);
-          break;
-        case OffsetOutOfRangeBehavior.resetToLatest:
-          await group.resetOffsetsToLatest(topicsToReset);
-          break;
-      }
-      return true;
-    } else {
-      return false;
     }
   }
 

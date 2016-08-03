@@ -50,7 +50,7 @@ void main() {
       var topicName = 'testTopic-${date}';
       var response = await _session.getMetadata([topicName].toSet());
       var topic = response.getTopicMetadata(topicName);
-      expect(topic.errorCode, equals(KafkaServerError.NoError));
+      expect(topic.errorCode, equals(KafkaServerError.NoError_));
       expect(topic.partitions, isNotEmpty);
     });
 

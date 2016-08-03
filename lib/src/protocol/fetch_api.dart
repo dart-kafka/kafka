@@ -20,24 +20,21 @@ class FetchRequest extends KafkaRequest {
   /// to give a response.
   final int minBytes;
 
-  Map<String, List<_FetchPartitionInfo>> _topics = new Map();
+  Map<String, List<FetchPartitionInfo>> topics = new Map();
 
   /// Creates new instance of FetchRequest.
   FetchRequest(this.maxWaitTime, this.minBytes) : super();
 
   @override
-  toString() => 'FetchRequest(${maxWaitTime}, ${minBytes}, ${_topics})';
+  toString() => 'FetchRequest(${maxWaitTime}, ${minBytes}, ${topics})';
 
   /// Adds [topicName] with [paritionId] to this FetchRequest. [fetchOffset]
   /// defines the offset to begin this fetch from.
   void add(String topicName, int partitionId, int fetchOffset,
       [int maxBytes = 65536]) {
-    //
-    if (!_topics.containsKey(topicName)) {
-      _topics[topicName] = new List();
-    }
-    _topics[topicName]
-        .add(new _FetchPartitionInfo(partitionId, fetchOffset, maxBytes));
+    topics.putIfAbsent(topicName, () => new List());
+    topics[topicName]
+        .add(new FetchPartitionInfo(partitionId, fetchOffset, maxBytes));
   }
 
   @override
@@ -49,8 +46,8 @@ class FetchRequest extends KafkaRequest {
     builder.addInt32(maxWaitTime);
     builder.addInt32(minBytes);
 
-    builder.addInt32(_topics.length);
-    _topics.forEach((topicName, partitions) {
+    builder.addInt32(topics.length);
+    topics.forEach((topicName, partitions) {
       builder.addString(topicName);
       builder.addInt32(partitions.length);
       partitions.forEach((p) {
@@ -72,11 +69,11 @@ class FetchRequest extends KafkaRequest {
   }
 }
 
-class _FetchPartitionInfo {
-  int partitionId;
-  int fetchOffset;
-  int maxBytes;
-  _FetchPartitionInfo(this.partitionId, this.fetchOffset, this.maxBytes);
+class FetchPartitionInfo {
+  final int partitionId;
+  final int fetchOffset;
+  final int maxBytes;
+  FetchPartitionInfo(this.partitionId, this.fetchOffset, this.maxBytes);
 }
 
 /// Kafka FetchResponse.
@@ -84,13 +81,7 @@ class FetchResponse {
   /// List of [FetchResult]s for each topic-partition.
   final List<FetchResult> results;
 
-  /// Indicates if server returned any errors in this response.
-  ///
-  /// Actual errors can be found in the result object for particular
-  /// topic-partition.
-  final bool hasErrors;
-
-  FetchResponse._(this.results, this.hasErrors);
+  FetchResponse(this.results);
 
   /// Creates new instance of FetchResponse from binary data.
   factory FetchResponse.fromBytes(List<int> data) {
@@ -101,7 +92,8 @@ class FetchResponse {
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
     var results = new List<FetchResult>();
-    var hasErrors = false;
+    var firstErrorCode;
+    var erroredTopicPartitions = new List<TopicPartition>();
     while (count > 0) {
       var topicName = reader.readString();
       var partitionCount = reader.readInt32();
@@ -113,7 +105,13 @@ class FetchResponse {
         var data = reader.readRaw(messageSetSize);
         var messageReader = new KafkaBytesReader.fromBytes(data);
         var messageSet = new MessageSet.fromBytes(messageReader);
-        if (errorCode != KafkaServerError.NoError) hasErrors = true;
+        if (errorCode != KafkaServerError.NoError_ && firstErrorCode == null) {
+          firstErrorCode = errorCode;
+        }
+        if (errorCode == KafkaServerError.OffsetOutOfRange) {
+          erroredTopicPartitions
+              .add(new TopicPartition(topicName, partitionId));
+        }
 
         results.add(new FetchResult(topicName, partitionId, errorCode,
             highwaterMarkOffset, messageSet));
@@ -122,7 +120,14 @@ class FetchResponse {
       count--;
     }
 
-    return new FetchResponse._(results, hasErrors);
+    var response = new FetchResponse(results);
+    if (firstErrorCode == null) {
+      return response;
+    } else if (firstErrorCode == KafkaServerError.OffsetOutOfRange) {
+      throw new OffsetOutOfRangeError(response, erroredTopicPartitions);
+    } else {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
   }
 }
 

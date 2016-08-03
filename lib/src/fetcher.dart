@@ -93,7 +93,6 @@ class _FetcherWorker {
     while (controller.canAdd) {
       var request = await _createRequest(offsets);
       FetchResponse response = await session.send(broker, request);
-      _checkResponseForErrors(response);
 
       for (var item in response.results) {
         for (var offset in item.messageSet.messages.keys) {
@@ -139,15 +138,5 @@ class _FetcherWorker {
     }
 
     return request;
-  }
-
-  _checkResponseForErrors(FetchResponse response) {
-    if (!response.hasErrors) return;
-
-    for (var result in response.results) {
-      if (result.errorCode != KafkaServerError.NoError) {
-        throw new KafkaServerError(result.errorCode);
-      }
-    }
   }
 }

@@ -103,12 +103,16 @@ class OffsetResponse {
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
     var offsets = new List<TopicOffsets>();
+    var firstErrorCode;
     while (count > 0) {
       var topicName = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var partitionId = reader.readInt32();
         var errorCode = reader.readInt16();
+        if (errorCode != KafkaServerError.NoError_ && firstErrorCode == null) {
+          firstErrorCode = errorCode;
+        }
         var partitionOffsets = reader.readArray(KafkaType.int64);
         offsets.add(new TopicOffsets._(topicName, partitionId, errorCode,
             partitionOffsets)); // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
@@ -117,7 +121,12 @@ class OffsetResponse {
       count--;
     }
 
-    return new OffsetResponse._(offsets);
+    var response = new OffsetResponse._(offsets);
+    if (firstErrorCode == null) {
+      return response;
+    } else {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
   }
 }
 

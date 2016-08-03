@@ -72,7 +72,7 @@ class ProduceResponse {
   /// List of produce results for each topic-partition.
   final List<TopicProduceResult> results;
 
-  ProduceResponse._(this.results);
+  ProduceResponse(this.results);
 
   /// Creates response from the provided bytes [data].
   factory ProduceResponse.fromBytes(List<int> data) {
@@ -83,20 +83,29 @@ class ProduceResponse {
     reader.readInt32(); // correlationId
     var results = new List<TopicProduceResult>();
     var topicCount = reader.readInt32();
+    var firstErrorCode;
     while (topicCount > 0) {
       var topicName = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var partitionId = reader.readInt32();
         var errorCode = reader.readInt16();
+        if (errorCode != KafkaServerError.NoError_ && firstErrorCode == null) {
+          firstErrorCode = errorCode;
+        }
         var offset = reader.readInt64();
-        results.add(new TopicProduceResult._(
-            topicName, partitionId, errorCode, offset));
+        results.add(
+            new TopicProduceResult(topicName, partitionId, errorCode, offset));
         partitionCount--;
       }
       topicCount--;
     }
-    return new ProduceResponse._(results);
+    var response = new ProduceResponse(results);
+    if (firstErrorCode == null) {
+      return response;
+    } else {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
   }
 }
 
@@ -115,7 +124,7 @@ class TopicProduceResult {
   /// Offset of the first message.
   final int offset;
 
-  TopicProduceResult._(
+  TopicProduceResult(
       this.topicName, this.partitionId, this.errorCode, this.offset);
 
   @override

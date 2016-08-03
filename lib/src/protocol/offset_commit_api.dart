@@ -6,13 +6,13 @@ class OffsetCommitRequest extends KafkaRequest {
   final int apiKey = 8;
 
   /// API version of [OffsetCommitRequest].
-  final int apiVersion = 1;
+  final int apiVersion = 2;
 
   /// Name of the consumer group.
   final String consumerGroup;
 
   /// Generation ID of the consumer group.
-  final int consumerGroupGenerationId;
+  final int generationId;
 
   /// ID of the consumer.
   final String consumerId;
@@ -26,8 +26,8 @@ class OffsetCommitRequest extends KafkaRequest {
   /// Creates new instance of [OffsetCommitRequest].
   ///
   /// [host] must be current coordinator broker for [consumerGroup].
-  OffsetCommitRequest(this.consumerGroup, this.offsets,
-      this.consumerGroupGenerationId, this.consumerId, this.retentionTime)
+  OffsetCommitRequest(this.consumerGroup, this.offsets, this.generationId,
+      this.consumerId, this.retentionTime)
       : super();
 
   @override
@@ -39,10 +39,12 @@ class OffsetCommitRequest extends KafkaRequest {
     // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
     Map<String, List<ConsumerOffset>> groupedByTopic = groupBy(
         offsets, (o) => o.topicName); // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
-    var timestamp = new DateTime.now().millisecondsSinceEpoch;
+    // var timestamp = new DateTime.now().millisecondsSinceEpoch;
+
     builder.addString(consumerGroup);
-    builder.addInt32(consumerGroupGenerationId);
+    builder.addInt32(generationId);
     builder.addString(consumerId);
+    builder.addInt64(retentionTime);
     builder.addInt32(groupedByTopic.length);
     groupedByTopic.forEach((topicName, partitionOffsets) {
       builder.addString(topicName);
@@ -50,7 +52,7 @@ class OffsetCommitRequest extends KafkaRequest {
       partitionOffsets.forEach((p) {
         builder.addInt32(p.partitionId);
         builder.addInt64(p.offset);
-        builder.addInt64(timestamp);
+        // builder.addInt64(timestamp);
         builder.addString(p.metadata);
       });
     });
@@ -71,7 +73,7 @@ class OffsetCommitRequest extends KafkaRequest {
 class OffsetCommitResponse {
   final List<OffsetCommitResult> offsets;
 
-  OffsetCommitResponse._(this.offsets);
+  OffsetCommitResponse(this.offsets);
 
   factory OffsetCommitResponse.fromData(List<int> data) {
     List<OffsetCommitResult> offsets = [];
@@ -81,19 +83,28 @@ class OffsetCommitResponse {
 
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
+    var firstErrorCode;
     while (count > 0) {
       var topicName = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var partitionId = reader.readInt32();
         var errorCode = reader.readInt16();
+        if (errorCode != KafkaServerError.NoError_ && firstErrorCode == null) {
+          firstErrorCode = errorCode;
+        }
         offsets.add(new OffsetCommitResult(topicName, partitionId, errorCode));
         partitionCount--;
       }
       count--;
     }
 
-    return new OffsetCommitResponse._(offsets);
+    var response = new OffsetCommitResponse(offsets);
+    if (firstErrorCode == null) {
+      return response;
+    } else {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
   }
 }
 

@@ -55,4 +55,7 @@ class TopicPartition {
 
   @override
   int get hashCode => (topicName + partitionId.toString()).hashCode;
+
+  @override
+  String toString() => "TopicPartition($topicName, $partitionId)";
 }

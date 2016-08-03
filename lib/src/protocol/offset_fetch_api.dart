@@ -1,6 +1,10 @@
 part of kafka.protocol;
 
 /// Kafka OffsetFetchRequest.
+///
+/// Throws `GroupLoadInProgressError`, `NotCoordinatorForGroupError`,
+/// `IllegalGenerationError`, `UnknownMemberIdError`, `TopicAuthorizationFailedError`,
+/// `GroupAuthorizationFailedError`.
 class OffsetFetchRequest extends KafkaRequest {
   /// API key of [OffsetFetchRequest]
   final int apiKey = 9;
@@ -59,6 +63,7 @@ class OffsetFetchResponse {
 
     reader.readInt32(); // correlationId
     var count = reader.readInt32();
+    var firstErrorCode;
     while (count > 0) {
       var topicName = reader.readString();
       var partitionCount = reader.readInt32();
@@ -67,6 +72,9 @@ class OffsetFetchResponse {
         var offset = reader.readInt64();
         var metadata = reader.readString();
         var errorCode = reader.readInt16();
+        if (errorCode != KafkaServerError.NoError_ && firstErrorCode == null) {
+          firstErrorCode = errorCode;
+        }
         offsets.add(
             new ConsumerOffset(topicName, id, offset, metadata, errorCode));
         partitionCount--;
@@ -74,6 +82,11 @@ class OffsetFetchResponse {
       count--;
     }
 
-    return new OffsetFetchResponse._(offsets);
+    var response = new OffsetFetchResponse._(offsets);
+    if (firstErrorCode is int) {
+      throw new KafkaServerError.fromCode(firstErrorCode, response);
+    }
+
+    return response;
   }
 }

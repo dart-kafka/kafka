@@ -20,6 +20,8 @@ class ContactPoint {
 /// ContactPoint since this will enable "failover" in case one of the instances
 /// is temporarily unavailable.
 class KafkaSession {
+  Logger _logger = new Logger('kafka.KafkaSession');
+
   /// List of Kafka brokers which are used as initial contact points.
   final Queue<ContactPoint> contactPoints;
 
@@ -101,30 +103,18 @@ class KafkaSession {
   Future<MetadataResponse> _sendMetadataRequest(
       Set<String> topics, String host, int port) async {
     var request = new MetadataRequest(topics);
-    MetadataResponse response = await _send(host, port, request);
-
-    var topicWithError = response.topics.firstWhere(
-        (_) => _.errorCode != KafkaServerError.NoError,
-        orElse: () => null);
-
-    if (topicWithError is TopicMetadata) {
-      var retries = 1;
-      var error = new KafkaServerError(topicWithError.errorCode);
-      while (error.isLeaderNotAvailable && retries < 5) {
-        var future = new Future.delayed(
-            new Duration(seconds: retries), () => _send(host, port, request));
-
-        response = await future;
-        topicWithError = response.topics.firstWhere(
-            (_) => _.errorCode != KafkaServerError.NoError,
-            orElse: () => null);
-        var errorCode =
-            (topicWithError is TopicMetadata) ? topicWithError.errorCode : 0;
-        error = new KafkaServerError(errorCode);
+    var retries = 1;
+    var responseFuture = _send(host, port, request);
+    MetadataResponse response;
+    while (retries < 5) {
+      try {
+        response = await responseFuture;
+        break;
+      } on LeaderNotAvailableError {
         retries++;
+        responseFuture = new Future.delayed(
+            new Duration(seconds: 1), () => _send(host, port, request));
       }
-
-      if (error.isError) throw error;
     }
 
     return response;
@@ -144,21 +134,19 @@ class KafkaSession {
     // TODO: rotate default hosts.
     var contactPoint = _getCurrentContactPoint();
     var request = new GroupCoordinatorRequest(consumerGroup);
-
-    GroupCoordinatorResponse response =
-        await _send(contactPoint.host, contactPoint.port, request);
     var retries = 1;
-    var error = new KafkaServerError(response.errorCode);
-    while (error.isConsumerCoordinatorNotAvailable && retries < 5) {
-      var future = new Future.delayed(new Duration(seconds: retries),
-          () => _send(contactPoint.host, contactPoint.port, request));
-
-      response = await future;
-      error = new KafkaServerError(response.errorCode);
-      retries++;
+    var responseFuture = _send(contactPoint.host, contactPoint.port, request);
+    GroupCoordinatorResponse response;
+    while (retries < 5) {
+      try {
+        response = await responseFuture;
+        break;
+      } on ConsumerCoordinatorNotAvailableError {
+        responseFuture = new Future.delayed(new Duration(seconds: retries),
+            () => _send(contactPoint.host, contactPoint.port, request));
+        retries++;
+      }
     }
-
-    if (error.isError) throw error;
 
     return response;
   }
@@ -169,7 +157,11 @@ class KafkaSession {
   }
 
   Future<dynamic> _send(String host, int port, KafkaRequest request) async {
-    kafkaLogger.finer('Session: Sending request ${request} to ${host}:${port}');
+    // TODO: implement request timeouts on the client side.
+
+    _logger.finest(
+        'Session: Sending request ${request} to ${host}:${port} with correlation ID ${request.correlationId}');
+
     var socket = await _getSocket(host, port);
     Completer completer = new Completer();
     _inflightRequests[request] = completer;
@@ -224,14 +216,20 @@ class KafkaSession {
       var request = _inflightRequests.keys
           .firstWhere((r) => r.correlationId == correlationId);
       var completer = _inflightRequests[request];
-      var response = request.createResponse(buffer);
-      _inflightRequests.remove(request);
-      buffer.clear();
-      _sizes[hostPort] = -1;
-
-      completer.complete(response);
-      if (extra is List && extra.isNotEmpty) {
-        _handleData(hostPort, extra);
+      _logger.finest(
+          'Received response to ${request} with correlation ID ${request.correlationId}');
+      try {
+        var response = request.createResponse(buffer);
+        completer.complete(response);
+      } catch (error) {
+        completer.completeError(error);
+      } finally {
+        _inflightRequests.remove(request);
+        _sizes[hostPort] = -1;
+        buffer.clear();
+        if (extra is List && extra.isNotEmpty) {
+          _handleData(hostPort, extra);
+        }
       }
     }
   }

@@ -5,6 +5,9 @@ import 'package:mockito/mockito.dart';
 import 'package:kafka/kafka.dart';
 import 'package:kafka/protocol.dart';
 import 'setup.dart';
+import 'dart:async';
+
+class KafkaSessionMock extends Mock implements KafkaSession {}
 
 void main() {
   group('ConsumerGroup:', () {
@@ -19,10 +22,12 @@ void main() {
       var brokersMetadata = await session.getMetadata([_topicName].toSet());
 
       var metadata = await session.getConsumerMetadata('testGroup');
+      await session.close();
       _coordinator = metadata.coordinator;
       _badCoordinator =
           brokersMetadata.brokers.firstWhere((b) => b.id != _coordinator.id);
-      _session = spy(new KafkaSessionMock(), session);
+      _session = spy(new KafkaSessionMock(),
+          new KafkaSession([new ContactPoint(host, 9092)]));
     });
 
     tearDown(() async {
@@ -43,8 +48,8 @@ void main() {
     test('it tries to refresh coordinator host 3 times on fetchOffsets',
         () async {
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new GroupCoordinatorResponse(0, _badCoordinator.id,
-              _badCoordinator.host, _badCoordinator.port));
+          new Future.value(new GroupCoordinatorResponse(0, _badCoordinator.id,
+              _badCoordinator.host, _badCoordinator.port)));
 
       var group = new ConsumerGroup(_session, 'testGroup');
       // Can't use expect(throws) here since it's async, so `verify` check below
@@ -70,7 +75,11 @@ void main() {
       ];
       when(_session.send(argThat(new isInstanceOf<Broker>()),
               argThat(new isInstanceOf<OffsetFetchRequest>())))
-          .thenReturn(new OffsetFetchResponse.fromOffsets(badOffsets));
+          .thenAnswer((invocation) {
+        throw new KafkaServerError.fromCode(
+            KafkaServerError.OffsetsLoadInProgress,
+            new OffsetFetchResponse.fromOffsets(badOffsets));
+      });
 
       var group = new ConsumerGroup(_session, 'testGroup');
       // Can't use expect(throws) here since it's async, so `verify` check below
@@ -96,14 +105,14 @@ void main() {
     test('it tries to refresh coordinator host 3 times on commitOffsets',
         () async {
       when(_session.getConsumerMetadata('testGroup')).thenReturn(
-          new GroupCoordinatorResponse(0, _badCoordinator.id,
-              _badCoordinator.host, _badCoordinator.port));
+          new Future.value(new GroupCoordinatorResponse(0, _badCoordinator.id,
+              _badCoordinator.host, _badCoordinator.port)));
 
       var group = new ConsumerGroup(_session, 'testGroup');
       var offsets = [new ConsumerOffset(_topicName, 0, 3, '')];
 
       try {
-        await group.commitOffsets(offsets, -1, '');
+        await group.commitOffsets(offsets);
       } catch (e) {
         expect(e, new isInstanceOf<KafkaServerError>());
         expect(e.code, equals(16));
@@ -133,7 +142,18 @@ void main() {
         expect(o.offset, equals(earliest.offset - 1));
       }
     });
+
+    test('members can join consumer group', () async {
+      var group = new ConsumerGroup(_session, 'newGroup');
+      var membership = await group.join(15000, '', 'consumer', [
+        new GroupProtocol.roundrobin(0, ['foo'].toSet())
+      ]);
+      expect(membership, new isInstanceOf<GroupMembership>());
+      expect(membership.memberId, isNotEmpty);
+      expect(membership.memberId, membership.leaderId);
+      expect(membership.groupProtocol, 'roundrobin');
+      expect(membership.assignment.partitionAssignment,
+          containsPair('foo', [0, 1, 2]));
+    });
   });
 }
-
-class KafkaSessionMock extends Mock implements KafkaSession {}

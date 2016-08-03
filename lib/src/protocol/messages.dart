@@ -11,12 +11,12 @@ class MessageSet {
   /// Number of messages in this set.
   int get length => _messages.length;
 
-  MessageSet._(this._messages);
+  MessageSet(this._messages);
 
   /// Builds new message set for publishing.
   factory MessageSet.build(ProduceEnvelope envelope) {
     if (envelope.compression == KafkaCompression.none) {
-      return new MessageSet._(envelope.messages.asMap());
+      return new MessageSet(envelope.messages.asMap());
     } else {
       if (envelope.compression == KafkaCompression.snappy)
         throw new ArgumentError(
@@ -29,7 +29,7 @@ class MessageSet {
       var value = codec.encode(innerMessageSet.toBytes());
       var attrs = new MessageAttributes(KafkaCompression.gzip);
 
-      return new MessageSet._({0: new Message(value, attributes: attrs)});
+      return new MessageSet({0: new Message(value, attributes: attrs)});
     }
   }
 
@@ -78,7 +78,7 @@ class MessageSet {
       }
     }
 
-    return new MessageSet._(messages);
+    return new MessageSet(messages);
   }
 
   static Message _readMessage(KafkaBytesReader reader) {

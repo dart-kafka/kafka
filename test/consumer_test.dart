@@ -21,10 +21,6 @@ void main() {
         new ProduceEnvelope(_topicName, 1, [new Message('msg2'.codeUnits)]),
         new ProduceEnvelope(_topicName, 2, [new Message('msg3'.codeUnits)]),
       ]);
-      if (result.hasErrors) {
-        throw new StateError(
-            'Consumer test: setUp failed to produce messages.');
-      }
       _expectedOffsets = result.offsets[_topicName];
     });
 
