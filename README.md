@@ -8,7 +8,17 @@ Kafka client library written in Dart.
 
 ### Current status
 
-This library is a work-in-progress and has not been used in production yet.
+This library is a work-in-progress.
+Currently all the updates are happening in `kafka-0.10` branch:
+
+* Support for Kafka 0.10 APIs including Group Membership API
+* Implementation of `HighLevelConsumer` capable of automatic load-balancing
+  and re-distribution of topics/partitions in case of failures.
+* Better testing framework.
+* Isolate-based distribution of consumer group members for better utilization
+  of system resources.
+
+Master branch currently targets 0.8.x versions of Kafka server.
 
 ### Things that are not supported yet.
 
@@ -24,7 +34,7 @@ For now you can use git dependency in your `pubspec.yaml`:
 ```yaml
 dependencies:
   kafka:
-    git: https://github.com/pulyaevskiy/dart-kafka.git
+    git: https://github.com/dart-drivers/kafka.git
 ```
 
 And then import it as usual:
