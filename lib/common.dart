@@ -3,13 +3,9 @@ library kafka.common;
 
 import 'package:logging/logging.dart';
 
-part 'src/common/errors.dart';
 part 'src/common/messages.dart';
 part 'src/common/metadata.dart';
 part 'src/common/offsets.dart';
-
-/// String identifier used to pass to Kafka server in API calls.
-const String dartKafkaId = 'dart_kafka';
 
 /// Logger for this library.
 ///

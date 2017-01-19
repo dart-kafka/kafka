@@ -6,3 +6,4 @@ packages
 .packages
 notes.md
 coverage/
+.atom/

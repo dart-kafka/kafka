@@ -41,11 +41,11 @@ class OffsetMaster {
     }
 
     try {
-      List<Future> futures = [];
+      List<Future<OffsetResponse>> futures = [];
       for (var host in requests.keys) {
         futures.add(session.send(host, requests[host]));
       }
-      // ignore: STRONG_MODE_DOWN_CAST_COMPOSITE
+
       List<OffsetResponse> responses = await Future.wait(futures);
       var offsets = responses.expand((_) => _.offsets);
       return offsets

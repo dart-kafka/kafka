@@ -31,13 +31,15 @@ class MessageAttributes {
   }
 
   int _compressionToInt() {
-    switch (this.compression) {
+    switch (compression) {
       case KafkaCompression.none:
         return 0;
       case KafkaCompression.gzip:
         return 1;
       case KafkaCompression.snappy:
         return 2;
+      default:
+        throw new ArgumentError('Invalid compression value $compression.');
     }
   }
 }

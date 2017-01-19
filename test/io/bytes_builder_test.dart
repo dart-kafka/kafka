@@ -3,7 +3,7 @@ library kafka.protocol.test.bytes_builder;
 import 'dart:async';
 import 'dart:convert';
 import 'package:test/test.dart';
-import 'package:kafka/protocol.dart';
+import 'package:kafka/src/io/bytes_builder.dart';
 
 void main() {
   group('BytesBuilder:', () {
@@ -75,11 +75,9 @@ void main() {
     });
 
     test('it does not support objects in array values', () {
-      expect(
-          new Future(() {
-            _builder.addArray(['foo'], KafkaType.object);
-          }),
-          throwsStateError);
+      expect(new Future(() {
+        _builder.addArray(['foo'], KafkaType.object);
+      }), throwsStateError);
     });
 
     test('it supports null for bytes type', () {

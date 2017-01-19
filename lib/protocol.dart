@@ -5,15 +5,14 @@
 library kafka.protocol;
 
 import 'dart:collection';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'common.dart';
+import 'src/io/bytes_reader.dart';
+import 'src/io/bytes_builder.dart';
+import 'errors.dart';
 
-part 'src/protocol/bytes_builder.dart';
-part 'src/protocol/bytes_reader.dart';
 part 'src/protocol/common.dart';
 part 'src/protocol/consumer_metadata_api.dart';
 part 'src/protocol/fetch_api.dart';

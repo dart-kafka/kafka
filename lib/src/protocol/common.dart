@@ -1,6 +1,6 @@
 part of kafka.protocol;
 
-/// Base interface for all Kafka API requests.
+/// Base class for all Kafka API requests.
 abstract class KafkaRequest {
   static final _random = new Random();
 

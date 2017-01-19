@@ -1,4 +1,4 @@
-part of kafka.common;
+import 'common.dart';
 
 /// Used to indicate there is a mismatch in CRC sum of a message (message is
 /// corrupted).

@@ -9,7 +9,7 @@ class GroupCoordinatorRequest extends KafkaRequest {
   /// Creates new instance of ConsumerMetadataRequest.
   GroupCoordinatorRequest(this.consumerGroup) : super();
 
-  /// Converts this request into byte list
+  /// Converts this request into byte list according to Kafka protocol
   @override
   List<int> toBytes() {
     var builder = new KafkaBytesBuilder.withRequestHeader(

@@ -1,7 +1,8 @@
 library kafka.protocol.test.bytes_reader;
 
 import 'package:test/test.dart';
-import 'package:kafka/protocol.dart';
+import 'package:kafka/src/io/bytes_reader.dart';
+import 'package:kafka/src/io/bytes_builder.dart';
 
 void main() {
   group('BytesReader:', () {

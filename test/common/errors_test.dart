@@ -1,7 +1,7 @@
 library kafka.common.errors.test;
 
 import 'package:test/test.dart';
-import 'package:kafka/common.dart';
+import 'package:kafka/errors.dart';
 
 void main() {
   group('KafkaServerError:', () {

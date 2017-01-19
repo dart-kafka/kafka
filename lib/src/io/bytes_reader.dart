@@ -1,4 +1,6 @@
-part of kafka.protocol;
+import 'dart:convert';
+import 'dart:typed_data';
+import 'bytes_builder.dart';
 
 /// Provides convenience methods read Kafka specific data types from a stream of bytes.
 class KafkaBytesReader {
@@ -78,8 +80,29 @@ class KafkaBytesReader {
     }
   }
 
+  List<int> readInt8Array() => _readArray(readInt8);
+  List<int> readInt16Array() => _readArray(readInt16);
+  List<int> readInt32Array() => _readArray(readInt32);
+  List<int> readInt64Array() => _readArray(readInt64);
+  List<String> readStringArray() => _readArray(readString);
+  List<List<int>> readBytesArray() => _readArray(readBytes);
+  List/*<T>*/ readObjectArray/*<T>*/(
+      dynamic/*=T*/ readFunc(KafkaBytesReader reader)) {
+    return _readArray/*<T>*/(() => readFunc(this));
+  }
+
+  List/*<T>*/ _readArray/*<T>*/(dynamic/*=T*/ reader()) {
+    var length = readInt32();
+    var items = new List<T>();
+    for (var i = 0; i < length; i++) {
+      items.add(reader());
+    }
+    return items;
+  }
+
+  @deprecated
   List readArray(KafkaType itemType,
-      [dynamic objectReadHandler(KafkaBytesReader reader)]) {
+      [objectReadHandler(KafkaBytesReader reader)]) {
     var length = readInt32();
     var items = new List();
     for (var i = 0; i < length; i++) {

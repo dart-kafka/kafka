@@ -1,4 +1,6 @@
-part of kafka.protocol;
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 enum KafkaType { int8, int16, int32, int64, string, bytes, object }
 
@@ -20,7 +22,7 @@ class KafkaBytesBuilder {
     addInt16(apiKey);
     addInt16(apiVersion);
     addInt32(correlationId);
-    addString(dartKafkaId);
+    addString('dart_kafka-0.10');
   }
 
   /// Adds 8 bit integer to this buffer.

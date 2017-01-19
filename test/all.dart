@@ -7,15 +7,15 @@ import 'consumer_test.dart' as consumer_test;
 import 'fetcher_test.dart' as fetcher_test;
 import 'partition_assignor_test.dart' as partition_assignor_test;
 import 'producer_test.dart' as producer_test;
-import 'protocol/bytes_builder_test.dart' as bytes_builder_test;
-import 'protocol/bytes_reader_test.dart' as bytes_reader_test;
+import 'io/bytes_builder_test.dart' as bytes_builder_test;
+import 'io/bytes_reader_test.dart' as bytes_reader_test;
 import 'protocol/fetch_test.dart' as fetch_test;
 import 'protocol/group_membership_test.dart' as group_membership_test;
 import 'protocol/offset_commit_test.dart' as offset_commit_test;
 import 'protocol/offset_fetch_test.dart' as offset_fetch_test;
 import 'protocol/offset_test.dart' as offset_test;
 import 'protocol/produce_test.dart' as produce_test;
-import 'session_test.dart' as session_test;
+import 'ng/metadata_test.dart' as metadata_test;
 import 'util/crc32_test.dart' as crc32_test;
 import 'testing_test.dart' as testing_test;
 
@@ -25,7 +25,7 @@ void main() {
   bytes_builder_test.main();
   bytes_reader_test.main();
   crc32_test.main();
-  session_test.main();
+  metadata_test.main();
   fetch_test.main();
   group_membership_test.main();
   offset_commit_test.main();

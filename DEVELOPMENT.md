@@ -36,8 +36,14 @@ docker build -t kafka tool/kafka-0.10.0.0/
 
 ZK_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' zookeeper)
 
+# or for fish users
+export ZK_IP=(docker inspect --format '{{ .NetworkSettings.IPAddress }}' zookeeper)
+
+# Start Kafka container
 docker run -d --name kafka --publish 9092:9092 --publish 9093:9093 \
   --env KAFKA_ADVERTISED_HOST_NAME=127.0.0.1 \
   --env ZOOKEEPER_IP=$ZK_IP \
   kafka
 ```
+
+Kafka brokers will be available on `127.0.0.1:9092` and `127.0.0.1:9093`.
