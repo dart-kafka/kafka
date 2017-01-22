@@ -1,5 +1,3 @@
-library kafka.test.session;
-
 import 'package:test/test.dart';
 import 'package:kafka/ng.dart';
 
