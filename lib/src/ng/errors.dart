@@ -132,7 +132,7 @@ class KafkaServerError {
   }
 
   @override
-  String toString() => 'KafkaServerError: ${runtimeType}(${code})';
+  String toString() => '${runtimeType}(${code})';
 }
 
 class NoError extends KafkaServerError {

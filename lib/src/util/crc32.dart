@@ -1,5 +1,3 @@
-part of kafka.protocol;
-
 /// CRC32 checksum calculator.
 ///
 // TODO: extract in it's own package (?)

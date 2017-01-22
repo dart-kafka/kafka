@@ -9,9 +9,10 @@ import 'dart:io';
 import 'dart:math';
 
 import 'common.dart';
-import 'src/io/bytes_reader.dart';
-import 'src/io/bytes_builder.dart';
 import 'errors.dart';
+import 'src/io/bytes_builder.dart';
+import 'src/io/bytes_reader.dart';
+import 'src/util/crc32.dart';
 
 part 'src/protocol/common.dart';
 part 'src/protocol/consumer_metadata_api.dart';
@@ -23,4 +24,3 @@ part 'src/protocol/offset_api.dart';
 part 'src/protocol/offset_commit_api.dart';
 part 'src/protocol/offset_fetch_api.dart';
 part 'src/protocol/produce_api.dart';
-part 'src/util/crc32.dart';

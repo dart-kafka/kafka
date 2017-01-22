@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -126,7 +125,6 @@ class KafkaBytesBuilder {
 
   List<int> toBytes() => _builder.toBytes();
 }
-
 
 /// Provides convenience methods read Kafka specific data types from a stream of bytes.
 class KafkaBytesReader {
@@ -272,7 +270,6 @@ class KafkaBytesReader {
   }
 }
 
-
 class PacketStreamTransformer
     implements StreamTransformer<List<int>, List<int>> {
   List<int> _data = new List<int>();
@@ -389,7 +386,10 @@ abstract class ResponseDecoder<T> {
 }
 
 abstract class KRequest<T> {
+  /// Unique numeric key of this API request.
   int get apiKey;
+
+  /// Numeric version of this API request.
   int get apiVersion;
   RequestEncoder<KRequest> get encoder;
   ResponseDecoder<T> get decoder;

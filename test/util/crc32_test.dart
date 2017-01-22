@@ -1,7 +1,5 @@
-library kafka.protocol.crc32.test;
-
 import 'package:test/test.dart';
-import 'package:kafka/protocol.dart';
+import 'package:kafka/src/util/crc32.dart';
 
 void main() {
   group('Crc32:', () {
@@ -37,5 +35,7 @@ Map<List<int>, int> _dataProvider() {
 
 /// Test cases generated using: http://www.lammertbies.nl/comm/info/crc-calculation.html
 Map<List<int>, int> _stringDataProvider() {
-  return {'Lammert'.codeUnits: 0x71FC2734,};
+  return {
+    'Lammert'.codeUnits: 0x71FC2734,
+  };
 }

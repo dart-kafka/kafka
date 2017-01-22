@@ -14,7 +14,6 @@ import 'package:quiver/collection.dart';
 import 'common.dart';
 import 'errors.dart';
 import 'src/io/bytes_reader.dart';
-import 'src/io/bytes_builder.dart';
 import 'protocol.dart';
 
 export 'common.dart' hide groupBy, kafkaLogger;

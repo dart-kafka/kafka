@@ -59,15 +59,6 @@ void main() {
     //   expect(newTopic, same(topic));
     // });
     //
-    // test('it invalidates topic metadata', () async {
-    //   var response = await _session.getMetadata([_topicName].toSet());
-    //   var topic = response.getTopicMetadata(_topicName);
-    //   response = await _session.getMetadata([_topicName].toSet(),
-    //       invalidateCache: true);
-    //   var newTopic = response.getTopicMetadata(_topicName);
-    //   expect(newTopic, isNot(same(topic)));
-    // });
-    //
     // test('it fetches topic metadata for auto-created topics', () async {
     //   var date = new DateTime.now().millisecondsSinceEpoch;
     //   var topicName = 'testTopic-${date}';

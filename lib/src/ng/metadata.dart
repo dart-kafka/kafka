@@ -40,8 +40,8 @@ class KMetadata {
           .then((response) => response.topics);
     }
 
-    return retryAsync(fetch, 5, 500,
-        errorCondition: (err) => err is LeaderNotAvailableError);
+    return retryAsync(fetch, 5, new Duration(milliseconds: 500),
+        test: (err) => err is LeaderNotAvailableError);
   }
 
   Future<List<String>> listTopics() {
@@ -68,7 +68,7 @@ class KMetadata {
           res.coordinatorId, res.coordinatorHost, res.coordinatorPort));
     }
 
-    return retryAsync(fetch, 5, 500,
-        errorCondition: (err) => err is ConsumerCoordinatorNotAvailableError);
+    return retryAsync(fetch, 5, new Duration(milliseconds: 500),
+        test: (err) => err is ConsumerCoordinatorNotAvailableError);
   }
 }

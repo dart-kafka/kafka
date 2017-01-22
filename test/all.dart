@@ -14,7 +14,6 @@ import 'protocol/group_membership_test.dart' as group_membership_test;
 import 'protocol/offset_commit_test.dart' as offset_commit_test;
 import 'protocol/offset_fetch_test.dart' as offset_fetch_test;
 import 'protocol/offset_test.dart' as offset_test;
-import 'protocol/produce_test.dart' as produce_test;
 import 'ng/metadata_test.dart' as metadata_test;
 import 'util/crc32_test.dart' as crc32_test;
 import 'testing_test.dart' as testing_test;
@@ -31,7 +30,6 @@ void main() {
   offset_commit_test.main();
   offset_fetch_test.main();
   offset_test.main();
-  produce_test.main();
   consumer_group_test.main();
   partition_assignor_test.main();
   producer_test.main();
