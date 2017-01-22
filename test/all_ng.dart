@@ -16,18 +16,21 @@
 import 'ng/metadata_test.dart' as metadata_test;
 import 'ng/metadata_api_test.dart' as metadata_api_test;
 import 'ng/consumer_metadata_api_test.dart' as consumer_metadata_api_test;
+import 'ng/produce_api_test.dart' as produce_api_test;
 import 'util/crc32_test.dart' as crc32_test;
 // import 'testing_test.dart' as testing_test;
 
 void main() {
-  // errors_test.main();
-  // messages_test.main();
-  // bytes_builder_test.main();
-  // bytes_reader_test.main();
   crc32_test.main();
   metadata_api_test.main();
   consumer_metadata_api_test.main();
   metadata_test.main();
+  produce_api_test.main();
+
+  // errors_test.main();
+  // messages_test.main();
+  // bytes_builder_test.main();
+  // bytes_reader_test.main();
   // fetch_test.main();
   // group_membership_test.main();
   // offset_commit_test.main();

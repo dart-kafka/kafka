@@ -3,13 +3,11 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('Kafka.NG Metadata API: ', () {
-    KSession session;
-    setUp(() {
-      session = new KSession();
-    });
+    KSession session =
+        new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
 
-    tearDown(() {
-      session.close();
+    tearDownAll(() async {
+      await session.close();
     });
 
     test('we can send metadata requests to Kafka broker', () async {

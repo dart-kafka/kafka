@@ -5,16 +5,11 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('KMetadata:', () {
-    KSession _session;
-    KMetadata _metadata;
-
-    setUp(() async {
-      _session = new KSession();
-      _metadata = new KMetadata(_session, ['127.0.0.1:9092']);
-    });
+    kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
+    KMetadata _metadata = new KMetadata();
 
     tearDown(() async {
-      await _session.close();
+      await kafkaShutdown();
     });
 
     test('it can fetch specific topic metadata', () async {

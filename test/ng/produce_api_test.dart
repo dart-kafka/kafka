@@ -1,19 +1,18 @@
 import 'package:test/test.dart';
 import 'package:kafka/ng.dart';
-import '../setup.dart';
 
 void main() {
   group('Kafka.NG Produce API: ', () {
     String _topicName = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
-    KSession session;
-    KMetadata metadata;
+    KSession session = KAFKA_DEFAULT_SESSION;
+    KMetadata metadata = new KMetadata();
     int partitionId;
 
+    kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
+
     setUp(() async {
-      session = new KSession();
-      metadata = new KMetadata(session, ['127.0.0.1:9092']);
       var data = await metadata.fetchTopics([_topicName]);
 
       partitionId = data.first.partitions.first.partitionId;
@@ -23,7 +22,7 @@ void main() {
     });
 
     tearDown(() async {
-      await session.close();
+      await kafkaShutdown();
     });
 
     test('it publishes messages to Kafka topic', () async {
