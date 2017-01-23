@@ -5,7 +5,7 @@ void main() {
   group('KProducer:', () {
     kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
 
-    tearDown(() async {
+    tearDownAll(() async {
       await kafkaShutdown();
     });
 
