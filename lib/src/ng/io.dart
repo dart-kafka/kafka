@@ -66,37 +66,35 @@ class KafkaBytesBuilder {
     _builder.add(data);
   }
 
-  /// Adds Kafka array to this bytes builder.
-  ///
-  /// Kafka array starts with int32 indicating size of the array followed by
-  /// the array items encoded according to their [KafkaType]
-  void addArray(Iterable items, KafkaType itemType) {
+  void _addArray<T>(List<T> items, addFunc(T item)) {
     addInt32(items.length);
-    for (var item in items) {
-      switch (itemType) {
-        case KafkaType.int8:
-          addInt8(item);
-          break;
-        case KafkaType.int16:
-          addInt16(item);
-          break;
-        case KafkaType.int32:
-          addInt32(item);
-          break;
-        case KafkaType.int64:
-          addInt64(item);
-          break;
-        case KafkaType.string:
-          addString(item);
-          break;
-        case KafkaType.bytes:
-          addBytes(new List<int>.from(item));
-          break;
-        case KafkaType.object:
-          throw new StateError('Objects are not supported yet');
-          break;
-      }
-    }
+    items.forEach((_) {
+      addFunc(_);
+    });
+  }
+
+  void addInt8Array(List<int> items) {
+    _addArray<int>(items, addInt8);
+  }
+
+  void addInt16Array(List<int> items) {
+    _addArray<int>(items, addInt16);
+  }
+
+  void addInt32Array(List<int> items) {
+    _addArray<int>(items, addInt32);
+  }
+
+  void addInt64Array(List<int> items) {
+    _addArray<int>(items, addInt64);
+  }
+
+  void addStringArray(List<String> items) {
+    _addArray<String>(items, addString);
+  }
+
+  void addBytesArray(List<List<int>> items) {
+    _addArray<List<int>>(items, addBytes);
   }
 
   /// Adds value of Kafka-specific Bytes type to this builder.
@@ -210,12 +208,11 @@ class KafkaBytesReader {
   List<int> readInt64Array() => _readArray(readInt64);
   List<String> readStringArray() => _readArray(readString);
   List<List<int>> readBytesArray() => _readArray(readBytes);
-  List/*<T>*/ readObjectArray/*<T>*/(
-      dynamic/*=T*/ readFunc(KafkaBytesReader reader)) {
-    return _readArray/*<T>*/(() => readFunc(this));
+  List<T> readObjectArray<T>(T readFunc(KafkaBytesReader reader)) {
+    return _readArray<T>(() => readFunc(this));
   }
 
-  List/*<T>*/ _readArray/*<T>*/(dynamic/*=T*/ reader()) {
+  List<T> _readArray<T>(T reader()) {
     var length = readInt32();
     var items = new List<T>();
     for (var i = 0; i < length; i++) {
@@ -224,7 +221,7 @@ class KafkaBytesReader {
     return items;
   }
 
-  @deprecated
+  @Deprecated("Use typed alternatives instead.")
   List readArray(KafkaType itemType,
       [objectReadHandler(KafkaBytesReader reader)]) {
     var length = readInt32();

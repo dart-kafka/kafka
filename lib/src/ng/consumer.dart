@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'serialization.dart';
 import 'session.dart';
+import 'common.dart';
 
 abstract class KConsumer<K, V> {
+  Future<KConsumerRecords> poll();
   Future subscribe(List<String> topics);
-  Future poll();
   Future unsubscribe();
 
   factory KConsumer(
@@ -24,7 +25,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION;
 
   @override
-  Future poll() {
+  Future<KConsumerRecords> poll() {
     // TODO: implement poll
   }
 
@@ -37,4 +38,21 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   Future unsubscribe() {
     // TODO: implement unsubscribe
   }
+}
+
+class KConsumerRecord<K, V> {
+  final String topic;
+  final int partition;
+  final int offset;
+  final K key;
+  final V value;
+
+  KConsumerRecord(
+      this.topic, this.partition, this.offset, this.key, this.value);
+}
+
+class KConsumerRecords<K, V> {
+  final Map<TopicPartition, List<KConsumerRecord>> records;
+
+  KConsumerRecords(this.records);
 }

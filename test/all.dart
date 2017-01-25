@@ -10,7 +10,6 @@ import 'producer_test.dart' as producer_test;
 import 'io/bytes_builder_test.dart' as bytes_builder_test;
 import 'io/bytes_reader_test.dart' as bytes_reader_test;
 import 'protocol/fetch_test.dart' as fetch_test;
-import 'protocol/group_membership_test.dart' as group_membership_test;
 import 'protocol/offset_commit_test.dart' as offset_commit_test;
 import 'protocol/offset_fetch_test.dart' as offset_fetch_test;
 import 'protocol/offset_test.dart' as offset_test;
@@ -26,7 +25,6 @@ void main() {
   crc32_test.main();
   metadata_test.main();
   fetch_test.main();
-  group_membership_test.main();
   offset_commit_test.main();
   offset_fetch_test.main();
   offset_test.main();

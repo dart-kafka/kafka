@@ -66,8 +66,8 @@ class _MetadataRequestV0Encoder implements RequestEncoder<MetadataRequestV0> {
   @override
   List<int> encode(MetadataRequestV0 request) {
     var builder = new KafkaBytesBuilder();
-    List topics = request.topicNames ?? new List();
-    builder.addArray(topics, KafkaType.string);
+    List<String> topics = request.topicNames ?? new List();
+    builder.addStringArray(topics);
     return builder.takeBytes();
   }
 }
