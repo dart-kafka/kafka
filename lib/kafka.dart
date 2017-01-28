@@ -26,5 +26,4 @@ part 'src/fetcher.dart';
 part 'src/offset_master.dart';
 part 'src/producer.dart';
 part 'src/session.dart';
-part 'src/partition_assignor.dart';
 part 'src/high_level_consumer.dart';

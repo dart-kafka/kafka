@@ -11,3 +11,5 @@ export 'src/ng/group_membership_api.dart';
 export 'src/ng/produce_api.dart';
 export 'src/ng/errors.dart';
 export 'src/ng/producer.dart';
+export 'src/ng/consumer.dart';
+export 'src/ng/partition_assignor.dart';

@@ -1,11 +1,10 @@
 library kafka.test.consumer_group;
 
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:kafka/kafka.dart';
-import 'package:kafka/protocol.dart';
-import 'setup.dart';
 import 'dart:async';
+
+import 'package:kafka/ng.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
 class KafkaSessionMock extends Mock implements KafkaSession {}
 

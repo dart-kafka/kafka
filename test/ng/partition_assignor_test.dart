@@ -1,6 +1,4 @@
-library kafka.test.partition_assignor;
-
-import 'package:kafka/kafka.dart';
+import 'package:kafka/ng.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,4 +1,4 @@
-part of kafka;
+import 'common.dart';
 
 abstract class PartitionAssignor {
   Map<String, List<TopicPartition>> assign(Map<String, int> partitionsPerTopic,
@@ -27,7 +27,7 @@ class RoundRobinPartitionAssignor implements PartitionAssignor {
     memberSubscriptions.values.forEach(topics.addAll);
     if (!memberSubscriptions.values
         .every((list) => list.length == topics.length)) {
-      throw new ArgumentError(
+      throw new StateError(
           'RoundRobinPartitionAssignor: All members must subscribe to the same topics. '
           'Subscriptions given: $memberSubscriptions.');
     }

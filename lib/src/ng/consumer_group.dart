@@ -1,10 +1,29 @@
-part of kafka;
+import 'common.dart';
+import 'dart:async';
+import 'package:logging/logging.dart';
+import 'session.dart';
+import 'metadata.dart';
+import 'errors.dart';
+import 'group_membership_api.dart';
+import 'partition_assignor.dart';
 
-class ConsumerGroup {
+/// Data structure representing consumer offset.
+class ConsumerOffset {
+  final String topicName;
+  final int partitionId;
+  final int offset;
+  final String metadata;
+  final int errorCode;
+
+  ConsumerOffset(this.topicName, this.partitionId, this.offset, this.metadata,
+      [this.errorCode]);
+}
+
+class GroupMembership {
   static final Logger _logger = new Logger('ConsumerGroup');
 
   /// The session to communicate with Kafka cluster.
-  final KafkaSession session;
+  final KSession session;
 
   /// The unique name of this group.
   final String name;
@@ -15,7 +34,7 @@ class ConsumerGroup {
 
   Future<Broker> _coordinatorHost;
 
-  ConsumerGroup(this.session, this.name, {this.retentionTime});
+  GroupMembership(this.session, this.name, {this.retentionTime});
 
   /// Retrieves offsets of this consumer group from the server.
   ///
@@ -63,18 +82,18 @@ class ConsumerGroup {
 
   /// Commits provided [offsets] to the server for this consumer group.
   Future commitOffsets(List<ConsumerOffset> offsets,
-      {GroupMembership membership}) {
+      {GroupMembershipInfo membership}) {
     return _commitOffsets(offsets, membership: membership, retries: 3);
   }
 
   /// Internal method for commiting offsets with retries.
   Future _commitOffsets(List<ConsumerOffset> offsets,
-      {GroupMembership membership, int retries: 0, bool refresh: false}) async {
+      {GroupMembershipInfo membership, int retries: 0, bool refresh: false}) async {
     try {
       var host = await _getCoordinator(refresh: refresh);
       var generationId =
-          (membership is GroupMembership) ? membership.generationId : -1;
-      var memberId = (membership is GroupMembership) ? membership.memberId : '';
+          (membership is GroupMembershipInfo) ? membership.generationId : -1;
+      var memberId = (membership is GroupMembershipInfo) ? membership.memberId : '';
       var retentionInMsecs =
           (retentionTime is Duration) ? retentionTime.inMilliseconds : -1;
       var request = new OffsetCommitRequest(
@@ -94,7 +113,7 @@ class ConsumerGroup {
   }
 
   Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions,
-      {GroupMembership membership}) async {
+      {GroupMembershipInfo membership}) async {
     var offsetMaster = new OffsetMaster(session);
     var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
     var offsets = new List<ConsumerOffset>();
@@ -111,7 +130,7 @@ class ConsumerGroup {
   }
 
   Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions,
-      {GroupMembership membership}) async {
+      {GroupMembershipInfo membership}) async {
     var offsetMaster = new OffsetMaster(session);
     var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
     var offsets = new List<ConsumerOffset>();
@@ -131,10 +150,8 @@ class ConsumerGroup {
     }
 
     if (_coordinatorHost == null) {
-      _coordinatorHost = session.getConsumerMetadata(name).then((response) {
-        return new Broker(response.coordinatorId, response.coordinatorHost,
-            response.coordinatorPort);
-      }).catchError((error) {
+      var metadata = new KMetadata(session: session);
+      _coordinatorHost = metadata.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
         throw error;
       });
@@ -143,12 +160,12 @@ class ConsumerGroup {
     return _coordinatorHost;
   }
 
-  Future<GroupMembership> join(int sessionTimeout, String memberId,
+  Future<GroupMembershipInfo> join(int sessionTimeout, String memberId,
       String protocolType, Iterable<GroupProtocol> groupProtocols) async {
     var broker = await _getCoordinator();
-    var joinRequest = new JoinGroupRequest(
+    var joinRequest = new JoinGroupRequestV0(
         name, sessionTimeout, memberId, protocolType, groupProtocols);
-    JoinGroupResponse joinResponse = await session.send(broker, joinRequest);
+    JoinGroupResponseV0 joinResponse = await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
     var isLeader = joinResponse.leaderId == joinResponse.memberId;
 
@@ -157,17 +174,17 @@ class ConsumerGroup {
       groupAssignments = await _assignPartitions(protocol, joinResponse);
     }
 
-    var syncRequest = new SyncGroupRequest(name, joinResponse.generationId,
+    var syncRequest = new SyncGroupRequestV0(name, joinResponse.generationId,
         joinResponse.memberId, groupAssignments);
-    SyncGroupResponse syncResponse;
+    SyncGroupResponseV0 syncResponse;
     try {
       // Wait before sending SyncRequest to give the server some time to respond
       // to all the rest JoinRequests.
       syncResponse = await new Future.delayed(new Duration(seconds: 1), () {
-        return session.send(broker, syncRequest);
+        return session.send(syncRequest, broker.host, broker.port);
       });
 
-      return new GroupMembership(
+      return new GroupMembershipInfo(
           joinResponse.memberId,
           joinResponse.leaderId,
           syncResponse.assignment,
@@ -181,7 +198,7 @@ class ConsumerGroup {
   }
 
   Future<List<GroupAssignment>> _assignPartitions(
-      String protocol, JoinGroupResponse joinResponse) async {
+      String protocol, JoinGroupResponseV0 joinResponse) async {
     var groupAssignments = new List<GroupAssignment>();
     var assignor = new PartitionAssignor.forStrategy(protocol);
     var topics = new Set<String>();
@@ -192,8 +209,9 @@ class ConsumerGroup {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var meta = await session.getMetadata(topics);
-    var partitionsPerTopic = new Map<String, int>.fromIterable(meta.topics,
+    var metadata = new KMetadata(session: session);
+    var meta = await metadata.fetchTopics(topics.toList());
+    var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
         key: (_) => _.topicName, value: (_) => _.partitions.length);
 
     Map<String, List<TopicPartition>> assignments =
@@ -213,7 +231,7 @@ class ConsumerGroup {
     return groupAssignments;
   }
 
-  Future heartbeat(GroupMembership membership) async {
+  Future heartbeat(GroupMembershipInfo membership) async {
     var host = await _getCoordinator();
     var request = new HeartbeatRequest(
         name, membership.generationId, membership.memberId);
@@ -222,7 +240,7 @@ class ConsumerGroup {
     await session.send(host, request);
   }
 
-  Future leave(GroupMembership membership) async {
+  Future leave(GroupMembershipInfo membership) async {
     _logger.info('Attempting to leave group "${name}".');
     var host = await _getCoordinator();
     var request = new LeaveGroupRequest(name, membership.memberId);
@@ -233,14 +251,14 @@ class ConsumerGroup {
   }
 }
 
-class GroupMembership {
+class GroupMembershipInfo {
   final String memberId;
   final String leaderId;
   final MemberAssignment assignment;
   final int generationId;
   final String groupProtocol;
 
-  GroupMembership(this.memberId, this.leaderId, this.assignment,
+  GroupMembershipInfo(this.memberId, this.leaderId, this.assignment,
       this.generationId, this.groupProtocol);
 
   bool get isLeader => leaderId == memberId;
