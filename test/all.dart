@@ -2,10 +2,7 @@ library kafka.all_tests;
 
 import 'common/errors_test.dart' as errors_test;
 import 'common/messages_test.dart' as messages_test;
-import 'consumer_group_test.dart' as consumer_group_test;
-import 'consumer_test.dart' as consumer_test;
 import 'fetcher_test.dart' as fetcher_test;
-import 'partition_assignor_test.dart' as partition_assignor_test;
 import 'producer_test.dart' as producer_test;
 import 'io/bytes_builder_test.dart' as bytes_builder_test;
 import 'io/bytes_reader_test.dart' as bytes_reader_test;
@@ -28,10 +25,7 @@ void main() {
   offset_commit_test.main();
   offset_fetch_test.main();
   offset_test.main();
-  consumer_group_test.main();
-  partition_assignor_test.main();
   producer_test.main();
-  consumer_test.main();
   fetcher_test.main();
   testing_test.main();
 }

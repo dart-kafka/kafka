@@ -51,46 +51,46 @@ void main() {
     });
   });
 
-  group('ConsumerGroup Mock: ', () {
-    test('it joins a group', () async {
-      var session = new MockKafkaSession();
-      var group = new ConsumerGroup(session, 'myGroup');
-      var result = await group.join(10000, '', 'consumer', [
-        new GroupProtocol.roundrobin(0, ['test'].toSet())
-      ]);
-      expect(result, new isInstanceOf<GroupMembership>());
-    });
-  });
-
-  group('HighLevelConsumer Mock: ', () {
-    KafkaSession session;
-    ConsumerGroup group;
-    HighLevelConsumer consumer;
-
-    setUp(() async {
-      var now = new DateTime.now().millisecondsSinceEpoch;
-      var groupName = 'group-' + now.toString();
-      var topic = 'test-topic-' + now.toString();
-      session = new MockKafkaSession();
-      group = new ConsumerGroup(session, groupName);
-      consumer = new HighLevelConsumer(session, [topic].toSet(), group);
-
-      var producer = new Producer(session, -1, 1000);
-      var message = 'helloworld';
-      var messages = [
-        new ProduceEnvelope(topic, 0, [new Message(message.codeUnits)])
-      ];
-      await producer.produce(messages);
-    });
-
-    test('it consumes messages', () async {
-      var message;
-      await for (var env in consumer.stream) {
-        message = new String.fromCharCodes(env.message.value);
-        env.commit('');
-        break;
-      }
-      expect(message, 'helloworld');
-    });
-  });
+  // group('ConsumerGroup Mock: ', () {
+  //   test('it joins a group', () async {
+  //     var session = new MockKafkaSession();
+  //     var group = new ConsumerGroup(session, 'myGroup');
+  //     var result = await group.join(10000, '', 'consumer', [
+  //       new GroupProtocol.roundrobin(0, ['test'].toSet())
+  //     ]);
+  //     expect(result, new isInstanceOf<GroupMembership>());
+  //   });
+  // });
+  //
+  // group('HighLevelConsumer Mock: ', () {
+  //   KafkaSession session;
+  //   ConsumerGroup group;
+  //   HighLevelConsumer consumer;
+  //
+  //   setUp(() async {
+  //     var now = new DateTime.now().millisecondsSinceEpoch;
+  //     var groupName = 'group-' + now.toString();
+  //     var topic = 'test-topic-' + now.toString();
+  //     session = new MockKafkaSession();
+  //     group = new ConsumerGroup(session, groupName);
+  //     consumer = new HighLevelConsumer(session, [topic].toSet(), group);
+  //
+  //     var producer = new Producer(session, -1, 1000);
+  //     var message = 'helloworld';
+  //     var messages = [
+  //       new ProduceEnvelope(topic, 0, [new Message(message.codeUnits)])
+  //     ];
+  //     await producer.produce(messages);
+  //   });
+  //
+  //   test('it consumes messages', () async {
+  //     var message;
+  //     await for (var env in consumer.stream) {
+  //       message = new String.fromCharCodes(env.message.value);
+  //       env.commit('');
+  //       break;
+  //     }
+  //     expect(message, 'helloworld');
+  //   });
+  // });
 }

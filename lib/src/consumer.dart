@@ -8,7 +8,7 @@ class Consumer {
   final KafkaSession session;
 
   /// Consumer group this consumer belongs to.
-  final ConsumerGroup consumerGroup;
+  final consumerGroup;
 
   /// Topics and partitions to consume.
   final Map<String, Set<int>> topicPartitions;
@@ -174,7 +174,7 @@ class _MessageStreamController {
 class _ConsumerWorker {
   final KafkaSession session;
   final Broker host;
-  final ConsumerGroup group;
+  final group;
   final Map<String, Set<int>> topicPartitions;
   final int maxWaitTime;
   final int minBytes;

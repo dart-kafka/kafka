@@ -15,9 +15,9 @@ abstract class PartitionAssignor {
   }
 }
 
-/// Partition assignor which implements "round-robin" algorithm.
+/// Partition assignor implementing simple "round-robin" algorithm.
 ///
-/// It can only be used if the set of subscibed topics is identical for every
+/// It can only be used if the set of subscribed topics is identical for every
 /// member within consumer group.
 class RoundRobinPartitionAssignor implements PartitionAssignor {
   @override

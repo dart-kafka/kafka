@@ -1,7 +1,7 @@
 part of kafka;
 
-typedef Future OnOffsetOutOfRange(OffsetOutOfRangeError error,
-    ConsumerGroup group, GroupMembership membership);
+typedef Future OnOffsetOutOfRange(
+    OffsetOutOfRangeError error, group, membership);
 
 class HighLevelConsumer {
   static final Logger _logger = new Logger('HighLevelConsumer');
@@ -12,12 +12,12 @@ class HighLevelConsumer {
   /// Topics to consume.
   final Set<String> topics;
 
-  final ConsumerGroup group;
+  final group;
 
   StreamController<MessageEnvelope> _controller;
 
-  GroupMembership _membership;
-  GroupMembership get membership => _membership;
+  var _membership;
+  dynamic get membership => _membership;
 
   Completer _doneCompleter = new Completer();
 
@@ -36,17 +36,16 @@ class HighLevelConsumer {
     _loop();
   }
 
-  Future<GroupMembership> _join([GroupMembership previousMembership]) {
+  Future _join([previousMembership]) {
     var protocols = [new GroupProtocol.roundrobin(0, topics)];
-    var memberId = (previousMembership is GroupMembership)
-        ? previousMembership.memberId
-        : '';
+    var memberId =
+        (previousMembership != null) ? previousMembership.memberId : '';
     _logger.info(
         '(Re)joining to consumer group ${group.name}. Previous memberId: "${memberId}".');
     return group.join(30000, '', 'consumer', protocols);
   }
 
-  Future _leave(GroupMembership membership) {
+  Future _leave(membership) {
     return group.leave(membership).catchError((error) {
       _logger.warning('Received ${error} on attempt to leave group.');
     });
@@ -54,7 +53,7 @@ class HighLevelConsumer {
 
   Future _loop() async {
     try {
-      GroupMembership previousMembership;
+      var previousMembership;
       var _rejoinNeeded = true;
       while (_controller.hasListener) {
         try {
@@ -105,7 +104,7 @@ class HighLevelConsumer {
     }
   }
 
-  Future _cycle(GroupMembership membership) {
+  Future _cycle(membership) {
     var completer = new Completer();
 
     var workers = _HLWorker.build(membership, _controller, session, group);
@@ -172,8 +171,8 @@ class _HLWorker {
   final Map<String, Set<int>> topics;
   final KafkaSession session;
   final Broker broker;
-  final GroupMembership membership;
-  final ConsumerGroup group;
+  final membership;
+  final group;
   final bool heartbeatWorker;
 
   bool _isCanceled = false;
@@ -183,10 +182,10 @@ class _HLWorker {
       {this.heartbeatWorker: false});
 
   static Future<Iterable<_HLWorker>> build(
-      GroupMembership membership,
+      membership,
       StreamController<MessageEnvelope> controller,
       KafkaSession session,
-      ConsumerGroup group) async {
+      group) async {
     var workers = new List<_HLWorker>();
 
     var topics = membership.assignment.partitionAssignment.keys.toSet();
@@ -293,7 +292,7 @@ class _HLWorker {
 
   Future<FetchRequest> _createFetchRequest() async {
     var offsets = await group.fetchOffsets(topics);
-    var maxWaitTime = 100; // TODO: extract configuration
+    var maxWaitTime = 100;
     var minBytes = 1;
     var request = new FetchRequest(maxWaitTime, minBytes);
     for (var o in offsets) {

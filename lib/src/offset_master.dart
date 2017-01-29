@@ -43,7 +43,7 @@ class OffsetMaster {
     try {
       List<Future<OffsetResponse>> futures = [];
       for (var host in requests.keys) {
-        futures.add(session.send(host, requests[host]));
+//        futures.add(session.send(host, requests[host]));
       }
 
       List<OffsetResponse> responses = await Future.wait(futures);

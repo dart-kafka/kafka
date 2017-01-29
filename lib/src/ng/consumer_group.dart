@@ -40,108 +40,111 @@ class GroupMembership {
   ///
   /// Keys in [topicPartitions] map are topic names and values are corresponding
   /// partition IDs.
-  Future<List<ConsumerOffset>> fetchOffsets(
-      Map<String, Set<int>> topicPartitions) async {
-    return _fetchOffsets(topicPartitions, retries: 3);
-  }
+  // Future<List<ConsumerOffset>> fetchOffsets(
+  //     Map<String, Set<int>> topicPartitions) async {
+  //   return _fetchOffsets(topicPartitions, retries: 3);
+  // }
 
   /// Internal method for fetching offsets with retries.
-  Future<List<ConsumerOffset>> _fetchOffsets(
-      Map<String, Set<int>> topicPartitions,
-      {int retries: 0,
-      bool refresh: false}) async {
-    var host = await _getCoordinator(refresh: refresh);
-    var request = new OffsetFetchRequest(name, topicPartitions);
-    try {
-      var response = await session.send(host, request);
-      return new List<ConsumerOffset>.from(response.offsets);
-    } on NotCoordinatorForConsumerError {
-      if (retries > 1) {
-        _logger.info(
-            'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when fetching offsets. '
-            'Scheduling retry with metadata refresh.');
-        return _fetchOffsets(topicPartitions,
-            retries: retries - 1, refresh: true);
-      } else {
-        rethrow;
-      }
-    } on OffsetsLoadInProgressError {
-      if (retries > 1) {
-        _logger.info(
-            'ConsumerGroup(${name}): encountered OffsetsLoadInProgressError(14) when fetching offsets. '
-            'Scheduling retry after delay.');
-        return new Future<List<ConsumerOffset>>.delayed(
-            const Duration(seconds: 1), () async {
-          return _fetchOffsets(topicPartitions, retries: retries - 1);
-        });
-      } else {
-        rethrow;
-      }
-    }
-  }
+  // Future<List<ConsumerOffset>> _fetchOffsets(
+  //     Map<String, Set<int>> topicPartitions,
+  //     {int retries: 0,
+  //     bool refresh: false}) async {
+  //   var host = await _getCoordinator(refresh: refresh);
+  //   var request = new OffsetFetchRequest(name, topicPartitions);
+  //   try {
+  //     var response = await session.send(host, request);
+  //     return new List<ConsumerOffset>.from(response.offsets);
+  //   } on NotCoordinatorForConsumerError {
+  //     if (retries > 1) {
+  //       _logger.info(
+  //           'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when fetching offsets. '
+  //           'Scheduling retry with metadata refresh.');
+  //       return _fetchOffsets(topicPartitions,
+  //           retries: retries - 1, refresh: true);
+  //     } else {
+  //       rethrow;
+  //     }
+  //   } on OffsetsLoadInProgressError {
+  //     if (retries > 1) {
+  //       _logger.info(
+  //           'ConsumerGroup(${name}): encountered OffsetsLoadInProgressError(14) when fetching offsets. '
+  //           'Scheduling retry after delay.');
+  //       return new Future<List<ConsumerOffset>>.delayed(
+  //           const Duration(seconds: 1), () async {
+  //         return _fetchOffsets(topicPartitions, retries: retries - 1);
+  //       });
+  //     } else {
+  //       rethrow;
+  //     }
+  //   }
+  // }
 
   /// Commits provided [offsets] to the server for this consumer group.
-  Future commitOffsets(List<ConsumerOffset> offsets,
-      {GroupMembershipInfo membership}) {
-    return _commitOffsets(offsets, membership: membership, retries: 3);
-  }
+  // Future commitOffsets(List<ConsumerOffset> offsets,
+  //     {GroupMembershipInfo membership}) {
+  //   return _commitOffsets(offsets, membership: membership, retries: 3);
+  // }
 
   /// Internal method for commiting offsets with retries.
-  Future _commitOffsets(List<ConsumerOffset> offsets,
-      {GroupMembershipInfo membership, int retries: 0, bool refresh: false}) async {
-    try {
-      var host = await _getCoordinator(refresh: refresh);
-      var generationId =
-          (membership is GroupMembershipInfo) ? membership.generationId : -1;
-      var memberId = (membership is GroupMembershipInfo) ? membership.memberId : '';
-      var retentionInMsecs =
-          (retentionTime is Duration) ? retentionTime.inMilliseconds : -1;
-      var request = new OffsetCommitRequest(
-          name, offsets, generationId, memberId, retentionInMsecs);
-      await session.send(host, request);
-    } on NotCoordinatorForConsumerError {
-      if (retries > 1) {
-        _logger.info(
-            'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when commiting offsets. '
-            'Scheduling retry with metadata refresh.');
-        return _commitOffsets(offsets,
-            membership: membership, retries: retries - 1, refresh: true);
-      } else {
-        rethrow;
-      }
-    }
-  }
+  // Future _commitOffsets(List<ConsumerOffset> offsets,
+  //     {GroupMembershipInfo membership,
+  //     int retries: 0,
+  //     bool refresh: false}) async {
+  //   try {
+  //     var host = await _getCoordinator(refresh: refresh);
+  //     var generationId =
+  //         (membership is GroupMembershipInfo) ? membership.generationId : -1;
+  //     var memberId =
+  //         (membership is GroupMembershipInfo) ? membership.memberId : '';
+  //     var retentionInMsecs =
+  //         (retentionTime is Duration) ? retentionTime.inMilliseconds : -1;
+  //     var request = new OffsetCommitRequest(
+  //         name, offsets, generationId, memberId, retentionInMsecs);
+  //     await session.send(host, request);
+  //   } on NotCoordinatorForConsumerError {
+  //     if (retries > 1) {
+  //       _logger.info(
+  //           'ConsumerGroup(${name}): encountered NotCoordinatorForConsumerError(16) when commiting offsets. '
+  //           'Scheduling retry with metadata refresh.');
+  //       return _commitOffsets(offsets,
+  //           membership: membership, retries: retries - 1, refresh: true);
+  //     } else {
+  //       rethrow;
+  //     }
+  //   }
+  // }
 
-  Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions,
-      {GroupMembershipInfo membership}) async {
-    var offsetMaster = new OffsetMaster(session);
-    var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
-    var offsets = new List<ConsumerOffset>();
-    for (var earliest in earliestOffsets) {
-      // When consuming we always pass `currentOffset + 1` to fetch next
-      // message so here we need to substract 1 from earliest offset, otherwise
-      // we'll end up in an infinite loop of "InvalidOffset" errors.
-      var actualOffset = earliest.offset - 1;
-      offsets.add(new ConsumerOffset(earliest.topicName, earliest.partitionId,
-          actualOffset, 'resetToEarliest'));
-    }
+  // Future resetOffsetsToEarliest(Map<String, Set<int>> topicPartitions,
+  //     {GroupMembershipInfo membership}) async {
+  //   var offsetMaster = new OffsetMaster(session);
+  //   var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
+  //   var offsets = new List<ConsumerOffset>();
+  //   for (var earliest in earliestOffsets) {
+  //     // When consuming we always pass `currentOffset + 1` to fetch next
+  //     // message so here we need to substract 1 from earliest offset, otherwise
+  //     // we'll end up in an infinite loop of "InvalidOffset" errors.
+  //     var actualOffset = earliest.offset - 1;
+  //     offsets.add(new ConsumerOffset(earliest.topicName, earliest.partitionId,
+  //         actualOffset, 'resetToEarliest'));
+  //   }
+  //
+  //   return commitOffsets(offsets, membership: membership);
+  // }
 
-    return commitOffsets(offsets, membership: membership);
-  }
-
-  Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions,
-      {GroupMembershipInfo membership}) async {
-    var offsetMaster = new OffsetMaster(session);
-    var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
-    var offsets = new List<ConsumerOffset>();
-    for (var latest in latestOffsets) {
-      var actualOffset = latest.offset - 1;
-      offsets.add(new ConsumerOffset(latest.topicName, latest.partitionId,
-          actualOffset, 'resetToEarliest'));
-    }
-
-    return commitOffsets(offsets, membership: membership);
-  }
+  // Future resetOffsetsToLatest(Map<String, Set<int>> topicPartitions,
+  //     {GroupMembershipInfo membership}) async {
+  //   var offsetMaster = new OffsetMaster(session);
+  //   var latestOffsets = await offsetMaster.fetchLatest(topicPartitions);
+  //   var offsets = new List<ConsumerOffset>();
+  //   for (var latest in latestOffsets) {
+  //     var actualOffset = latest.offset - 1;
+  //     offsets.add(new ConsumerOffset(latest.topicName, latest.partitionId,
+  //         actualOffset, 'resetToEarliest'));
+  //   }
+  //
+  //   return commitOffsets(offsets, membership: membership);
+  // }
 
   /// Returns instance of coordinator host for this consumer group.
   Future<Broker> _getCoordinator({bool refresh: false}) {
@@ -151,7 +154,8 @@ class GroupMembership {
 
     if (_coordinatorHost == null) {
       var metadata = new KMetadata(session: session);
-      _coordinatorHost = metadata.fetchGroupCoordinator(name).catchError((error) {
+      _coordinatorHost =
+          metadata.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
         throw error;
       });
@@ -165,7 +169,8 @@ class GroupMembership {
     var broker = await _getCoordinator();
     var joinRequest = new JoinGroupRequestV0(
         name, sessionTimeout, memberId, protocolType, groupProtocols);
-    JoinGroupResponseV0 joinResponse = await session.send(joinRequest, broker.host, broker.port);
+    JoinGroupResponseV0 joinResponse =
+        await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
     var isLeader = joinResponse.leaderId == joinResponse.memberId;
 
@@ -231,24 +236,24 @@ class GroupMembership {
     return groupAssignments;
   }
 
-  Future heartbeat(GroupMembershipInfo membership) async {
-    var host = await _getCoordinator();
-    var request = new HeartbeatRequest(
-        name, membership.generationId, membership.memberId);
-    _logger.fine(
-        'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
-    await session.send(host, request);
-  }
-
-  Future leave(GroupMembershipInfo membership) async {
-    _logger.info('Attempting to leave group "${name}".');
-    var host = await _getCoordinator();
-    var request = new LeaveGroupRequest(name, membership.memberId);
-    return session.send(host, request).catchError((error) {
-      _logger.warning('Received ${error} on attempt to leave group gracefully. '
-          'Ignoring the error to let current session timeout.');
-    });
-  }
+  // Future heartbeat(GroupMembershipInfo membership) async {
+  //   var host = await _getCoordinator();
+  //   var request = new HeartbeatRequest(
+  //       name, membership.generationId, membership.memberId);
+  //   _logger.fine(
+  //       'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
+  //   await session.send(host, request);
+  // }
+  //
+  // Future leave(GroupMembershipInfo membership) async {
+  //   _logger.info('Attempting to leave group "${name}".');
+  //   var host = await _getCoordinator();
+  //   var request = new LeaveGroupRequest(name, membership.memberId);
+  //   return session.send(host, request).catchError((error) {
+  //     _logger.warning('Received ${error} on attempt to leave group gracefully. '
+  //         'Ignoring the error to let current session timeout.');
+  //   });
+  // }
 }
 
 class GroupMembershipInfo {
