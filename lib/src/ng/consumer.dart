@@ -8,6 +8,7 @@ import 'partition_assignor.dart';
 import 'serialization.dart';
 import 'session.dart';
 import 'errors.dart';
+import 'io.dart';
 
 abstract class KConsumer<K, V> {
   StreamIterator<KConsumerRecords> poll();
@@ -54,8 +55,21 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   Future _poll() {
-    // TODO: implement _poll()
-    return null;
+    var completer = new Completer();
+    var bufferedRecords = [];
+    while (true) {
+      Map<Broker, KRequest> requests = _buildRequests();
+      var futures = requests.keys.map((broker) {
+        return session
+            .send(requests[broker], broker.host, broker.port)
+            .then((response) {
+          bufferedRecords.add(response.messages);
+        });
+      });
+
+      Future.wait(futures);
+    }
+    return completer.future;
   }
 
   void _onPause() {}

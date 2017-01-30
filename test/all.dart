@@ -6,7 +6,6 @@ import 'fetcher_test.dart' as fetcher_test;
 import 'producer_test.dart' as producer_test;
 import 'io/bytes_builder_test.dart' as bytes_builder_test;
 import 'io/bytes_reader_test.dart' as bytes_reader_test;
-import 'protocol/fetch_test.dart' as fetch_test;
 import 'protocol/offset_commit_test.dart' as offset_commit_test;
 import 'protocol/offset_test.dart' as offset_test;
 import 'ng/metadata_test.dart' as metadata_test;
@@ -20,7 +19,6 @@ void main() {
   bytes_reader_test.main();
   crc32_test.main();
   metadata_test.main();
-  fetch_test.main();
   offset_commit_test.main();
   offset_test.main();
   producer_test.main();
