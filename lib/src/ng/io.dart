@@ -191,6 +191,8 @@ class KafkaBytesReader {
     return valueAsString;
   }
 
+  T readObject<T>(T readFunc(KafkaBytesReader reader)) => readFunc(this);
+
   List<int> readBytes() {
     var length = readInt32();
     if (length == -1) {

@@ -33,14 +33,34 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       KSession session)
       : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION;
 
+  StreamController<KConsumerRecords> _streamController;
+  StreamIterator<KConsumerRecords> _streamIterator;
+
   @override
   StreamIterator<KConsumerRecords> poll() {
-    if (membership == null) {
-      throw new StateError('No active subscription.');
-    }
-    // TODO: implement poll
+    if (membership == null) throw new StateError('No active subscription.');
+    if (_streamController != null)
+      throw new StateError('Polling already started.');
+
+    _streamController = new StreamController<KConsumerRecords>(
+        onPause: _onPause, onResume: _onResume, onCancel: _onCancel);
+    _streamIterator =
+        new StreamIterator<KConsumerRecords>(_streamController.stream);
+    _poll().whenComplete(() {
+      _streamController = null;
+      _streamIterator = null;
+    });
+    return _streamIterator;
+  }
+
+  Future _poll() {
+    // TODO: implement _poll()
     return null;
   }
+
+  void _onPause() {}
+  void _onResume() {}
+  void _onCancel() {}
 
   GroupMembership _membership;
   GroupMembership get membership => _membership;
