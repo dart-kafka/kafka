@@ -28,7 +28,7 @@ class OffsetFetchRequestV1 extends KRequest<OffsetFetchResponseV1> {
   final String groupName;
 
   /// Map of topic names and partition IDs to fetch offsets for.
-  final Map<String, Set<int>> topics;
+  final Map<String, List<int>> topics;
 
   /// Creates new instance of [OffsetFetchRequestV0].
   OffsetFetchRequestV1(this.groupName, this.topics);

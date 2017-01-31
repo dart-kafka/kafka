@@ -1,14 +1,17 @@
 import 'dart:async';
 
+import 'package:logging/logging.dart';
+
+import '../util/retry.dart';
 import 'common.dart';
+import 'consumer_offset_api.dart';
+import 'errors.dart';
+import 'fetch_api.dart';
 import 'group_membership_api.dart';
 import 'metadata.dart';
-import 'package:logging/logging.dart';
 import 'partition_assignor.dart';
 import 'serialization.dart';
 import 'session.dart';
-import 'errors.dart';
-import 'io.dart';
 
 abstract class KConsumer<K, V> {
   StreamIterator<KConsumerRecords> poll();
@@ -54,27 +57,61 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     return _streamIterator;
   }
 
-  Future _poll() {
-    var completer = new Completer();
-    var bufferedRecords = [];
+  void _onPause() {}
+  void _onResume() {}
+  void _onCancel() {}
+
+  Map<TopicPartition, int> _currentOffsets;
+
+  Future _poll() async {
+    List<KConsumerRecord<K, V>> fetchResultsToRecords(
+        List<FetchResult> results) {
+      return results.expand((result) {
+        return result.messages.keys.map((offset) {
+          var key = keyDeserializer.deserialize(result.messages[offset].key);
+          var value =
+              valueDeserializer.deserialize(result.messages[offset].value);
+          return new KConsumerRecord<K, V>(
+              result.topicName, result.partitionId, offset, key, value);
+        });
+      });
+    }
+
+    _currentOffsets = await _fetchOffsets();
     while (true) {
-      Map<Broker, KRequest> requests = _buildRequests();
+      Map<Broker, FetchRequestV0> requests = await _buildRequests();
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
             .then((response) {
-          bufferedRecords.add(response.messages);
+          var records = fetchResultsToRecords(response.results);
+          _streamController.add(new KConsumerRecords(records));
         });
       });
 
       Future.wait(futures);
     }
-    return completer.future;
   }
 
-  void _onPause() {}
-  void _onResume() {}
-  void _onCancel() {}
+  Future<Map<TopicPartition, int>> _fetchOffsets() async {
+    Future<OffsetFetchResponseV1> fetchFunc() async {
+      var request = new OffsetFetchRequestV1(
+          groupName, membership.assignment.partitionAssignment);
+      var coord = await _getCoordinator();
+      return await session.send(request, coord.host, coord.port);
+    }
+
+    var response =
+        await retryAsync(fetchFunc, 5, new Duration(milliseconds: 500));
+
+    return new Map.fromIterable(response.offsets,
+        key: (_) => new TopicPartition(_.topicName, _.partitionId),
+        value: (_) => _.offset);
+  }
+
+  Future<Map<Broker, FetchRequestV0>> _buildRequests() async {
+    // membership.assignment.
+  }
 
   GroupMembership _membership;
   GroupMembership get membership => _membership;
@@ -217,7 +254,7 @@ class KConsumerRecord<K, V> {
 }
 
 class KConsumerRecords<K, V> {
-  final Map<TopicPartition, List<KConsumerRecord>> records;
+  final List<KConsumerRecord> records;
 
   KConsumerRecords(this.records);
 }

@@ -16,7 +16,7 @@ void main() {
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       _coordinator = await metadata.fetchGroupCoordinator(_testGroup);
       _request = new OffsetFetchRequestV1(_testGroup, {
-        'dartKafkaTest': new Set.from([0])
+        'dartKafkaTest': [0]
       });
     });
 
