@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import '../util/retry.dart';
+import '../util/tuple.dart';
 import 'common.dart';
 import 'consumer_offset_api.dart';
 import 'errors.dart';
@@ -13,35 +14,44 @@ import 'partition_assignor.dart';
 import 'serialization.dart';
 import 'session.dart';
 
+/// Kafka Consumer
 abstract class KConsumer<K, V> {
-  StreamIterator<KConsumerRecords> poll();
+  StreamIterator<KConsumerRecords<K, V>> poll();
+
   Future subscribe(List<String> topics);
+
   Future unsubscribe();
 
   factory KConsumer(String groupName, Deserializer<K> keyDeserializer,
       Deserializer<V> valueDeserializer,
-      {KSession session}) {
+      KSession session) {
     return new _KConsumerImpl(
         groupName, keyDeserializer, valueDeserializer, session);
   }
 }
 
 class _KConsumerImpl<K, V> implements KConsumer<K, V> {
+  static const int DEFAULT_MAX_BYTES = 36864;
+  static const int DEFAULT_MAX_WAIT_TIME = 1000;
+  static const int DEFAULT_MIN_BYTES = 1;
   static final Logger _logger = new Logger('KConsumer');
   final String groupName;
   final KSession session;
   final Deserializer<K> keyDeserializer;
   final Deserializer<V> valueDeserializer;
+  final int requestMaxBytes;
 
   _KConsumerImpl(this.groupName, this.keyDeserializer, this.valueDeserializer,
-      KSession session)
-      : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION;
+      KSession session,
+      {int requestMaxBytes})
+      : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION,
+        requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
 
   StreamController<KConsumerRecords> _streamController;
   StreamIterator<KConsumerRecords> _streamIterator;
 
   @override
-  StreamIterator<KConsumerRecords> poll() {
+  StreamIterator<KConsumerRecords<K, V>> poll() {
     if (membership == null) throw new StateError('No active subscription.');
     if (_streamController != null)
       throw new StateError('Polling already started.');
@@ -57,13 +67,31 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     return _streamIterator;
   }
 
-  void _onPause() {}
-  void _onResume() {}
-  void _onCancel() {}
+  Completer _resumeCompleter;
+  Future get _resumeFuture => _resumeCompleter.future;
+  void _onPause() {
+    assert(_resumeCompleter == null);
+    _resumeCompleter = new Completer();
+  }
+
+  void _onResume() {
+    assert(_resumeCompleter is Completer && !_resumeCompleter.isCompleted);
+    _resumeCompleter.complete();
+    _resumeCompleter = null;
+  }
+
+  bool _isCanceled = false;
+  void _onCancel() {
+    _isCanceled = true;
+  }
 
   Map<TopicPartition, int> _currentOffsets;
 
   Future _poll() async {
+    _logger.info('Fetching initial offsets');
+    _currentOffsets = await _fetchOffsets();
+    _logger.info('Current offsets are: ${_currentOffsets}');
+
     List<KConsumerRecord<K, V>> fetchResultsToRecords(
         List<FetchResult> results) {
       return results.expand((result) {
@@ -77,19 +105,39 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       });
     }
 
-    _currentOffsets = await _fetchOffsets();
+    void updateOffsets(List<KConsumerRecord> records) {
+      for (var record in records) {
+        var topicPartition = new TopicPartition(record.topic, record.partition);
+        var current = _currentOffsets[topicPartition];
+        if (record.offset > current) {
+          _currentOffsets[topicPartition] = record.offset + 1;
+        }
+      }
+    }
+
+    // TODO(P3): Implement an efficient polling algorithm.
     while (true) {
-      Map<Broker, FetchRequestV0> requests = await _buildRequests();
+      if (_isCanceled) {
+        _streamController.close();
+        break;
+      }
+      if (_streamController.isPaused) {
+        await _resumeFuture;
+      }
+
+      Map<Broker, FetchRequestV0> requests =
+          await _buildRequests(_currentOffsets);
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
             .then((response) {
           var records = fetchResultsToRecords(response.results);
+          updateOffsets(records);
           _streamController.add(new KConsumerRecords(records));
         });
       });
 
-      Future.wait(futures);
+      await Future.wait(futures);
     }
   }
 
@@ -105,20 +153,65 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         await retryAsync(fetchFunc, 5, new Duration(milliseconds: 500));
 
     return new Map.fromIterable(response.offsets,
-        key: (_) => new TopicPartition(_.topicName, _.partitionId),
+        key: (_) => new TopicPartition(_.topic, _.partition),
         value: (_) => _.offset);
   }
 
-  Future<Map<Broker, FetchRequestV0>> _buildRequests() async {
-    // membership.assignment.
+  Future<Map<Broker, FetchRequestV0>> _buildRequests(
+      Map<TopicPartition, int> offsets) async {
+    // TODO(P2): There should be a better way to do all these traversals...
+    var assignment = membership.assignment.partitionAssignment;
+    var topics = membership.assignment.partitionAssignment.keys;
+    var topicBrokers = await _fetchTopicMetadata(topics);
+
+    List<Tuple3<Broker, TopicPartition, int>> data = topics.expand((topic) {
+      return assignment[topic].map((p) {
+        var topicPartition = new TopicPartition(topic, p);
+        var broker = topicBrokers[topicPartition];
+        var offset = offsets[topicPartition];
+        offset = (offset == -1) ? 0 : offset;
+        return tuple3(broker, topicPartition, offset);
+      });
+    });
+
+    Map<Broker, FetchRequestV0> requests = new Map();
+    for (var item in data) {
+      requests.putIfAbsent(item.$1,
+          () => new FetchRequestV0(DEFAULT_MAX_WAIT_TIME, DEFAULT_MIN_BYTES));
+      requests[item.$1].add(item.$2, new FetchData(item.$3, requestMaxBytes));
+    }
+    return requests;
+  }
+
+  Future<Map<TopicPartition, Broker>> _topicBrokers;
+  Future<Map<TopicPartition, Broker>> _fetchTopicMetadata(List<String> topics) {
+    if (_topicBrokers == null) {
+      _topicBrokers = new Future(() async {
+        var meta = new KMetadata(session: session);
+        var topicsMeta = await meta.fetchTopics(topics);
+        var brokers = await meta.listBrokers();
+        List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
+          return _.partitions
+              .map((p) => tuple3(_.topicName, p.partitionId, p.leader));
+        });
+        return new Map<TopicPartition, Broker>.fromIterable(data, key: (_) {
+          return new TopicPartition(_.$1, _.$2);
+        }, value: (_) {
+          return brokers.firstWhere((b) => b.id == _.$3);
+        });
+      });
+    }
+    return _topicBrokers;
   }
 
   GroupMembership _membership;
+
   GroupMembership get membership => _membership;
   bool _isSubscribing = false;
 
   @override
   Future subscribe(List<String> topics) {
+    _logger.info('Subscribing to topics $topics as member of group $groupName');
     if (_isSubscribing)
       throw new StateError('Subscription already in progress.');
     _isSubscribing = true;
@@ -126,6 +219,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     _logger.info('Joining to consumer group ${groupName}.');
     return _join(30000, '', 'consumer', protocols).then((result) {
       _membership = result;
+      _logger.info('Subscription result: ${membership}.');
     }).whenComplete(() {
       _isSubscribing = false;
     });
@@ -138,6 +232,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   Future<Broker> _coordinator;
+
   Future<Broker> _getCoordinator({bool refresh: false}) {
     if (refresh) {
       _coordinator = null;
@@ -214,12 +309,12 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         assignor.assign(partitionsPerTopic, subscriptions);
 
     for (var memberId in assignments.keys) {
-      var topics = assignments[memberId].map((_) => _.topicName).toSet();
+      var topics = assignments[memberId].map((_) => _.topic).toSet();
       var partitionAssignment = new Map<String, List<int>>.fromIterable(topics,
           value: (_) => new List<int>());
       for (var topicPartition in assignments[memberId]) {
-        var topic = topicPartition.topicName;
-        partitionAssignment[topic].add(topicPartition.partitionId);
+        var topic = topicPartition.topic;
+        partitionAssignment[topic].add(topicPartition.partition);
       }
       groupAssignments.add(new GroupAssignment(
           memberId, new MemberAssignment(0, partitionAssignment, null)));
@@ -254,7 +349,7 @@ class KConsumerRecord<K, V> {
 }
 
 class KConsumerRecords<K, V> {
-  final List<KConsumerRecord> records;
+  final List<KConsumerRecord<K, V>> records;
 
   KConsumerRecords(this.records);
 }

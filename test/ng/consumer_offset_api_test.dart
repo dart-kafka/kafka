@@ -28,8 +28,8 @@ void main() {
       OffsetFetchResponseV1 response =
           await _session.send(_request, _coordinator.host, _coordinator.port);
       expect(response.offsets, hasLength(equals(1)));
-      expect(response.offsets.first.topicName, equals('dartKafkaTest'));
-      expect(response.offsets.first.partitionId, equals(0));
+      expect(response.offsets.first.topic, equals('dartKafkaTest'));
+      expect(response.offsets.first.partition, equals(0));
       expect(response.offsets.first.errorCode, equals(0));
     });
   });

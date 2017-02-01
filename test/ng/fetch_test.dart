@@ -3,42 +3,43 @@ import 'package:test/test.dart';
 
 void main() {
   group('FetchApi:', () {
-    String _topicName = 'dartKafkaTest';
-    Broker _host;
-    KSession _session;
-    String _message;
+    String topic = 'dartKafkaTest';
+    Broker host;
+    KSession session;
+    String message;
 
     setUp(() async {
-      _session =
+      session =
           new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
-      var metadata = new KMetadata(session: _session);
-      var meta = await metadata.fetchTopics([_topicName]);
+      var metadata = new KMetadata(session: session);
+      var meta = await metadata.fetchTopics([topic]);
       var leaderId = meta
-          .firstWhere((_) => _.topicName == _topicName)
+          .firstWhere((_) => _.topicName == topic)
           .partitions
           .first
           .leader;
       var brokers = await metadata.listBrokers();
-      _host = brokers.firstWhere((_) => _.id == leaderId);
+      host = brokers.firstWhere((_) => _.id == leaderId);
     });
 
     tearDown(() async {
-      await _session.close();
+      await session.close();
     });
 
     test('it fetches messages from Kafka topic', () async {
       var now = new DateTime.now();
-      _message = 'test:' + now.toIso8601String();
+      message = 'test:' + now.toIso8601String();
       var producer = new KProducer(
           new StringSerializer(), new StringSerializer(),
-          session: _session);
+          session: session);
       var result = await producer
-          .send(new ProducerRecord(_topicName, 0, 'key', _message));
+          .send(new ProducerRecord(topic, 0, 'key', message));
 
       var offset = result.offset;
-      FetchRequestV0 request = new FetchRequestV0(100, 1,
-          {new TopicPartition(_topicName, 0): new FetchData(offset, 35656)});
-      var response = await _session.send(request, _host.host, _host.port);
+      FetchRequestV0 request = new FetchRequestV0(100, 1);
+      request.add(
+          new TopicPartition(topic, 0), new FetchData(offset, 35656));
+      var response = await session.send(request, host.host, host.port);
 
       expect(response.results, hasLength(1));
       expect(
@@ -47,7 +48,7 @@ void main() {
       var valueData = response.results.first.messages[offset].value;
       var deser = new StringDeserializer();
       var value = deser.deserialize(valueData);
-      expect(value, equals(_message));
+      expect(value, equals(message));
       var key = deser.deserialize(keyData);
       expect(key, equals('key'));
     });

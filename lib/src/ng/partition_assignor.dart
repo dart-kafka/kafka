@@ -41,11 +41,11 @@ class RoundRobinPartitionAssignor implements PartitionAssignor {
       List<TopicPartition> partitions = new List.generate(
           partitionsPerTopic[topic], (_) => new TopicPartition(topic, _));
       for (var p in partitions) {
-        var k = (offset + p.partitionId) % memberSubscriptions.keys.length;
+        var k = (offset + p.partition) % memberSubscriptions.keys.length;
         var memberId = memberSubscriptions.keys.elementAt(k);
         assignments[memberId].add(p);
       }
-      offset += partitions.last.partitionId + 1;
+      offset += partitions.last.partition + 1;
     }
 
     return assignments;

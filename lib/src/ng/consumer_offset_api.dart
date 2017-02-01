@@ -3,13 +3,13 @@ import 'errors.dart';
 
 /// Value object to store consumer offset information.
 class ConsumerOffset {
-  final String topicName;
-  final int partitionId;
+  final String topic;
+  final int partition;
   final int offset;
   final String metadata;
   final int errorCode;
 
-  ConsumerOffset(this.topicName, this.partitionId, this.offset, this.metadata,
+  ConsumerOffset(this.topic, this.partition, this.offset, this.metadata,
       [this.errorCode]);
 }
 

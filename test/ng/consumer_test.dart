@@ -1,33 +1,58 @@
+import 'dart:async';
 import 'package:test/test.dart';
 import 'package:kafka/ng.dart';
 
 void main() {
   group('Consumer:', () {
-    KSession _session;
-    String _topicName = 'dartKafkaTest';
-    Map<int, int> _expectedOffsets = new Map();
+    KSession session;
+    String topic = 'dartKafkaTest';
+    Map<int, int> expectedOffsets = new Map();
 
     setUp(() async {
       var date = new DateTime.now().millisecondsSinceEpoch;
-      _topicName = 'testTopic-${date}';
-      _session =
+      topic = 'testTopic-${date}';
+      session =
           new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
       var producer = new KProducer(
           new StringSerializer(), new StringSerializer(),
-          session: _session);
-      var res = await producer
-          .send(new ProducerRecord(_topicName, 0, 'akey', 'avalue'));
-      _expectedOffsets[res.topicPartition.partitionId] = res.offset;
-      res = await producer
-          .send(new ProducerRecord(_topicName, 1, 'bkey', 'bvalue'));
-      _expectedOffsets[res.topicPartition.partitionId] = res.offset;
-      res = await producer
-          .send(new ProducerRecord(_topicName, 2, 'ckey', 'cvalue'));
-      _expectedOffsets[res.topicPartition.partitionId] = res.offset;
+          session: session);
+      var res =
+          await producer.send(new ProducerRecord(topic, 0, 'akey', 'avalue'));
+      expectedOffsets[res.topicPartition.partition] = res.offset;
+      res = await producer.send(new ProducerRecord(topic, 1, 'bkey', 'bvalue'));
+      expectedOffsets[res.topicPartition.partition] = res.offset;
+      res = await producer.send(new ProducerRecord(topic, 2, 'ckey', 'cvalue'));
+      expectedOffsets[res.topicPartition.partition] = res.offset;
     });
 
     tearDown(() async {
-      await _session.close();
+      await session.close();
+    });
+
+    test('it can consume messages from multiple brokers', () async {
+      var consumer = new KConsumer<String, String>('cg', new StringDeserializer(), new StringDeserializer(), session);
+      await consumer.subscribe([topic]);
+      var iterator = consumer.poll();
+      while (await iterator.moveNext()) {
+        var records = iterator.current;
+        records.records.forEach((record) {
+          print("Record: [${record.key}, ${record.value}]");
+        });
+      }
+//      var consumedOffsets = new Map();
+//      await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
+//        consumedOffsets[envelope.partitionId] = envelope.offset;
+//        expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
+//        envelope.ack();
+//      }
+//      expect(consumedOffsets, _expectedOffsets);
+//
+//      var group = new ConsumerGroup(_session, 'cg');
+//      var offsets = await group.fetchOffsets(topics);
+//      expect(offsets, hasLength(3));
+//      for (var o in offsets) {
+//        expect(-1, o.offset);
+//      }
     });
 
     // test('it can consume messages from multiple brokers and commit offsets',
@@ -44,30 +69,6 @@ void main() {
     //     envelope.commit('');
     //   }
     //   expect(consumedOffsets.length, _expectedOffsets.length);
-    // });
-
-    // test(
-    //     'it can consume messages from multiple brokers without commiting offsets',
-    //     () async {
-    //   var topics = {
-    //     _topicName: [0, 1, 2].toSet()
-    //   };
-    //   var consumer = new Consumer(
-    //       _session, new ConsumerGroup(_session, 'cg'), topics, 100, 1);
-    //   var consumedOffsets = new Map();
-    //   await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
-    //     consumedOffsets[envelope.partitionId] = envelope.offset;
-    //     expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
-    //     envelope.ack();
-    //   }
-    //   expect(consumedOffsets, _expectedOffsets);
-    //
-    //   var group = new ConsumerGroup(_session, 'cg');
-    //   var offsets = await group.fetchOffsets(topics);
-    //   expect(offsets, hasLength(3));
-    //   for (var o in offsets) {
-    //     expect(-1, o.offset);
-    //   }
     // });
 
     // test('it can handle cancelation request', () async {

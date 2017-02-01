@@ -9,7 +9,7 @@ import 'produce_api.dart';
 
 abstract class KProducer<K, V> {
   factory KProducer(Serializer<K> keySerializer, Serializer<V> valueSerializer,
-      {KSession session}) {
+      KSession session) {
     return new _ProducerImpl(keySerializer, valueSerializer, session: session);
   }
 

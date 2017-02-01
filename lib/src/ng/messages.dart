@@ -65,22 +65,22 @@ class MessageSet {
   MessageSet(this._messages);
 
   /// Builds new message set for publishing.
-  factory MessageSet.build(envelope) {
-    if (envelope.compression == KafkaCompression.none) {
-      return new MessageSet(envelope.messages.asMap());
-    } else {
-      if (envelope.compression == KafkaCompression.snappy)
-        throw new ArgumentError(
-            'Snappy compression is not supported yet by the client.');
-
-      // var codec = new GZipCodec();
-      // var innerEnvelope = new ProduceEnvelope(
-      //     envelope.topicName, envelope.partitionId, envelope.messages);
-      // var innerMessageSet = new MessageSet.build(innerEnvelope);
-      // var value = codec.encode(innerMessageSet.toBytes());
-      // var attrs = new MessageAttributes(KafkaCompression.gzip);
-
-      // return new MessageSet({0: new Message(value, attributes: attrs)});
-    }
-  }
+//  factory MessageSet.build(envelope) {
+//    if (envelope.compression == KafkaCompression.none) {
+//      return new MessageSet(envelope.messages.asMap());
+//    } else {
+//      if (envelope.compression == KafkaCompression.snappy)
+//        throw new ArgumentError(
+//            'Snappy compression is not supported yet by the client.');
+//
+//      // var codec = new GZipCodec();
+//      // var innerEnvelope = new ProduceEnvelope(
+//      //     envelope.topicName, envelope.partitionId, envelope.messages);
+//      // var innerMessageSet = new MessageSet.build(innerEnvelope);
+//      // var value = codec.encode(innerMessageSet.toBytes());
+//      // var attrs = new MessageAttributes(KafkaCompression.gzip);
+//
+//      // return new MessageSet({0: new Message(value, attributes: attrs)});
+//    }
+//  }
 }

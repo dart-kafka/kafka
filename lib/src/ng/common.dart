@@ -1,39 +1,62 @@
+import 'package:quiver/core.dart';
+
+import '../util/tuple.dart';
+
 class Broker {
   final int id;
   final String host;
   final int port;
 
-  Broker(this.id, this.host, this.port);
+  Broker._(this.id, this.host, this.port);
+
+  static final Map<Tuple3, Broker> _cache = new Map();
+  factory Broker(int id, String host, int port) {
+    var key = tuple3(id, host, port);
+    if (!_cache.containsKey(key)) {
+      _cache[key] = new Broker._(id, host, port);
+    }
+
+    return _cache[key];
+  }
+
+  @override
+  int get hashCode => hash3(id, host, port);
+
+  @override
+  bool operator ==(o) =>
+      o is Broker && o.id == id && o.host == host && o.port == port;
 
   @override
   String toString() => 'Broker($id, $host:$port)';
 }
 
 class TopicPartition {
-  final String topicName;
-  final int partitionId;
+  final String topic;
+  final int partition;
 
-  static final Map<String, TopicPartition> _instanceCache = new Map();
+  static final Map<String, TopicPartition> _cache = new Map();
 
-  TopicPartition._(this.topicName, this.partitionId);
+  TopicPartition._(this.topic, this.partition);
 
   factory TopicPartition(String topicName, int partitionId) {
     var key = topicName + partitionId.toString();
-    if (!_instanceCache.containsKey(key)) {
-      _instanceCache[key] = new TopicPartition._(topicName, partitionId);
+    if (!_cache.containsKey(key)) {
+      _cache[key] = new TopicPartition._(topicName, partitionId);
     }
 
-    return _instanceCache[key];
+    return _cache[key];
   }
 
   @override
-  bool operator ==(other) {
-    return (other.topicName == topicName && other.partitionId == partitionId);
+  bool operator ==(o) {
+    return (o is TopicPartition &&
+        o.topic == topic &&
+        o.partition == partition);
   }
 
   @override
-  int get hashCode => (topicName + partitionId.toString()).hashCode;
+  int get hashCode => hash2(topic, partition);
 
   @override
-  String toString() => "TopicPartition($topicName, $partitionId)";
+  String toString() => "TopicPartition($topic, $partition)";
 }

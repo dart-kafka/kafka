@@ -27,10 +27,14 @@ class FetchRequestV0 implements KRequest<FetchResponseV0> {
   final int minBytes;
 
   /// Topics and partitions to fetch messages from.
-  final Map<TopicPartition, FetchData> fetchData;
+  final Map<TopicPartition, FetchData> fetchData = new Map();
 
   /// Creates new instance of FetchRequest.
-  FetchRequestV0(this.maxWaitTime, this.minBytes, this.fetchData);
+  FetchRequestV0(this.maxWaitTime, this.minBytes);
+
+  void add(TopicPartition partition, FetchData data) {
+    fetchData[partition] = data;
+  }
 
   @override
   toString() => 'FetchRequest(${maxWaitTime}, ${minBytes}, ${fetchData})';
@@ -41,17 +45,17 @@ class FetchRequestV0 implements KRequest<FetchResponseV0> {
   @override
   RequestEncoder<KRequest> get encoder => new _FetchRequestV0Encoder();
 
-  Map<String, Map<int, FetchData>> _fetchDatabyTopic;
+  Map<String, Map<int, FetchData>> _fetchDataByTopic;
   Map<String, Map<int, FetchData>> get fetchDataByTopic {
-    if (_fetchDatabyTopic == null) {
+    if (_fetchDataByTopic == null) {
       var result = new Map<String, Map<int, FetchData>>();
       fetchData.keys.forEach((_) {
-        result.putIfAbsent(_.topicName, () => new Map());
-        result[_.topicName][_.partitionId] = fetchData[_];
+        result.putIfAbsent(_.topic, () => new Map());
+        result[_.topic][_.partition] = fetchData[_];
       });
-      _fetchDatabyTopic = result;
+      _fetchDataByTopic = result;
     }
-    return _fetchDatabyTopic;
+    return _fetchDataByTopic;
   }
 }
 

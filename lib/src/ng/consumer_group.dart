@@ -217,7 +217,7 @@ class GroupMembership {
     var metadata = new KMetadata(session: session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
-        key: (_) => _.topicName, value: (_) => _.partitions.length);
+        key: (_) => _.topic, value: (_) => _.partitions.length);
 
     Map<String, List<TopicPartition>> assignments =
         assignor.assign(partitionsPerTopic, subscriptions);
@@ -225,9 +225,9 @@ class GroupMembership {
       var partitionAssignment = new Map<String, List<int>>();
       assignments[memberId].forEach((topicPartition) {
         partitionAssignment.putIfAbsent(
-            topicPartition.topicName, () => new List<int>());
-        partitionAssignment[topicPartition.topicName]
-            .add(topicPartition.partitionId);
+            topicPartition.topic, () => new List<int>());
+        partitionAssignment[topicPartition.topic]
+            .add(topicPartition.partition);
       });
       groupAssignments.add(new GroupAssignment(
           memberId, new MemberAssignment(0, partitionAssignment, null)));

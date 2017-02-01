@@ -1,7 +1,3 @@
-library kafka.test.consumer_group;
-
-import 'dart:async';
-
 import 'package:kafka/ng.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';

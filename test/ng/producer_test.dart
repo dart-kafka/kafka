@@ -3,7 +3,8 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('KProducer:', () {
-    kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
+    KSession session =
+        new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
 
     tearDownAll(() async {
       await kafkaShutdown();
@@ -11,7 +12,7 @@ void main() {
 
     test('it can produce messages to Kafka', () async {
       var producer = new KProducer<String, String>(
-          new StringSerializer(), new StringSerializer());
+          new StringSerializer(), new StringSerializer(), session);
       var result = await producer
           .send(new ProducerRecord('testProduce', 0, 'key', 'value'));
       expect(result, new isInstanceOf<ProduceResult>());
