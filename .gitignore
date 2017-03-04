@@ -7,3 +7,4 @@ packages
 notes.md
 coverage/
 .atom/
+.vscode/

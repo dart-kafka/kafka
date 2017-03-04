@@ -7,7 +7,7 @@ void main() {
         new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
 
     tearDownAll(() async {
-      await kafkaShutdown();
+      await session.close();
     });
 
     test('it can produce messages to Kafka', () async {

@@ -4,18 +4,15 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('Consumer:', () {
-    KSession session;
-    String topic = 'dartKafkaTest';
+    KSession session =
+        new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
+    var date = new DateTime.now().millisecondsSinceEpoch;
+    String topic = 'testTopic-${date}';
     Map<int, int> expectedOffsets = new Map();
 
     setUp(() async {
-      var date = new DateTime.now().millisecondsSinceEpoch;
-      topic = 'testTopic-${date}';
-      session =
-          new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
       var producer = new KProducer(
-          new StringSerializer(), new StringSerializer(),
-          session: session);
+          new StringSerializer(), new StringSerializer(), session);
       var res =
           await producer.send(new ProducerRecord(topic, 0, 'akey', 'avalue'));
       expectedOffsets[res.topicPartition.partition] = res.offset;
@@ -25,28 +22,28 @@ void main() {
       expectedOffsets[res.topicPartition.partition] = res.offset;
     });
 
-    tearDown(() async {
+    tearDownAll(() async {
       await session.close();
     });
 
     test('it can consume messages from multiple brokers', () async {
-      var consumer = new KConsumer<String, String>('cg', new StringDeserializer(), new StringDeserializer(), session);
+      var consumer = new KConsumer<String, String>(
+          'cg', new StringDeserializer(), new StringDeserializer(), session);
       await consumer.subscribe([topic]);
       var iterator = consumer.poll();
+      int i = 0;
+      var consumedOffsets = new Map();
       while (await iterator.moveNext()) {
         var records = iterator.current;
         records.records.forEach((record) {
+          consumedOffsets[record.partition] = record.offset;
           print("Record: [${record.key}, ${record.value}]");
         });
+        i += records.records.length;
+        if (i >= 3) break;
       }
-//      var consumedOffsets = new Map();
-//      await for (MessageEnvelope envelope in consumer.consume(limit: 3)) {
-//        consumedOffsets[envelope.partitionId] = envelope.offset;
-//        expect(envelope.offset, _expectedOffsets[envelope.partitionId]);
-//        envelope.ack();
-//      }
-//      expect(consumedOffsets, _expectedOffsets);
-//
+      expect(consumedOffsets, expectedOffsets);
+
 //      var group = new ConsumerGroup(_session, 'cg');
 //      var offsets = await group.fetchOffsets(topics);
 //      expect(offsets, hasLength(3));

@@ -14,34 +14,62 @@ import 'partition_assignor.dart';
 import 'serialization.dart';
 import 'session.dart';
 
-/// Kafka Consumer
+/// Consumes messages from Kafka cluster.
+///
+/// Consumer interacts with the server to allow multiple members of the same group
+/// load balance consumption by distributing topics and partitions evenly across
+/// all members.
+///
+/// ## Usage example
+///
+///     void main() async {
+///       var session = new KSession();
+///       var consumer = new KConsumer<String, String>(
+///         'test_group', new StringDeserializer(), new StringDeserializer(), session);
+///       await consumer.subscribe(['foo', 'bar']);
+///       var iterator = consumer.poll();
+///       while (await iterator.moveNext()) {
+///         KConsumerRecords records = iterator.current;
+///         records.records.forEach((_) {
+///           print('offset: ${_.offset}, key: ${_.key}, value: ${_.value}');
+///         });
+///       }
+///     }
 abstract class KConsumer<K, V> {
+  /// The consumer group name.
+  String get group;
+
+  /// Starts polling Kafka servers for new messages.
   StreamIterator<KConsumerRecords<K, V>> poll();
 
+  /// Subscribes to [topics] as a member of consumer [group].
   Future subscribe(List<String> topics);
 
   Future unsubscribe();
 
+  /// Commits current offsets to the server.
+  Future commit();
+
   factory KConsumer(String groupName, Deserializer<K> keyDeserializer,
-      Deserializer<V> valueDeserializer,
-      KSession session) {
+      Deserializer<V> valueDeserializer, KSession session) {
     return new _KConsumerImpl(
         groupName, keyDeserializer, valueDeserializer, session);
   }
 }
 
+/// Default implementation of Kafka consumer.
 class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   static const int DEFAULT_MAX_BYTES = 36864;
   static const int DEFAULT_MAX_WAIT_TIME = 1000;
   static const int DEFAULT_MIN_BYTES = 1;
   static final Logger _logger = new Logger('KConsumer');
-  final String groupName;
+  final String group;
   final KSession session;
   final Deserializer<K> keyDeserializer;
   final Deserializer<V> valueDeserializer;
   final int requestMaxBytes;
 
-  _KConsumerImpl(this.groupName, this.keyDeserializer, this.valueDeserializer,
+  _KConsumerImpl(this.group, this.keyDeserializer, this.valueDeserializer,
       KSession session,
       {int requestMaxBytes})
       : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION,
@@ -52,12 +80,12 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
 
   @override
   StreamIterator<KConsumerRecords<K, V>> poll() {
-    if (membership == null) throw new StateError('No active subscription.');
-    if (_streamController != null)
-      throw new StateError('Polling already started.');
+    assert(membership != null,
+        'No active subscription. Must first call KConsumer.subscribe().');
+    assert(_streamController == null, 'Polling already started.');
 
     _streamController = new StreamController<KConsumerRecords>(
-        onPause: _onPause, onResume: _onResume, onCancel: _onCancel);
+        onPause: onPause, onResume: onResume, onCancel: onCancel);
     _streamIterator =
         new StreamIterator<KConsumerRecords>(_streamController.stream);
     _poll().whenComplete(() {
@@ -68,25 +96,26 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   Completer _resumeCompleter;
-  Future get _resumeFuture => _resumeCompleter.future;
-  void _onPause() {
+  Future get resumeFuture => _resumeCompleter.future;
+  void onPause() {
     assert(_resumeCompleter == null);
     _resumeCompleter = new Completer();
   }
 
-  void _onResume() {
+  void onResume() {
     assert(_resumeCompleter is Completer && !_resumeCompleter.isCompleted);
     _resumeCompleter.complete();
     _resumeCompleter = null;
   }
 
   bool _isCanceled = false;
-  void _onCancel() {
+  void onCancel() {
     _isCanceled = true;
   }
 
   Map<TopicPartition, int> _currentOffsets;
 
+  /// Internal polling method.
   Future _poll() async {
     _logger.info('Fetching initial offsets');
     _currentOffsets = await _fetchOffsets();
@@ -102,7 +131,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
           return new KConsumerRecord<K, V>(
               result.topicName, result.partitionId, offset, key, value);
         });
-      });
+      }).toList(growable: false);
     }
 
     void updateOffsets(List<KConsumerRecord> records) {
@@ -115,14 +144,14 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       }
     }
 
-    // TODO(P3): Implement an efficient polling algorithm.
+    // TODO: Implement a more efficient polling algorithm.
     while (true) {
       if (_isCanceled) {
         _streamController.close();
         break;
       }
       if (_streamController.isPaused) {
-        await _resumeFuture;
+        await resumeFuture;
       }
 
       Map<Broker, FetchRequestV0> requests =
@@ -136,7 +165,8 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
           _streamController.add(new KConsumerRecords(records));
         });
       });
-
+      // Depending on configuration this can be very inefficient.
+      // It always waits for all responses before returning to the user.
       await Future.wait(futures);
     }
   }
@@ -144,7 +174,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   Future<Map<TopicPartition, int>> _fetchOffsets() async {
     Future<OffsetFetchResponseV1> fetchFunc() async {
       var request = new OffsetFetchRequestV1(
-          groupName, membership.assignment.partitionAssignment);
+          group, membership.assignment.partitionAssignment);
       var coord = await _getCoordinator();
       return await session.send(request, coord.host, coord.port);
     }
@@ -161,7 +191,8 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       Map<TopicPartition, int> offsets) async {
     // TODO(P2): There should be a better way to do all these traversals...
     var assignment = membership.assignment.partitionAssignment;
-    var topics = membership.assignment.partitionAssignment.keys;
+    var topics =
+        membership.assignment.partitionAssignment.keys.toList(growable: false);
     var topicBrokers = await _fetchTopicMetadata(topics);
 
     List<Tuple3<Broker, TopicPartition, int>> data = topics.expand((topic) {
@@ -172,7 +203,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         offset = (offset == -1) ? 0 : offset;
         return tuple3(broker, topicPartition, offset);
       });
-    });
+    }).toList(growable: false);
 
     Map<Broker, FetchRequestV0> requests = new Map();
     for (var item in data) {
@@ -193,7 +224,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
           return _.partitions
               .map((p) => tuple3(_.topicName, p.partitionId, p.leader));
-        });
+        }).toList(growable: false);
         return new Map<TopicPartition, Broker>.fromIterable(data, key: (_) {
           return new TopicPartition(_.$1, _.$2);
         }, value: (_) {
@@ -211,12 +242,11 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
 
   @override
   Future subscribe(List<String> topics) {
-    _logger.info('Subscribing to topics $topics as member of group $groupName');
-    if (_isSubscribing)
-      throw new StateError('Subscription already in progress.');
+    assert(!_isSubscribing, 'Subscription already in progress.');
+    _logger.info('Subscribing to topics $topics as a member of group $group');
     _isSubscribing = true;
     var protocols = [new GroupProtocol.roundrobin(0, topics.toSet())];
-    _logger.info('Joining to consumer group ${groupName}.');
+    _logger.info('Joining to consumer group ${group}.');
     return _join(30000, '', 'consumer', protocols).then((result) {
       _membership = result;
       _logger.info('Subscription result: ${membership}.');
@@ -240,8 +270,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
 
     if (_coordinator == null) {
       var metadata = new KMetadata(session: session);
-      _coordinator =
-          metadata.fetchGroupCoordinator(groupName).catchError((error) {
+      _coordinator = metadata.fetchGroupCoordinator(group).catchError((error) {
         _coordinator = null;
         throw error;
       });
@@ -254,7 +283,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       String protocolType, Iterable<GroupProtocol> groupProtocols) async {
     var broker = await _getCoordinator();
     var joinRequest = new JoinGroupRequestV0(
-        groupName, sessionTimeout, memberId, protocolType, groupProtocols);
+        group, sessionTimeout, memberId, protocolType, groupProtocols);
     JoinGroupResponseV0 joinResponse =
         await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
@@ -265,8 +294,8 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       groupAssignments = await _assignPartitions(protocol, joinResponse);
     }
 
-    var syncRequest = new SyncGroupRequestV0(groupName,
-        joinResponse.generationId, joinResponse.memberId, groupAssignments);
+    var syncRequest = new SyncGroupRequestV0(group, joinResponse.generationId,
+        joinResponse.memberId, groupAssignments);
     SyncGroupResponseV0 syncResponse;
     try {
       // Wait before sending SyncRequest to give the server some time to respond
@@ -321,6 +350,11 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     }
 
     return groupAssignments;
+  }
+
+  @override
+  Future commit() {
+    // TODO: implement commit
   }
 }
 
