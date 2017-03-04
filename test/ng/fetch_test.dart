@@ -5,24 +5,19 @@ void main() {
   group('FetchApi:', () {
     String topic = 'dartKafkaTest';
     Broker host;
-    KSession session;
+    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
     String message;
 
     setUp(() async {
-      session =
-          new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
-      var metadata = new KMetadata(session: session);
+      var metadata = new KMetadata(session);
       var meta = await metadata.fetchTopics([topic]);
-      var leaderId = meta
-          .firstWhere((_) => _.topicName == topic)
-          .partitions
-          .first
-          .leader;
+      var leaderId =
+          meta.firstWhere((_) => _.topicName == topic).partitions.first.leader;
       var brokers = await metadata.listBrokers();
       host = brokers.firstWhere((_) => _.id == leaderId);
     });
 
-    tearDown(() async {
+    tearDownAll(() async {
       await session.close();
     });
 
@@ -30,15 +25,13 @@ void main() {
       var now = new DateTime.now();
       message = 'test:' + now.toIso8601String();
       var producer = new KProducer(
-          new StringSerializer(), new StringSerializer(),
-          session: session);
-      var result = await producer
-          .send(new ProducerRecord(topic, 0, 'key', message));
+          new StringSerializer(), new StringSerializer(), session);
+      var result =
+          await producer.send(new ProducerRecord(topic, 0, 'key', message));
 
       var offset = result.offset;
       FetchRequestV0 request = new FetchRequestV0(100, 1);
-      request.add(
-          new TopicPartition(topic, 0), new FetchData(offset, 35656));
+      request.add(new TopicPartition(topic, 0), new FetchData(offset, 35656));
       var response = await session.send(request, host.host, host.port);
 
       expect(response.results, hasLength(1));

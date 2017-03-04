@@ -69,11 +69,10 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   final Deserializer<V> valueDeserializer;
   final int requestMaxBytes;
 
-  _KConsumerImpl(this.group, this.keyDeserializer, this.valueDeserializer,
-      KSession session,
+  _KConsumerImpl(
+      this.group, this.keyDeserializer, this.valueDeserializer, this.session,
       {int requestMaxBytes})
-      : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION,
-        requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
+      : requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
 
   StreamController<KConsumerRecords> _streamController;
   StreamIterator<KConsumerRecords> _streamIterator;
@@ -189,7 +188,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
 
   Future<Map<Broker, FetchRequestV0>> _buildRequests(
       Map<TopicPartition, int> offsets) async {
-    // TODO(P2): There should be a better way to do all these traversals...
+    // TODO: There should be a better way to do all these traversals...
     var assignment = membership.assignment.partitionAssignment;
     var topics =
         membership.assignment.partitionAssignment.keys.toList(growable: false);
@@ -218,7 +217,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   Future<Map<TopicPartition, Broker>> _fetchTopicMetadata(List<String> topics) {
     if (_topicBrokers == null) {
       _topicBrokers = new Future(() async {
-        var meta = new KMetadata(session: session);
+        var meta = new KMetadata(session);
         var topicsMeta = await meta.fetchTopics(topics);
         var brokers = await meta.listBrokers();
         List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
@@ -269,7 +268,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     }
 
     if (_coordinator == null) {
-      var metadata = new KMetadata(session: session);
+      var metadata = new KMetadata(session);
       _coordinator = metadata.fetchGroupCoordinator(group).catchError((error) {
         _coordinator = null;
         throw error;
@@ -329,7 +328,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var metadata = new KMetadata(session: session);
+    var metadata = new KMetadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
         key: (_) => _.topicName, value: (_) => _.partitions.length);
@@ -353,8 +352,20 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   @override
-  Future commit() {
-    // TODO: implement commit
+  Future commit() async {
+    assert(_streamIterator.current != null);
+    // Get current offsets.
+    // Send OffsetCommitRequest to the coordinator node.
+  }
+
+  Future heartbeat(GroupMembership membership) async {
+    var host = await _getCoordinator();
+    var request = new HeartbeatRequestV0(
+        group, membership.generationId, membership.memberId);
+    _logger.fine(
+        'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
+    // TODO: retry, handle coordinator errors...
+    return session.send(request, host.host, host.port);
   }
 }
 

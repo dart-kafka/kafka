@@ -6,11 +6,9 @@ void main() {
     String _topicName = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
-    KSession session = KAFKA_DEFAULT_SESSION;
-    KMetadata metadata = new KMetadata();
+    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    KMetadata metadata = new KMetadata(session);
     int partitionId;
-
-    kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
 
     setUp(() async {
       var data = await metadata.fetchTopics([_topicName]);
@@ -21,8 +19,8 @@ void main() {
       broker = brokers.firstWhere((_) => _.id == leaderId);
     });
 
-    tearDown(() async {
-      await kafkaShutdown();
+    tearDownAll(() async {
+      await session.close();
     });
 
     test('it publishes messages to Kafka topic', () async {

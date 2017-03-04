@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:logging/logging.dart';
 import '../util/retry.dart';
 import 'common.dart';
 import 'consumer_metadata_api.dart';
@@ -8,10 +8,10 @@ import 'metadata_api.dart';
 import 'session.dart';
 
 class KMetadata {
+  static final Logger _logger = new Logger('KMetadata');
   final KSession session;
 
-  KMetadata({KSession session})
-      : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION;
+  KMetadata(this.session);
 
   Future<List<TopicMetadata>> fetchTopics(List<String> topics) {
     Future<List<TopicMetadata>> fetch() {
@@ -44,6 +44,7 @@ class KMetadata {
 
   Future<Broker> fetchGroupCoordinator(String groupName) {
     Future<Broker> fetch() {
+      _logger.info('Fetching group coordinator for group $groupName.');
       var req = new GroupCoordinatorRequestV0(groupName);
       var broker = session.contactPoints.first;
       return session.send(req, broker.host, broker.port).then((res) =>

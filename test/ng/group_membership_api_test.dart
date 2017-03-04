@@ -1,24 +1,21 @@
-import 'package:test/test.dart';
 import 'package:kafka/ng.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('GroupMembershipApi:', () {
     String groupId;
     String _topicName = 'dartKafkaTest';
     Broker _broker;
-    KSession _session;
-    KMetadata _metadata;
+    KSession _session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    KMetadata _metadata = new KMetadata(_session);
 
     setUp(() async {
       var now = new DateTime.now().millisecondsSinceEpoch.toString();
       groupId = 'test-group-' + now;
-      _session =
-          new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
-      _metadata = new KMetadata(session: _session);
       _broker = await _metadata.fetchGroupCoordinator(groupId);
     });
 
-    tearDown(() async {
+    tearDownAll(() async {
       await _session.close();
     });
 

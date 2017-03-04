@@ -12,16 +12,15 @@ void main() {
     Broker _badCoordinator;
 
     setUp(() async {
-      var session =
-          new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
-      var metadata = new KMetadata(session: session);
+      var session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+      var metadata = new KMetadata(session);
       List<Broker> brokers = await metadata.listBrokers();
 
       _coordinator = await metadata.fetchGroupCoordinator('testGroup');
       await session.close();
       _badCoordinator = brokers.firstWhere((b) => b.id != _coordinator.id);
       _session = spy(new KSessionMock(),
-          new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]));
+          new KSession([new ContactPoint('127.0.0.1:9092')]));
     });
 
     tearDown(() async {

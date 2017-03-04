@@ -153,7 +153,7 @@ class GroupMembership {
     }
 
     if (_coordinatorHost == null) {
-      var metadata = new KMetadata(session: session);
+      var metadata = new KMetadata(session);
       _coordinatorHost =
           metadata.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
@@ -214,7 +214,7 @@ class GroupMembership {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var metadata = new KMetadata(session: session);
+    var metadata = new KMetadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
         key: (_) => _.topic, value: (_) => _.partitions.length);
@@ -226,8 +226,7 @@ class GroupMembership {
       assignments[memberId].forEach((topicPartition) {
         partitionAssignment.putIfAbsent(
             topicPartition.topic, () => new List<int>());
-        partitionAssignment[topicPartition.topic]
-            .add(topicPartition.partition);
+        partitionAssignment[topicPartition.topic].add(topicPartition.partition);
       });
       groupAssignments.add(new GroupAssignment(
           memberId, new MemberAssignment(0, partitionAssignment, null)));
@@ -236,14 +235,6 @@ class GroupMembership {
     return groupAssignments;
   }
 
-  // Future heartbeat(GroupMembershipInfo membership) async {
-  //   var host = await _getCoordinator();
-  //   var request = new HeartbeatRequest(
-  //       name, membership.generationId, membership.memberId);
-  //   _logger.fine(
-  //       'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
-  //   await session.send(host, request);
-  // }
   //
   // Future leave(GroupMembershipInfo membership) async {
   //   _logger.info('Attempting to leave group "${name}".');

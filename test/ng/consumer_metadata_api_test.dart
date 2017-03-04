@@ -8,8 +8,7 @@ void main() {
 
     setUpAll(() async {
       try {
-        session =
-            new KSession(contactPoints: [new ContactPoint('127.0.0.1:9092')]);
+        session = new KSession([new ContactPoint('127.0.0.1:9092')]);
         var request = new GroupCoordinatorRequestV0('testGroup');
         await session.send(request, '127.0.0.1', 9092);
       } catch (error) {

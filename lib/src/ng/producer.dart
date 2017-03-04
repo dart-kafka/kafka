@@ -10,7 +10,7 @@ import 'produce_api.dart';
 abstract class KProducer<K, V> {
   factory KProducer(Serializer<K> keySerializer, Serializer<V> valueSerializer,
       KSession session) {
-    return new _ProducerImpl(keySerializer, valueSerializer, session: session);
+    return new _ProducerImpl(keySerializer, valueSerializer, session);
   }
 
   Future<ProduceResult> send(ProducerRecord<K, V> record);
@@ -37,8 +37,7 @@ class _ProducerImpl<K, V> implements KProducer<K, V> {
   final Serializer<K> keySerializer;
   final Serializer<V> valueSerializer;
 
-  _ProducerImpl(this.keySerializer, this.valueSerializer, {KSession session})
-      : session = (session is KSession) ? session : KAFKA_DEFAULT_SESSION;
+  _ProducerImpl(this.keySerializer, this.valueSerializer, this.session);
 
   @override
   Future<ProduceResult> send(ProducerRecord<K, V> record) async {
@@ -51,7 +50,7 @@ class _ProducerImpl<K, V> implements KProducer<K, V> {
       }
     };
     var req = new ProduceRequestV0(1, 1000, messages);
-    var metadata = new KMetadata(session: session);
+    var metadata = new KMetadata(session);
     var meta = await metadata.fetchTopics([record.topic]);
     var leaderId = meta.first.partitions
         .firstWhere((_) => _.partitionId == record.partition)

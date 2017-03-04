@@ -4,17 +4,6 @@ import 'package:logging/logging.dart';
 
 import 'io.dart';
 
-final KSession KAFKA_DEFAULT_SESSION = new KSession();
-List<ContactPoint> _defaultContactPoints;
-
-kafkaConfigure(List<ContactPoint> defaultContactPoints) {
-  _defaultContactPoints = defaultContactPoints;
-}
-
-Future kafkaShutdown() {
-  return KAFKA_DEFAULT_SESSION.close();
-}
-
 class ContactPoint {
   final String host;
   final int port;
@@ -28,7 +17,7 @@ class ContactPoint {
 }
 
 abstract class KSession {
-  factory KSession({List<ContactPoint> contactPoints}) {
+  factory KSession(List<ContactPoint> contactPoints) {
     return new _KSessionImpl(contactPoints);
   }
   List<ContactPoint> get contactPoints;
@@ -38,18 +27,10 @@ abstract class KSession {
 
 class _KSessionImpl implements KSession {
   static final Logger _logger = new Logger('KSession');
-
+  final List<ContactPoint> contactPoints;
   final Map<String, Future<KSocket>> _sockets = new Map();
 
-  _KSessionImpl(this._contactPoints);
-
-  List<ContactPoint> _contactPoints;
-  List<ContactPoint> get contactPoints {
-    if (_contactPoints == null) {
-      _contactPoints = _defaultContactPoints;
-    }
-    return _contactPoints;
-  }
+  _KSessionImpl(this.contactPoints);
 
   Future<T> send<T>(KRequest<T> request, String host, int port) {
     var payload = request.encoder.encode(request);

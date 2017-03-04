@@ -1,17 +1,17 @@
-import 'package:test/test.dart';
 import 'package:kafka/ng.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('KMetadata:', () {
-    kafkaConfigure([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata _metadata = new KMetadata();
+    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    KMetadata metadata = new KMetadata(session);
 
-    tearDown(() async {
-      await kafkaShutdown();
+    tearDownAll(() async {
+      await session.close();
     });
 
     test('it can fetch specific topic metadata', () async {
-      var topics = await _metadata.fetchTopics(['testTopic']);
+      var topics = await metadata.fetchTopics(['testTopic']);
       expect(topics, isList);
       expect(topics, hasLength(1));
       expect(topics.first.topicName, 'testTopic');
@@ -20,13 +20,13 @@ void main() {
     });
 
     test('it can list existing topics', () async {
-      var topics = await _metadata.listTopics();
+      var topics = await metadata.listTopics();
       expect(topics, isList);
       expect(topics, isNotEmpty);
     });
 
     test('it can list Kafka brokers within cluster', () async {
-      var brokers = await _metadata.listBrokers();
+      var brokers = await metadata.listBrokers();
       expect(brokers, isList);
       expect(brokers, hasLength(2));
     });
@@ -34,7 +34,7 @@ void main() {
     test('it can fetch group coordinator', () async {
       var group =
           'testGroup' + (new DateTime.now()).millisecondsSinceEpoch.toString();
-      var broker = await _metadata.fetchGroupCoordinator(group);
+      var broker = await metadata.fetchGroupCoordinator(group);
       expect(broker, new isInstanceOf<Broker>());
       expect(broker.id, isNotNull);
       expect(broker.host, isNotNull);
