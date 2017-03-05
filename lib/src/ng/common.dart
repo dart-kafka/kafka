@@ -2,14 +2,21 @@ import 'package:quiver/core.dart';
 
 import '../util/tuple.dart';
 
+/// Represents single broker in Kafka cluster.
 class Broker {
+  /// The unique identifier of this broker.
   final int id;
+
+  /// The hostname of this broker.
   final String host;
+
+  /// The port number this broker accepts connections on.
   final int port;
 
   Broker._(this.id, this.host, this.port);
 
   static final Map<Tuple3, Broker> _cache = new Map();
+
   factory Broker(int id, String host, int port) {
     var key = tuple3(id, host, port);
     if (!_cache.containsKey(key)) {
@@ -27,9 +34,10 @@ class Broker {
       o is Broker && o.id == id && o.host == host && o.port == port;
 
   @override
-  String toString() => 'Broker($id, $host:$port)';
+  String toString() => 'Broker{$id, $host:$port}';
 }
 
+/// Represents one partition in a topic.
 class TopicPartition {
   final String topic;
   final int partition;
@@ -58,5 +66,5 @@ class TopicPartition {
   int get hashCode => hash2(topic, partition);
 
   @override
-  String toString() => "TopicPartition($topic, $partition)";
+  String toString() => "TopicPartition{$topic:$partition}";
 }

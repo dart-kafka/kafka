@@ -8,10 +8,14 @@ import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
 
-/// Kafka FetchRequestV0.
-class FetchRequestV0 implements KRequest<FetchResponseV0> {
+final _logger = new Logger('FetchApi');
+
+/// Kafka FetchRequest.
+class FetchRequest implements KRequest<FetchResponse> {
+  @override
   final int apiKey = 1;
 
+  @override
   final int apiVersion = 2;
 
   /// The replica id indicates the node id of the replica initiating this request.
@@ -30,20 +34,20 @@ class FetchRequestV0 implements KRequest<FetchResponseV0> {
   final Map<TopicPartition, FetchData> fetchData = new Map();
 
   /// Creates new instance of FetchRequest.
-  FetchRequestV0(this.maxWaitTime, this.minBytes);
+  FetchRequest(this.maxWaitTime, this.minBytes);
 
   void add(TopicPartition partition, FetchData data) {
     fetchData[partition] = data;
   }
 
   @override
-  toString() => 'FetchRequest(${maxWaitTime}, ${minBytes}, ${fetchData})';
+  toString() => 'FetchRequest{${maxWaitTime}, ${minBytes}, ${fetchData}}';
 
   @override
-  ResponseDecoder<FetchResponseV0> get decoder => new _FetchResponseV0Decoder();
+  ResponseDecoder<FetchResponse> get decoder => const _FetchResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _FetchRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => const _FetchRequestEncoder();
 
   Map<String, Map<int, FetchData>> _fetchDataByTopic;
   Map<String, Map<int, FetchData>> get fetchDataByTopic {
@@ -65,12 +69,14 @@ class FetchData {
   FetchData(this.fetchOffset, this.maxBytes);
 }
 
-class _FetchRequestV0Encoder implements RequestEncoder<FetchRequestV0> {
+class _FetchRequestEncoder implements RequestEncoder<FetchRequest> {
+  const _FetchRequestEncoder();
+
   @override
-  List<int> encode(FetchRequestV0 request) {
+  List<int> encode(FetchRequest request) {
     var builder = new KafkaBytesBuilder();
 
-    builder.addInt32(FetchRequestV0.replicaId);
+    builder.addInt32(FetchRequest.replicaId);
     builder.addInt32(request.maxWaitTime);
     builder.addInt32(request.minBytes);
 
@@ -88,8 +94,8 @@ class _FetchRequestV0Encoder implements RequestEncoder<FetchRequestV0> {
   }
 }
 
-/// Kafka FetchResponseV0.
-class FetchResponseV0 {
+/// Kafka FetchResponse.
+class FetchResponse {
   /// Duration in milliseconds for which the request was throttled due to quota
   /// violation. (Zero if the request did not violate any quota.)
   final int throttleTime;
@@ -97,12 +103,11 @@ class FetchResponseV0 {
   /// List of [FetchResult]s for each topic-partition.
   final List<FetchResult> results;
 
-  FetchResponseV0(this.throttleTime, this.results) {
-    var errors = results
-        .map((_) => _.errorCode)
-        .where((_) => _ != KafkaServerError.NoError_);
+  FetchResponse(this.throttleTime, this.results) {
+    var errors =
+        results.map((_) => _.errorCode).where((_) => _ != Errors.NoError);
     if (errors.isNotEmpty) {
-      throw new KafkaServerError.fromCode(errors.first, this);
+      throw new KafkaError.fromCode(errors.first, this);
     }
   }
 }
@@ -120,11 +125,11 @@ class FetchResult {
       this.highwaterMarkOffset, this.messages);
 }
 
-class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
-  final Logger _logger = new Logger('_FetchResponseV0Decoder');
+class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
+  const _FetchResponseDecoder();
 
   @override
-  FetchResponseV0 decode(List<int> data) {
+  FetchResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var throttleTime = reader.readInt32();
     var count = reader.readInt32();
@@ -148,7 +153,7 @@ class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
       count--;
     }
 
-    return new FetchResponseV0(throttleTime, results);
+    return new FetchResponse(throttleTime, results);
   }
 
   /// Reads a set of messages from FetchResponse.

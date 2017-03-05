@@ -1,7 +1,5 @@
 import 'package:kafka/ng.dart';
-import 'package:logging/logging.dart';
 import 'package:test/test.dart';
-import '../setup.dart';
 
 void main() {
   group('FetchApi:', () {
@@ -11,7 +9,7 @@ void main() {
     String message;
 
     setUp(() async {
-      var metadata = new KMetadata(session);
+      var metadata = new Metadata(session);
       var meta = await metadata.fetchTopics([topic]);
       var leaderId =
           meta.firstWhere((_) => _.topic == topic).partitions.first.leader;
@@ -32,7 +30,7 @@ void main() {
           await producer.send(new ProducerRecord(topic, 0, 'key', message));
 
       var offset = result.offset;
-      FetchRequestV0 request = new FetchRequestV0(100, 1);
+      FetchRequest request = new FetchRequest(100, 1);
       request.add(new TopicPartition(topic, 0), new FetchData(offset, 35656));
       var response = await session.send(request, host.host, host.port);
 

@@ -6,9 +6,9 @@ class MessageCrcMismatchError extends StateError {
   MessageCrcMismatchError(String message) : super(message);
 }
 
-/// Represents errors returned by Kafka server.
-class KafkaServerError {
-  static const int NoError_ = 0;
+/// List of all Kafka server error codes.
+abstract class Errors {
+  static const int NoError = 0;
   static const int Unknown = -1;
   static const int OffsetOutOfRange = 1;
   static const int InvalidMessage = 2;
@@ -44,87 +44,89 @@ class KafkaServerError {
   static const int UnsupportedSaslMechanism = 33;
   static const int IllegalSaslState = 34;
   static const int UnsupportedVersion = 35;
+}
 
+/// Represents errors returned by Kafka server.
+class KafkaError {
   /// Numeric code of this server error.
   final int code;
 
+  /// The response object associated containing this error.
   final response;
 
-  KafkaServerError._(this.code, this.response);
+  KafkaError._(this.code, this.response);
 
-  factory KafkaServerError.fromCode(int code, response) {
+  factory KafkaError.fromCode(int code, response) {
     switch (code) {
-      case NoError_:
-        return new NoError(response);
-      case Unknown:
+      case Errors.Unknown:
         return new UnknownError(response);
-      case OffsetOutOfRange:
+      case Errors.OffsetOutOfRange:
         return new OffsetOutOfRangeError(response, null);
-      case InvalidMessage:
+      case Errors.InvalidMessage:
         return new InvalidMessageError(response);
-      case UnknownTopicOrPartition:
+      case Errors.UnknownTopicOrPartition:
         return new UnknownTopicOrPartitionError(response);
-      case InvalidMessageSize:
+      case Errors.InvalidMessageSize:
         return new InvalidMessageSizeError(response);
-      case LeaderNotAvailable:
+      case Errors.LeaderNotAvailable:
         return new LeaderNotAvailableError(response);
-      case NotLeaderForPartition:
+      case Errors.NotLeaderForPartition:
         return new NotLeaderForPartitionError(response);
-      case RequestTimedOut:
+      case Errors.RequestTimedOut:
         return new RequestTimedOutError(response);
-      case BrokerNotAvailable:
+      case Errors.BrokerNotAvailable:
         return new BrokerNotAvailableError(response);
-      case ReplicaNotAvailable:
+      case Errors.ReplicaNotAvailable:
         return new ReplicaNotAvailableError(response);
-      case MessageSizeTooLarge:
+      case Errors.MessageSizeTooLarge:
         return new MessageSizeTooLargeError(response);
-      case StaleControllerEpoch:
+      case Errors.StaleControllerEpoch:
         return new StaleControllerEpochError(response);
-      case OffsetMetadataTooLarge:
+      case Errors.OffsetMetadataTooLarge:
         return new OffsetMetadataTooLargeError(response);
-      case OffsetsLoadInProgress:
+      case Errors.OffsetsLoadInProgress:
         return new OffsetsLoadInProgressError(response);
-      case ConsumerCoordinatorNotAvailable:
+      case Errors.ConsumerCoordinatorNotAvailable:
         return new ConsumerCoordinatorNotAvailableError(response);
-      case NotCoordinatorForConsumer:
+      case Errors.NotCoordinatorForConsumer:
         return new NotCoordinatorForConsumerError(response);
-      case InvalidTopic:
+      case Errors.InvalidTopic:
         return new InvalidTopicError(response);
-      case RecordListTooLarge:
+      case Errors.RecordListTooLarge:
         return new RecordListTooLargeError(response);
-      case NotEnoughReplicas:
+      case Errors.NotEnoughReplicas:
         return new NotEnoughReplicasError(response);
-      case NotEnoughReplicasAfterAppend:
+      case Errors.NotEnoughReplicasAfterAppend:
         return new NotEnoughReplicasAfterAppendError(response);
-      case InvalidRequiredAcks:
+      case Errors.InvalidRequiredAcks:
         return new InvalidRequiredAcksError(response);
-      case IllegalGeneration:
+      case Errors.IllegalGeneration:
         return new IllegalGenerationError(response);
-      case InconsistentGroupProtocol:
+      case Errors.InconsistentGroupProtocol:
         return new InconsistentGroupProtocolError(response);
-      case InvalidGroupId:
+      case Errors.InvalidGroupId:
         return new InvalidGroupIdError(response);
-      case UnknownMemberId:
+      case Errors.UnknownMemberId:
         return new UnknownMemberIdError(response);
-      case InvalidSessionTimeout:
+      case Errors.InvalidSessionTimeout:
         return new InvalidSessionTimeoutError(response);
-      case RebalanceInProgress:
+      case Errors.RebalanceInProgress:
         return new RebalanceInProgressError(response);
-      case InvalidCommitOffsetSize:
+      case Errors.InvalidCommitOffsetSize:
         return new InvalidCommitOffsetSizeError(response);
-      case TopicAuthorizationFailed:
+      case Errors.TopicAuthorizationFailed:
         return new TopicAuthorizationFailedError(response);
-      case GroupAuthorizationFailed:
+      case Errors.GroupAuthorizationFailed:
         return new GroupAuthorizationFailedError(response);
-      case ClusterAuthorizationFailed:
+      case Errors.ClusterAuthorizationFailed:
         return new ClusterAuthorizationFailedError(response);
-      case InvalidTimestamp:
+      case Errors.InvalidTimestamp:
         return new InvalidTimestampError(response);
-      case UnsupportedSaslMechanism:
+      case Errors.UnsupportedSaslMechanism:
         return new UnsupportedSaslMechanismError(response);
-      case IllegalSaslState:
+      case Errors.IllegalSaslState:
         return new IllegalSaslStateError(response);
-      case UnsupportedVersion:
+      case Errors.UnsupportedVersion:
         return new UnsupportedVersionError(response);
       default:
         throw new ArgumentError('Unsupported Kafka server error code $code.');
@@ -135,181 +137,174 @@ class KafkaServerError {
   String toString() => '${runtimeType}(${code})';
 }
 
-class NoError extends KafkaServerError {
-  NoError(response) : super._(KafkaServerError.NoError_, response);
+class NoError extends KafkaError {
+  NoError(response) : super._(Errors.NoError, response);
 }
 
-class UnknownError extends KafkaServerError {
-  UnknownError(response) : super._(KafkaServerError.Unknown, response);
+class UnknownError extends KafkaError {
+  UnknownError(response) : super._(Errors.Unknown, response);
 }
 
-class OffsetOutOfRangeError extends KafkaServerError {
+class OffsetOutOfRangeError extends KafkaError {
   final List<TopicPartition> topicPartitions;
   OffsetOutOfRangeError(response, this.topicPartitions)
-      : super._(KafkaServerError.OffsetOutOfRange, response);
+      : super._(Errors.OffsetOutOfRange, response);
 }
 
-class InvalidMessageError extends KafkaServerError {
-  InvalidMessageError(response)
-      : super._(KafkaServerError.InvalidMessage, response);
+class InvalidMessageError extends KafkaError {
+  InvalidMessageError(response) : super._(Errors.InvalidMessage, response);
 }
 
-class UnknownTopicOrPartitionError extends KafkaServerError {
+class UnknownTopicOrPartitionError extends KafkaError {
   UnknownTopicOrPartitionError(response)
-      : super._(KafkaServerError.UnknownTopicOrPartition, response);
+      : super._(Errors.UnknownTopicOrPartition, response);
 }
 
-class InvalidMessageSizeError extends KafkaServerError {
+class InvalidMessageSizeError extends KafkaError {
   InvalidMessageSizeError(response)
-      : super._(KafkaServerError.InvalidMessageSize, response);
+      : super._(Errors.InvalidMessageSize, response);
 }
 
-class LeaderNotAvailableError extends KafkaServerError {
+class LeaderNotAvailableError extends KafkaError {
   LeaderNotAvailableError(response)
-      : super._(KafkaServerError.LeaderNotAvailable, response);
+      : super._(Errors.LeaderNotAvailable, response);
 }
 
-class NotLeaderForPartitionError extends KafkaServerError {
+class NotLeaderForPartitionError extends KafkaError {
   NotLeaderForPartitionError(response)
-      : super._(KafkaServerError.NotLeaderForPartition, response);
+      : super._(Errors.NotLeaderForPartition, response);
 }
 
-class RequestTimedOutError extends KafkaServerError {
-  RequestTimedOutError(response)
-      : super._(KafkaServerError.RequestTimedOut, response);
+class RequestTimedOutError extends KafkaError {
+  RequestTimedOutError(response) : super._(Errors.RequestTimedOut, response);
 }
 
-class BrokerNotAvailableError extends KafkaServerError {
+class BrokerNotAvailableError extends KafkaError {
   BrokerNotAvailableError(response)
-      : super._(KafkaServerError.BrokerNotAvailable, response);
+      : super._(Errors.BrokerNotAvailable, response);
 }
 
-class ReplicaNotAvailableError extends KafkaServerError {
+class ReplicaNotAvailableError extends KafkaError {
   ReplicaNotAvailableError(response)
-      : super._(KafkaServerError.ReplicaNotAvailable, response);
+      : super._(Errors.ReplicaNotAvailable, response);
 }
 
-class MessageSizeTooLargeError extends KafkaServerError {
+class MessageSizeTooLargeError extends KafkaError {
   MessageSizeTooLargeError(response)
-      : super._(KafkaServerError.MessageSizeTooLarge, response);
+      : super._(Errors.MessageSizeTooLarge, response);
 }
 
-class StaleControllerEpochError extends KafkaServerError {
+class StaleControllerEpochError extends KafkaError {
   StaleControllerEpochError(response)
-      : super._(KafkaServerError.StaleControllerEpoch, response);
+      : super._(Errors.StaleControllerEpoch, response);
 }
 
-class OffsetMetadataTooLargeError extends KafkaServerError {
+class OffsetMetadataTooLargeError extends KafkaError {
   OffsetMetadataTooLargeError(response)
-      : super._(KafkaServerError.OffsetMetadataTooLarge, response);
+      : super._(Errors.OffsetMetadataTooLarge, response);
 }
 
-class OffsetsLoadInProgressError extends KafkaServerError {
+class OffsetsLoadInProgressError extends KafkaError {
   OffsetsLoadInProgressError(response)
-      : super._(KafkaServerError.OffsetsLoadInProgress, response);
+      : super._(Errors.OffsetsLoadInProgress, response);
 }
 
-class ConsumerCoordinatorNotAvailableError extends KafkaServerError {
+class ConsumerCoordinatorNotAvailableError extends KafkaError {
   ConsumerCoordinatorNotAvailableError(response)
-      : super._(KafkaServerError.ConsumerCoordinatorNotAvailable, response);
+      : super._(Errors.ConsumerCoordinatorNotAvailable, response);
 }
 
-class NotCoordinatorForConsumerError extends KafkaServerError {
+class NotCoordinatorForConsumerError extends KafkaError {
   NotCoordinatorForConsumerError(response)
-      : super._(KafkaServerError.NotCoordinatorForConsumer, response);
+      : super._(Errors.NotCoordinatorForConsumer, response);
 }
 
-class InvalidTopicError extends KafkaServerError {
-  InvalidTopicError(response)
-      : super._(KafkaServerError.InvalidTopic, response);
+class InvalidTopicError extends KafkaError {
+  InvalidTopicError(response) : super._(Errors.InvalidTopic, response);
 }
 
-class RecordListTooLargeError extends KafkaServerError {
+class RecordListTooLargeError extends KafkaError {
   RecordListTooLargeError(response)
-      : super._(KafkaServerError.RecordListTooLarge, response);
+      : super._(Errors.RecordListTooLarge, response);
 }
 
-class NotEnoughReplicasError extends KafkaServerError {
+class NotEnoughReplicasError extends KafkaError {
   NotEnoughReplicasError(response)
-      : super._(KafkaServerError.NotEnoughReplicas, response);
+      : super._(Errors.NotEnoughReplicas, response);
 }
 
-class NotEnoughReplicasAfterAppendError extends KafkaServerError {
+class NotEnoughReplicasAfterAppendError extends KafkaError {
   NotEnoughReplicasAfterAppendError(response)
-      : super._(KafkaServerError.NotEnoughReplicasAfterAppend, response);
+      : super._(Errors.NotEnoughReplicasAfterAppend, response);
 }
 
-class InvalidRequiredAcksError extends KafkaServerError {
+class InvalidRequiredAcksError extends KafkaError {
   InvalidRequiredAcksError(response)
-      : super._(KafkaServerError.InvalidRequiredAcks, response);
+      : super._(Errors.InvalidRequiredAcks, response);
 }
 
-class IllegalGenerationError extends KafkaServerError {
+class IllegalGenerationError extends KafkaError {
   IllegalGenerationError(response)
-      : super._(KafkaServerError.IllegalGeneration, response);
+      : super._(Errors.IllegalGeneration, response);
 }
 
-class InconsistentGroupProtocolError extends KafkaServerError {
+class InconsistentGroupProtocolError extends KafkaError {
   InconsistentGroupProtocolError(response)
-      : super._(KafkaServerError.InconsistentGroupProtocol, response);
+      : super._(Errors.InconsistentGroupProtocol, response);
 }
 
-class InvalidGroupIdError extends KafkaServerError {
-  InvalidGroupIdError(response)
-      : super._(KafkaServerError.InvalidGroupId, response);
+class InvalidGroupIdError extends KafkaError {
+  InvalidGroupIdError(response) : super._(Errors.InvalidGroupId, response);
 }
 
-class UnknownMemberIdError extends KafkaServerError {
-  UnknownMemberIdError(response)
-      : super._(KafkaServerError.UnknownMemberId, response);
+class UnknownMemberIdError extends KafkaError {
+  UnknownMemberIdError(response) : super._(Errors.UnknownMemberId, response);
 }
 
-class InvalidSessionTimeoutError extends KafkaServerError {
+class InvalidSessionTimeoutError extends KafkaError {
   InvalidSessionTimeoutError(response)
-      : super._(KafkaServerError.InvalidSessionTimeout, response);
+      : super._(Errors.InvalidSessionTimeout, response);
 }
 
-class RebalanceInProgressError extends KafkaServerError {
+class RebalanceInProgressError extends KafkaError {
   RebalanceInProgressError(response)
-      : super._(KafkaServerError.RebalanceInProgress, response);
+      : super._(Errors.RebalanceInProgress, response);
 }
 
-class InvalidCommitOffsetSizeError extends KafkaServerError {
+class InvalidCommitOffsetSizeError extends KafkaError {
   InvalidCommitOffsetSizeError(response)
-      : super._(KafkaServerError.InvalidCommitOffsetSize, response);
+      : super._(Errors.InvalidCommitOffsetSize, response);
 }
 
-class TopicAuthorizationFailedError extends KafkaServerError {
+class TopicAuthorizationFailedError extends KafkaError {
   TopicAuthorizationFailedError(response)
-      : super._(KafkaServerError.TopicAuthorizationFailed, response);
+      : super._(Errors.TopicAuthorizationFailed, response);
 }
 
-class GroupAuthorizationFailedError extends KafkaServerError {
+class GroupAuthorizationFailedError extends KafkaError {
   GroupAuthorizationFailedError(response)
-      : super._(KafkaServerError.GroupAuthorizationFailed, response);
+      : super._(Errors.GroupAuthorizationFailed, response);
 }
 
-class ClusterAuthorizationFailedError extends KafkaServerError {
+class ClusterAuthorizationFailedError extends KafkaError {
   ClusterAuthorizationFailedError(response)
-      : super._(KafkaServerError.ClusterAuthorizationFailed, response);
+      : super._(Errors.ClusterAuthorizationFailed, response);
 }
 
-class InvalidTimestampError extends KafkaServerError {
-  InvalidTimestampError(response)
-      : super._(KafkaServerError.InvalidTimestamp, response);
+class InvalidTimestampError extends KafkaError {
+  InvalidTimestampError(response) : super._(Errors.InvalidTimestamp, response);
 }
 
-class UnsupportedSaslMechanismError extends KafkaServerError {
+class UnsupportedSaslMechanismError extends KafkaError {
   UnsupportedSaslMechanismError(response)
-      : super._(KafkaServerError.UnsupportedSaslMechanism, response);
+      : super._(Errors.UnsupportedSaslMechanism, response);
 }
 
-class IllegalSaslStateError extends KafkaServerError {
-  IllegalSaslStateError(response)
-      : super._(KafkaServerError.IllegalSaslState, response);
+class IllegalSaslStateError extends KafkaError {
+  IllegalSaslStateError(response) : super._(Errors.IllegalSaslState, response);
 }
 
-class UnsupportedVersionError extends KafkaServerError {
+class UnsupportedVersionError extends KafkaError {
   UnsupportedVersionError(response)
-      : super._(KafkaServerError.UnsupportedVersion, response);
+      : super._(Errors.UnsupportedVersion, response);
 }

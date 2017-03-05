@@ -5,8 +5,6 @@ import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
 
-enum KafkaType { int8, int16, int32, int64, string, bytes, object }
-
 /// Bytes builder specific to Kafka protocol.
 ///
 /// Provides convenient methods for writing all Kafka data types (and some more):
@@ -221,43 +219,6 @@ class KafkaBytesReader {
     for (var i = 0; i < length; i++) {
       items.add(reader());
     }
-    return items;
-  }
-
-  @Deprecated("Use typed alternatives instead.")
-  List readArray(KafkaType itemType,
-      [objectReadHandler(KafkaBytesReader reader)]) {
-    var length = readInt32();
-    var items = new List();
-    for (var i = 0; i < length; i++) {
-      switch (itemType) {
-        case KafkaType.int8:
-          items.add(readInt8());
-          break;
-        case KafkaType.int16:
-          items.add(readInt16());
-          break;
-        case KafkaType.int32:
-          items.add(readInt32());
-          break;
-        case KafkaType.int64:
-          items.add(readInt64());
-          break;
-        case KafkaType.string:
-          items.add(readString());
-          break;
-        case KafkaType.bytes:
-          items.add(readBytes());
-          break;
-        case KafkaType.object:
-          if (objectReadHandler == null) {
-            throw new StateError('ObjectReadHandler must be provided');
-          }
-          items.add(objectReadHandler(this));
-          break;
-      }
-    }
-
     return items;
   }
 

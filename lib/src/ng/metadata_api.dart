@@ -1,8 +1,9 @@
 import 'common.dart';
-import 'io.dart';
 import 'errors.dart';
+import 'io.dart';
 
-class MetadataRequestV0 extends KRequest<MetadataResponseV0> {
+/// Kafka MetadataRequest.
+class MetadataRequest extends KRequest<MetadataResponse> {
   @override
   final int apiKey = 3;
 
@@ -10,61 +11,68 @@ class MetadataRequestV0 extends KRequest<MetadataResponseV0> {
   final int apiVersion = 0;
 
   @override
-  final RequestEncoder<KRequest> encoder = new _MetadataRequestV0Encoder();
+  final RequestEncoder<KRequest> encoder = const _MetadataRequestEncoder();
 
   @override
-  final ResponseDecoder<MetadataResponseV0> decoder =
-      new _MetadataResponseV0Decoder();
+  final ResponseDecoder<MetadataResponse> decoder =
+      const _MetadataResponseDecoder();
 
   final List<String> topicNames;
 
-  MetadataRequestV0([this.topicNames]);
+  /// Creates new MetadataRequest.
+  ///
+  /// If [topicNames] is not set it fetches information about all existing
+  /// topics in the Kafka cluster.
+  MetadataRequest([this.topicNames]);
 }
 
-class MetadataResponseV0 {
+class MetadataResponse {
+  /// List of brokers in the Kafka cluster.
   final List<Broker> brokers;
+
+  /// List of topics in the Kafka cluster.
   final List<TopicMetadata> topics;
 
-  MetadataResponseV0(this.brokers, this.topics) {
-    var errorTopic = topics.firstWhere(
-        (_) => _.errorCode != KafkaServerError.NoError_,
-        orElse: () => null);
+  MetadataResponse(this.brokers, this.topics) {
+    var errorTopic =
+        topics.firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
     if (errorTopic is TopicMetadata) {
-      throw new KafkaServerError.fromCode(errorTopic.errorCode, this);
+      throw new KafkaError.fromCode(errorTopic.error, this);
     }
   }
 }
 
 class TopicMetadata {
-  final int errorCode;
+  final int error;
   final String topic;
   final List<PartitionMetadata> partitions;
 
-  TopicMetadata(this.errorCode, this.topic, this.partitions);
+  TopicMetadata(this.error, this.topic, this.partitions);
 
   @override
-  toString() => 'TopicMetadata: $topic, errorCode: $errorCode; '
-      '$partitions';
+  toString() => 'TopicMetadata{$topic, error: $error; $partitions}';
 }
 
 class PartitionMetadata {
-  final int errorCode;
-  final int partitionId;
+  final int error;
+  final int id;
   final int leader;
   final List<int> replicas;
   final List<int> inSyncReplicas;
 
-  PartitionMetadata(this.errorCode, this.partitionId, this.leader,
-      this.replicas, this.inSyncReplicas);
+  PartitionMetadata(
+      this.error, this.id, this.leader, this.replicas, this.inSyncReplicas);
 
   @override
-  toString() => 'Partition#$partitionId(errorCode: $errorCode, '
-      'leader: $leader, replicas: $replicas, isr: $inSyncReplicas)';
+  toString() => 'Partition#$id{error: $error, '
+      'leader: $leader, replicas: $replicas, isr: $inSyncReplicas}';
 }
 
-class _MetadataRequestV0Encoder implements RequestEncoder<MetadataRequestV0> {
+class _MetadataRequestEncoder implements RequestEncoder<MetadataRequest> {
+  const _MetadataRequestEncoder();
+
   @override
-  List<int> encode(MetadataRequestV0 request) {
+  List<int> encode(MetadataRequest request) {
     var builder = new KafkaBytesBuilder();
     List<String> topics = request.topicNames ?? new List();
     builder.addStringArray(topics);
@@ -72,10 +80,11 @@ class _MetadataRequestV0Encoder implements RequestEncoder<MetadataRequestV0> {
   }
 }
 
-class _MetadataResponseV0Decoder
-    implements ResponseDecoder<MetadataResponseV0> {
+class _MetadataResponseDecoder implements ResponseDecoder<MetadataResponse> {
+  const _MetadataResponseDecoder();
+
   @override
-  MetadataResponseV0 decode(List<int> data) {
+  MetadataResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     List<Broker> brokers = reader.readObjectArray((r) {
       return new Broker(r.readInt32(), r.readString(), r.readInt32());
@@ -90,6 +99,6 @@ class _MetadataResponseV0Decoder
               r.readInt32Array(), r.readInt32Array()));
       return new TopicMetadata(errorCode, topicName, partitions);
     });
-    return new MetadataResponseV0(brokers, topics);
+    return new MetadataResponse(brokers, topics);
   }
 }

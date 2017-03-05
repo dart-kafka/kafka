@@ -4,81 +4,76 @@ import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 
-/// Kafka ListOffsetRequest version 1.
-class ListOffsetRequestV1 extends KRequest<ListOffsetResponseV1> {
-  /// API key of this request.
+/// Kafka ListOffsetRequest.
+class ListOffsetRequest extends KRequest<ListOffsetResponse> {
   @override
   final int apiKey = 2;
 
-  /// API version of this request.
   @override
   final int apiVersion = 1;
 
-  /// Unique ID assigned to the host within Kafka cluster.
-  final int replicaId;
+  /// Unique ID assigned to the host within Kafka cluster. Regular consumers
+  /// should always pass `-1`.
+  static const int replicaId = -1;
 
   /// Map of topic-partitions to timestamps (in msecs)
   final Map<TopicPartition, int> topics;
 
   /// Creates new instance of OffsetRequest.
   ///
-  /// The [replicaId] argument indicates unique ID assigned to the host within
-  /// Kafka cluster.
   /// The [topics] argument is a `Map` where keys are instances of
   /// [TopicPartition] and values are integer timestamps (ms). Timestamps
   /// are used to ask for all entries before a certain time. Specify `-1` to
   /// receive the latest offset (i.e. the offset of the next coming message)
   /// and -2 to receive the earliest available offset.
-  ListOffsetRequestV1(this.replicaId, this.topics);
+  ListOffsetRequest(this.topics);
 
   @override
-  ResponseDecoder<ListOffsetResponseV1> get decoder =>
-      const _ListOffsetResponseV1Decoder();
+  ResponseDecoder<ListOffsetResponse> get decoder =>
+      const _ListOffsetResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => const _ListOffsetRequestV1Encoder();
+  RequestEncoder<KRequest> get encoder => const _ListOffsetRequestEncoder();
 }
 
-/// Kafka ListOffsetResponseV1.
-class ListOffsetResponseV1 {
-  /// Map of topics and list of partitions with offset details.
-  final List<TopicOffsets> offsets;
+/// Kafka ListOffsetResponse.
+class ListOffsetResponse {
+  /// List of offsets for each topic-partition.
+  final List<TopicOffset> offsets;
 
-  ListOffsetResponseV1(this.offsets) {
-    var errorOffset = offsets.firstWhere(
-        (_) => _.errorCode != KafkaServerError.NoError_,
+  ListOffsetResponse(this.offsets) {
+    var errorOffset = offsets.firstWhere((_) => _.errorCode != Errors.NoError,
         orElse: () => null);
     if (errorOffset != null) {
-      throw new KafkaServerError.fromCode(errorOffset.errorCode, this);
+      throw new KafkaError.fromCode(errorOffset.errorCode, this);
     }
   }
 }
 
 /// Data structure representing offsets of particular topic-partition returned
-/// by [ListOffsetRequestV1].
-class TopicOffsets {
+/// by [ListOffsetRequest].
+class TopicOffset {
   final String topic;
   final int partition;
   final int errorCode;
   final int timestamp;
   final int offset;
 
-  TopicOffsets(
+  TopicOffset(
       this.topic, this.partition, this.errorCode, this.timestamp, this.offset);
 
   @override
   toString() =>
-      'TopicOffset[$topic-$partition, error: $errorCode, timestamp: $timestamp, offsets: $offset]';
+      'TopicOffset{$topic-$partition, error: $errorCode, timestamp: $timestamp, offset: $offset}';
 }
 
-class _ListOffsetRequestV1Encoder
-    implements RequestEncoder<ListOffsetRequestV1> {
-  const _ListOffsetRequestV1Encoder();
+class _ListOffsetRequestEncoder implements RequestEncoder<ListOffsetRequest> {
+  const _ListOffsetRequestEncoder();
 
   @override
-  List<int> encode(ListOffsetRequestV1 request) {
+  List<int> encode(ListOffsetRequest request) {
     var builder = new KafkaBytesBuilder();
-    builder.addInt32(request.replicaId);
+    builder.addInt32(ListOffsetRequest.replicaId);
 
     // <topic, partition, timestamp>
     List<Tuple3<String, int, int>> items = request.topics.keys.map((_) {
@@ -102,16 +97,16 @@ class _ListOffsetRequestV1Encoder
   }
 }
 
-class _ListOffsetResponseV1Decoder
-    implements ResponseDecoder<ListOffsetResponseV1> {
-  const _ListOffsetResponseV1Decoder();
+class _ListOffsetResponseDecoder
+    implements ResponseDecoder<ListOffsetResponse> {
+  const _ListOffsetResponseDecoder();
 
   @override
-  ListOffsetResponseV1 decode(List<int> data) {
+  ListOffsetResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
 
     var count = reader.readInt32();
-    var offsets = new List<TopicOffsets>();
+    var offsets = new List<TopicOffset>();
     while (count > 0) {
       var topic = reader.readString();
       var partitionCount = reader.readInt32();
@@ -121,12 +116,12 @@ class _ListOffsetResponseV1Decoder
         var timestamp = reader.readInt64();
         var offset = reader.readInt64();
         offsets.add(
-            new TopicOffsets(topic, partition, errorCode, timestamp, offset));
+            new TopicOffset(topic, partition, errorCode, timestamp, offset));
         partitionCount--;
       }
       count--;
     }
 
-    return new ListOffsetResponseV1(offsets);
+    return new ListOffsetResponse(offsets);
   }
 }

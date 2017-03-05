@@ -7,7 +7,7 @@ void main() {
     String _topicName = 'dartKafkaTest';
     Broker _broker;
     KSession _session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata _metadata = new KMetadata(_session);
+    Metadata _metadata = new Metadata(_session);
 
     setUp(() async {
       var now = new DateTime.now().millisecondsSinceEpoch.toString();
@@ -24,11 +24,11 @@ void main() {
         new GroupProtocol.roundrobin(0, [_topicName].toSet())
       ];
       var joinRequest =
-          new JoinGroupRequestV0(groupId, 15000, '', 'consumer', protocols);
-      JoinGroupResponseV0 joinResponse =
+          new JoinGroupRequest(groupId, 15000, '', 'consumer', protocols);
+      JoinGroupResponse joinResponse =
           await _session.send(joinRequest, _broker.host, _broker.port);
-      expect(joinResponse, new isInstanceOf<JoinGroupResponseV0>());
-      expect(joinResponse.errorCode, 0);
+      expect(joinResponse, new isInstanceOf<JoinGroupResponse>());
+      expect(joinResponse.error, 0);
       expect(joinResponse.generationId, greaterThanOrEqualTo(1));
       expect(joinResponse.groupProtocol, 'roundrobin');
       expect(joinResponse.leaderId, joinResponse.memberId);
@@ -41,24 +41,23 @@ void main() {
       var assignments = [
         new GroupAssignment(joinResponse.memberId, memberAssignment)
       ];
-      var syncRequest = new SyncGroupRequestV0(groupId,
-          joinResponse.generationId, joinResponse.memberId, assignments);
-      SyncGroupResponseV0 syncResponse =
+      var syncRequest = new SyncGroupRequest(groupId, joinResponse.generationId,
+          joinResponse.memberId, assignments);
+      SyncGroupResponse syncResponse =
           await _session.send(syncRequest, _broker.host, _broker.port);
-      expect(syncResponse.errorCode, KafkaServerError.NoError_);
+      expect(syncResponse.error, Errors.NoError);
       expect(syncResponse.assignment.partitionAssignment, topics);
 
-      var heartbeatRequest = new HeartbeatRequestV0(
+      var heartbeatRequest = new HeartbeatRequest(
           groupId, joinResponse.generationId, joinResponse.memberId);
-      HeartbeatResponseV0 heartbeatResponse =
+      HeartbeatResponse heartbeatResponse =
           await _session.send(heartbeatRequest, _broker.host, _broker.port);
-      expect(heartbeatResponse.errorCode, KafkaServerError.NoError_);
+      expect(heartbeatResponse.error, Errors.NoError);
 
-      var leaveRequest =
-          new LeaveGroupRequestV0(groupId, joinResponse.memberId);
-      LeaveGroupResponseV0 leaveResponse =
+      var leaveRequest = new LeaveGroupRequest(groupId, joinResponse.memberId);
+      LeaveGroupResponse leaveResponse =
           await _session.send(leaveRequest, _broker.host, _broker.port);
-      expect(leaveResponse.errorCode, KafkaServerError.NoError_);
+      expect(leaveResponse.error, Errors.NoError);
     });
   });
 }

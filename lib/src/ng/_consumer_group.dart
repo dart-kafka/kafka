@@ -19,6 +19,7 @@ class ConsumerOffset {
       [this.errorCode]);
 }
 
+@Deprecated('Moved to Consumer.')
 class GroupMembership {
   static final Logger _logger = new Logger('ConsumerGroup');
 
@@ -153,7 +154,7 @@ class GroupMembership {
     }
 
     if (_coordinatorHost == null) {
-      var metadata = new KMetadata(session);
+      var metadata = new Metadata(session);
       _coordinatorHost =
           metadata.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
@@ -167,9 +168,9 @@ class GroupMembership {
   Future<GroupMembershipInfo> join(int sessionTimeout, String memberId,
       String protocolType, Iterable<GroupProtocol> groupProtocols) async {
     var broker = await _getCoordinator();
-    var joinRequest = new JoinGroupRequestV0(
+    var joinRequest = new JoinGroupRequest(
         name, sessionTimeout, memberId, protocolType, groupProtocols);
-    JoinGroupResponseV0 joinResponse =
+    JoinGroupResponse joinResponse =
         await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
     var isLeader = joinResponse.leaderId == joinResponse.memberId;
@@ -179,9 +180,9 @@ class GroupMembership {
       groupAssignments = await _assignPartitions(protocol, joinResponse);
     }
 
-    var syncRequest = new SyncGroupRequestV0(name, joinResponse.generationId,
+    var syncRequest = new SyncGroupRequest(name, joinResponse.generationId,
         joinResponse.memberId, groupAssignments);
-    SyncGroupResponseV0 syncResponse;
+    SyncGroupResponse syncResponse;
     try {
       // Wait before sending SyncRequest to give the server some time to respond
       // to all the rest JoinRequests.
@@ -203,7 +204,7 @@ class GroupMembership {
   }
 
   Future<List<GroupAssignment>> _assignPartitions(
-      String protocol, JoinGroupResponseV0 joinResponse) async {
+      String protocol, JoinGroupResponse joinResponse) async {
     var groupAssignments = new List<GroupAssignment>();
     var assignor = new PartitionAssignor.forStrategy(protocol);
     var topics = new Set<String>();
@@ -214,7 +215,7 @@ class GroupMembership {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var metadata = new KMetadata(session);
+    var metadata = new Metadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
         key: (_) => _.topic, value: (_) => _.partitions.length);

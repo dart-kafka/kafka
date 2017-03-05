@@ -3,7 +3,7 @@ import 'ng/consumer_metadata_api_test.dart' as consumer_metadata_api_test;
 import 'ng/consumer_offset_api_test.dart' as consumer_offset_api_test;
 import 'ng/consumer_test.dart' as consumer_test;
 import 'ng/errors_test.dart' as errors_test;
-import 'ng/fetch_test.dart' as fetch_test;
+import 'ng/fetch_api_test.dart' as fetch_api_test;
 import 'ng/group_membership_api_test.dart' as group_membership_api_test;
 import 'ng/io_test.dart' as io_test;
 import 'ng/list_offset_api_test.dart' as list_offset_api_test;
@@ -24,7 +24,7 @@ void main() {
   errors_test.main();
   crc32_test.main();
   metadata_api_test.main();
-  fetch_test.main();
+  fetch_api_test.main();
   consumer_metadata_api_test.main();
   metadata_test.main();
   produce_api_test.main();

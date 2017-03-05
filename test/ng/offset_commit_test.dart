@@ -6,7 +6,7 @@ void main() {
   group('OffsetCommitApi:', () {
     String _topicName = 'dartKafkaTest';
     KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata metadata = new KMetadata(session);
+    Metadata metadata = new Metadata(session);
     Broker coordinator;
     int _offset;
     String testGroup;
@@ -43,14 +43,14 @@ void main() {
       expect(response.results.first.topic, equals(_topicName));
       expect(response.results.first.errorCode, equals(0));
 
-      var fetch = new OffsetFetchRequestV1(testGroup, {
+      var fetch = new OffsetFetchRequest(testGroup, {
         _topicName: [0]
       });
 
-      OffsetFetchResponseV1 fetchResponse =
+      OffsetFetchResponse fetchResponse =
           await session.send(fetch, coordinator.host, coordinator.port);
       var offset = fetchResponse.offsets.first;
-      expect(offset.errorCode, equals(0));
+      expect(offset.error, equals(0));
       expect(offset.offset, equals(_offset));
       expect(offset.metadata, equals('helloworld'));
     });

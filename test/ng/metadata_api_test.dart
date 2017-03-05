@@ -10,19 +10,18 @@ void main() {
     });
 
     test('we can send metadata requests to Kafka broker', () async {
-      var request = new MetadataRequestV0();
+      var request = new MetadataRequest();
       var response = await session.send(request, '127.0.0.1', 9092);
-      expect(response, new isInstanceOf<MetadataResponseV0>());
+      expect(response, new isInstanceOf<MetadataResponse>());
       expect(response.brokers, hasLength(2));
       expect(response.topics, isList);
     });
 
     test('metadata response throws server error if present', () {
-      var metadata =
-          new TopicMetadata(KafkaServerError.InvalidTopic, 'test', []);
+      var metadata = new TopicMetadata(Errors.InvalidTopic, 'test', []);
       expect(() {
-        new MetadataResponseV0([], [metadata]);
-      }, throwsA(new isInstanceOf<KafkaServerError>()));
+        new MetadataResponse([], [metadata]);
+      }, throwsA(new isInstanceOf<KafkaError>()));
     });
   });
 }

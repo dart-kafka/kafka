@@ -296,7 +296,7 @@ class _HLWorker {
     var minBytes = 1;
     var request = new FetchRequest(maxWaitTime, minBytes);
     for (var o in offsets) {
-      request.add(o.topic, o.partition, o.offset + 1);
+      request.add(o.topic, o.id, o.offset + 1);
     }
 
     return request;

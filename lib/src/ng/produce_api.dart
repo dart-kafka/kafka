@@ -37,12 +37,11 @@ class ProduceResponseV2 {
   final int throttleTime;
 
   ProduceResponseV2(this.results, this.throttleTime) {
-    var errorResult = results.firstWhere(
-        (_) => _.errorCode != KafkaServerError.NoError_,
+    var errorResult = results.firstWhere((_) => _.errorCode != Errors.NoError,
         orElse: () => null);
 
     if (errorResult is TopicProduceResult) {
-      throw new KafkaServerError.fromCode(errorResult.errorCode, this);
+      throw new KafkaError.fromCode(errorResult.errorCode, this);
     }
   }
 }

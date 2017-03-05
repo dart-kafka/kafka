@@ -1,15 +1,15 @@
 import 'io.dart';
 import 'errors.dart';
 
-class JoinGroupRequestV0 implements KRequest<JoinGroupResponseV0> {
+class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   @override
   final int apiKey = 11;
 
   @override
   final int apiVersion = 0;
 
-  /// The group ID.
-  final String groupId;
+  /// The name of consumer group to join.
+  final String group;
 
   /// The coordinator considers the consumer dead if it receives no heartbeat
   /// after this timeout (in ms).
@@ -37,15 +37,15 @@ class JoinGroupRequestV0 implements KRequest<JoinGroupResponseV0> {
   ///
   /// [groupProtocols] depends on `protocolType`. Each member joining member must
   /// provide list of protocols it supports. See Kafka docs for more details.
-  JoinGroupRequestV0(this.groupId, this.sessionTimeout, this.memberId,
+  JoinGroupRequest(this.group, this.sessionTimeout, this.memberId,
       this.protocolType, this.groupProtocols);
 
   @override
-  ResponseDecoder<JoinGroupResponseV0> get decoder =>
-      new _JoinGroupResponseV0Decoder();
+  ResponseDecoder<JoinGroupResponse> get decoder =>
+      const _JoinGroupResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _JoinGroupRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => const _JoinGroupRequestEncoder();
 }
 
 abstract class GroupProtocol {
@@ -97,19 +97,17 @@ class RoundRobinGroupProtocol implements GroupProtocol {
   }
 }
 
-class JoinGroupResponseV0 {
-  final int errorCode;
+class JoinGroupResponse {
+  final int error;
   final int generationId;
   final String groupProtocol;
   final String leaderId;
   final String memberId;
-  final Iterable<GroupMember> members;
+  final List<GroupMember> members;
 
-  JoinGroupResponseV0(this.errorCode, this.generationId, this.groupProtocol,
+  JoinGroupResponse(this.error, this.generationId, this.groupProtocol,
       this.leaderId, this.memberId, this.members) {
-    if (errorCode != KafkaServerError.NoError_) {
-      throw new KafkaServerError.fromCode(errorCode, this);
-    }
+    if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
   }
 }
 
@@ -120,12 +118,14 @@ class GroupMember {
   GroupMember(this.id, this.metadata);
 }
 
-class _JoinGroupRequestV0Encoder implements RequestEncoder<JoinGroupRequestV0> {
+class _JoinGroupRequestEncoder implements RequestEncoder<JoinGroupRequest> {
+  const _JoinGroupRequestEncoder();
+
   @override
-  List<int> encode(JoinGroupRequestV0 request) {
+  List<int> encode(JoinGroupRequest request) {
     var builder = new KafkaBytesBuilder();
 
-    builder.addString(request.groupId);
+    builder.addString(request.group);
     builder.addInt32(request.sessionTimeout);
     builder.addString(request.memberId);
     builder.addString(request.protocolType);
@@ -138,44 +138,46 @@ class _JoinGroupRequestV0Encoder implements RequestEncoder<JoinGroupRequestV0> {
   }
 }
 
-class _JoinGroupResponseV0Decoder
-    implements ResponseDecoder<JoinGroupResponseV0> {
+class _JoinGroupResponseDecoder implements ResponseDecoder<JoinGroupResponse> {
+  const _JoinGroupResponseDecoder();
+
   @override
-  JoinGroupResponseV0 decode(List<int> data) {
+  JoinGroupResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var errorCode = reader.readInt16();
+    var error = reader.readInt16();
     var generationId = reader.readInt32();
     var groupProtocol = reader.readString();
     var leaderId = reader.readString();
     var memberId = reader.readString();
     List<GroupMember> members = reader
         .readObjectArray((_) => new GroupMember(_.readString(), _.readBytes()));
-    return new JoinGroupResponseV0(
-        errorCode, generationId, groupProtocol, leaderId, memberId, members);
+    return new JoinGroupResponse(
+        error, generationId, groupProtocol, leaderId, memberId, members);
   }
 }
 
-class SyncGroupRequestV0 implements KRequest<SyncGroupResponseV0> {
+class SyncGroupRequest implements KRequest<SyncGroupResponse> {
   @override
   final int apiKey = 14;
 
   @override
   final int apiVersion = 0;
 
-  final String groupId;
+  /// The name of consumer group.
+  final String group;
   final int generationId;
   final String memberId;
   final List<GroupAssignment> groupAssignments;
 
-  SyncGroupRequestV0(
-      this.groupId, this.generationId, this.memberId, this.groupAssignments);
+  SyncGroupRequest(
+      this.group, this.generationId, this.memberId, this.groupAssignments);
 
   @override
-  ResponseDecoder<SyncGroupResponseV0> get decoder =>
-      new _SyncGroupResponseV0Decoder();
+  ResponseDecoder<SyncGroupResponse> get decoder =>
+      const _SyncGroupResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _SyncGroupRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => const _SyncGroupRequestEncoder();
 }
 
 class GroupAssignment {
@@ -193,23 +195,23 @@ class MemberAssignment {
   MemberAssignment(this.version, this.partitionAssignment, this.userData);
 }
 
-class SyncGroupResponseV0 {
-  final int errorCode;
+class SyncGroupResponse {
+  final int error;
   final MemberAssignment assignment;
 
-  SyncGroupResponseV0(this.errorCode, this.assignment) {
-    if (errorCode != KafkaServerError.NoError_) {
-      throw new KafkaServerError.fromCode(errorCode, this);
-    }
+  SyncGroupResponse(this.error, this.assignment) {
+    if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
   }
 }
 
-class _SyncGroupRequestV0Encoder implements RequestEncoder<SyncGroupRequestV0> {
+class _SyncGroupRequestEncoder implements RequestEncoder<SyncGroupRequest> {
+  const _SyncGroupRequestEncoder();
+
   @override
-  List<int> encode(SyncGroupRequestV0 request) {
+  List<int> encode(SyncGroupRequest request) {
     var builder = new KafkaBytesBuilder();
 
-    builder.addString(request.groupId);
+    builder.addString(request.group);
     builder.addInt32(request.generationId);
     builder.addString(request.memberId);
 
@@ -234,12 +236,13 @@ class _SyncGroupRequestV0Encoder implements RequestEncoder<SyncGroupRequestV0> {
   }
 }
 
-class _SyncGroupResponseV0Decoder
-    implements ResponseDecoder<SyncGroupResponseV0> {
+class _SyncGroupResponseDecoder implements ResponseDecoder<SyncGroupResponse> {
+  const _SyncGroupResponseDecoder();
+
   @override
-  SyncGroupResponseV0 decode(List<int> data) {
+  SyncGroupResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var errorCode = reader.readInt16();
+    var error = reader.readInt16();
     var assignmentData = reader.readBytes();
     MemberAssignment assignment;
     if (assignmentData.isNotEmpty) {
@@ -256,107 +259,116 @@ class _SyncGroupResponseV0Decoder
           new MemberAssignment(version, partitionAssignments, userData);
     }
 
-    return new SyncGroupResponseV0(errorCode, assignment);
+    return new SyncGroupResponse(error, assignment);
   }
 }
 
-class LeaveGroupRequestV0 implements KRequest<LeaveGroupResponseV0> {
+class LeaveGroupRequest implements KRequest<LeaveGroupResponse> {
   @override
   final int apiKey = 13;
 
   @override
   final int apiVersion = 0;
 
-  final String groupId;
+  /// The name of consumer group.
+  final String group;
+
+  /// The ID of the member leaving the group.
   final String memberId;
 
-  LeaveGroupRequestV0(this.groupId, this.memberId);
+  LeaveGroupRequest(this.group, this.memberId);
 
   @override
-  ResponseDecoder<LeaveGroupResponseV0> get decoder =>
-      new _LeaveGroupResponseV0Decoder();
+  ResponseDecoder<LeaveGroupResponse> get decoder =>
+      const _LeaveGroupResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _LeaveGroupRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => const _LeaveGroupRequestEncoder();
 }
 
-class LeaveGroupResponseV0 {
-  final int errorCode;
-  LeaveGroupResponseV0(this.errorCode) {
-    if (errorCode != KafkaServerError.NoError_) {
-      throw new KafkaServerError.fromCode(errorCode, this);
-    }
+class LeaveGroupResponse {
+  final int error;
+
+  LeaveGroupResponse(this.error) {
+    if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
   }
 }
 
-class _LeaveGroupRequestV0Encoder
-    implements RequestEncoder<LeaveGroupRequestV0> {
+class _LeaveGroupRequestEncoder implements RequestEncoder<LeaveGroupRequest> {
+  const _LeaveGroupRequestEncoder();
+
   @override
-  List<int> encode(LeaveGroupRequestV0 request) {
+  List<int> encode(LeaveGroupRequest request) {
     var builder = new KafkaBytesBuilder();
-    builder..addString(request.groupId)..addString(request.memberId);
+    builder..addString(request.group)..addString(request.memberId);
     return builder.takeBytes();
   }
 }
 
-class _LeaveGroupResponseV0Decoder
-    implements ResponseDecoder<LeaveGroupResponseV0> {
+class _LeaveGroupResponseDecoder
+    implements ResponseDecoder<LeaveGroupResponse> {
+  const _LeaveGroupResponseDecoder();
+
   @override
-  LeaveGroupResponseV0 decode(List<int> data) {
+  LeaveGroupResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var errorCode = reader.readInt16();
-    return new LeaveGroupResponseV0(errorCode);
+    var error = reader.readInt16();
+    return new LeaveGroupResponse(error);
   }
 }
 
-class HeartbeatRequestV0 implements KRequest<HeartbeatResponseV0> {
+class HeartbeatRequest implements KRequest<HeartbeatResponse> {
   @override
   final int apiKey = 12;
 
   @override
   final int apiVersion = 0;
 
-  final String groupId;
+  /// The name of consumer group.
+  final String group;
   final int generationId;
+
+  /// The ID of the member sending this heartbeat.
   final String memberId;
 
-  HeartbeatRequestV0(this.groupId, this.generationId, this.memberId);
+  HeartbeatRequest(this.group, this.generationId, this.memberId);
 
   @override
-  ResponseDecoder<HeartbeatResponseV0> get decoder =>
-      new _HeartbeatResponseV0Decoder();
+  ResponseDecoder<HeartbeatResponse> get decoder =>
+      const _HeartbeatResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _HeartbeatRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => const _HeartbeatRequestEncoder();
 }
 
-class HeartbeatResponseV0 {
-  final int errorCode;
-  HeartbeatResponseV0(this.errorCode) {
-    if (errorCode != KafkaServerError.NoError_) {
-      throw new KafkaServerError.fromCode(errorCode, this);
-    }
+class HeartbeatResponse {
+  final int error;
+  HeartbeatResponse(this.error) {
+    if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
   }
 }
 
-class _HeartbeatRequestV0Encoder implements RequestEncoder<HeartbeatRequestV0> {
+class _HeartbeatRequestEncoder implements RequestEncoder<HeartbeatRequest> {
+  const _HeartbeatRequestEncoder();
+
   @override
-  List<int> encode(HeartbeatRequestV0 request) {
+  List<int> encode(HeartbeatRequest request) {
     var builder = new KafkaBytesBuilder();
     builder
-      ..addString(request.groupId)
+      ..addString(request.group)
       ..addInt32(request.generationId)
       ..addString(request.memberId);
     return builder.takeBytes();
   }
 }
 
-class _HeartbeatResponseV0Decoder
-    implements ResponseDecoder<HeartbeatResponseV0> {
+class _HeartbeatResponseDecoder implements ResponseDecoder<HeartbeatResponse> {
+  const _HeartbeatResponseDecoder();
+
   @override
-  HeartbeatResponseV0 decode(List<int> data) {
+  HeartbeatResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var errorCode = reader.readInt16();
-    return new HeartbeatResponseV0(errorCode);
+    var error = reader.readInt16();
+    return new HeartbeatResponse(error);
   }
 }

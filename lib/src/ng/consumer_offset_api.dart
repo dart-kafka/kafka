@@ -1,16 +1,25 @@
 import 'io.dart';
 import 'errors.dart';
 
-/// Value object to store consumer offset information.
+/// Consumer position in particular [topic] and [partition].
 class ConsumerOffset {
+  /// The name of the topic.
   final String topic;
+
+  /// The partition number;
   final int partition;
+
+  /// The offset of last message handled by a consumer.
   final int offset;
+
+  /// User-defined metadata associated with this offset.
   final String metadata;
-  final int errorCode;
+
+  /// The error code returned by the server.
+  final int error;
 
   ConsumerOffset(this.topic, this.partition, this.offset, this.metadata,
-      [this.errorCode]);
+      [this.error]);
 }
 
 /// Kafka OffsetFetchRequest.
@@ -18,36 +27,38 @@ class ConsumerOffset {
 /// Throws `GroupLoadInProgressError`, `NotCoordinatorForGroupError`,
 /// `IllegalGenerationError`, `UnknownMemberIdError`, `TopicAuthorizationFailedError`,
 /// `GroupAuthorizationFailedError`.
-class OffsetFetchRequestV1 extends KRequest<OffsetFetchResponseV1> {
+class OffsetFetchRequest extends KRequest<OffsetFetchResponse> {
   @override
   final int apiKey = 9;
+
   @override
   final int apiVersion = 1;
 
   /// Name of consumer group.
-  final String groupName;
+  final String group;
 
   /// Map of topic names and partition IDs to fetch offsets for.
   final Map<String, List<int>> topics;
 
-  /// Creates new instance of [OffsetFetchRequestV0].
-  OffsetFetchRequestV1(this.groupName, this.topics);
+  /// Creates new instance of [OffsetFetchRequest].
+  OffsetFetchRequest(this.group, this.topics);
 
   @override
-  ResponseDecoder<OffsetFetchResponseV1> get decoder =>
-      new OffsetFetchResponseV1Decoder();
+  ResponseDecoder<OffsetFetchResponse> get decoder =>
+      const OffsetFetchResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new OffsetFetchRequestV1Encoder();
+  RequestEncoder<KRequest> get encoder => const OffsetFetchRequestEncoder();
 }
 
-class OffsetFetchRequestV1Encoder
-    implements RequestEncoder<OffsetFetchRequestV1> {
+class OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
+  const OffsetFetchRequestEncoder();
+
   @override
-  List<int> encode(OffsetFetchRequestV1 request) {
+  List<int> encode(OffsetFetchRequest request) {
     var builder = new KafkaBytesBuilder();
 
-    builder.addString(request.groupName);
+    builder.addString(request.group);
     builder.addInt32(request.topics.length);
     request.topics.forEach((topicName, partitions) {
       builder.addString(topicName);
@@ -58,24 +69,24 @@ class OffsetFetchRequestV1Encoder
   }
 }
 
-/// Kafka OffsetFetchResponseV1.
-class OffsetFetchResponseV1 {
+/// Kafka OffsetFetchResponse.
+class OffsetFetchResponse {
   final List<ConsumerOffset> offsets;
 
-  OffsetFetchResponseV1(this.offsets) {
-    var errors = offsets
-        .map((_) => _.errorCode)
-        .where((_) => _ != KafkaServerError.NoError_);
+  OffsetFetchResponse(this.offsets) {
+    var errors = offsets.map((_) => _.error).where((_) => _ != Errors.NoError);
     if (errors.isNotEmpty) {
-      throw new KafkaServerError.fromCode(errors.first, this);
+      throw new KafkaError.fromCode(errors.first, this);
     }
   }
 }
 
-class OffsetFetchResponseV1Decoder
-    implements ResponseDecoder<OffsetFetchResponseV1> {
+class OffsetFetchResponseDecoder
+    implements ResponseDecoder<OffsetFetchResponse> {
+  const OffsetFetchResponseDecoder();
+
   @override
-  OffsetFetchResponseV1 decode(List<int> data) {
+  OffsetFetchResponse decode(List<int> data) {
     List<ConsumerOffset> offsets = [];
     var reader = new KafkaBytesReader.fromBytes(data);
 
@@ -99,6 +110,6 @@ class OffsetFetchResponseV1Decoder
       count--;
     }
 
-    return new OffsetFetchResponseV1(offsets);
+    return new OffsetFetchResponse(offsets);
   }
 }

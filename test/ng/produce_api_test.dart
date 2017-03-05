@@ -7,13 +7,13 @@ void main() {
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
     KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata metadata = new KMetadata(session);
+    Metadata metadata = new Metadata(session);
     int partitionId;
 
     setUp(() async {
       var data = await metadata.fetchTopics([_topicName]);
 
-      partitionId = data.first.partitions.first.partitionId;
+      partitionId = data.first.partitions.first.id;
       var leaderId = data.first.partitions.first.leader;
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);

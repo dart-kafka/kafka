@@ -2,9 +2,9 @@ import 'package:kafka/ng.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('KMetadata:', () {
+  group('Metadata:', () {
     KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata metadata = new KMetadata(session);
+    Metadata metadata = new Metadata(session);
 
     tearDownAll(() async {
       await session.close();
@@ -16,7 +16,7 @@ void main() {
       expect(topics, hasLength(1));
       expect(topics.first.topic, 'testTopic');
       expect(topics.first.toString(),
-          contains('TopicMetadata: testTopic, errorCode: 0;'));
+          contains('TopicMetadata{testTopic, error: 0;'));
     });
 
     test('it can list existing topics', () async {

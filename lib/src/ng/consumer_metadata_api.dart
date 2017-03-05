@@ -1,60 +1,69 @@
+import 'common.dart';
 import 'io.dart';
 import 'errors.dart';
 
-class GroupCoordinatorRequestV0 extends KRequest<GroupCoordinatorResponseV0> {
+/// Kafka GroupCoordinator request.
+class GroupCoordinatorRequest extends KRequest<GroupCoordinatorResponse> {
   @override
   final int apiKey = 10;
 
   @override
   final int apiVersion = 0;
 
-  GroupCoordinatorRequestV0(this.consumerGroup);
+  /// The name of consumer group to fetch coordinator details for.
+  final String group;
+
+  GroupCoordinatorRequest(this.group);
 
   @override
-  final ResponseDecoder<GroupCoordinatorResponseV0> decoder =
-      new _GroupCoordinatorResponseV0Decoder();
+  final ResponseDecoder<GroupCoordinatorResponse> decoder =
+      const _GroupCoordinatorResponseDecoder();
 
   @override
   final RequestEncoder<KRequest> encoder =
-      new _GroupCoordinatorRequestV0Encoder();
-
-  final String consumerGroup;
+      const _GroupCoordinatorRequestEncoder();
 }
 
-class GroupCoordinatorResponseV0 {
-  final int errorCode;
+class GroupCoordinatorResponse {
+  final int error;
   final int coordinatorId;
   final String coordinatorHost;
   final int coordinatorPort;
 
-  GroupCoordinatorResponseV0(this.errorCode, this.coordinatorId,
-      this.coordinatorHost, this.coordinatorPort) {
-    if (errorCode != KafkaServerError.NoError_) {
-      throw new KafkaServerError.fromCode(errorCode, this);
+  GroupCoordinatorResponse(this.error, this.coordinatorId, this.coordinatorHost,
+      this.coordinatorPort) {
+    if (error != Errors.NoError) {
+      throw new KafkaError.fromCode(error, this);
     }
   }
+
+  Broker get coordinator =>
+      new Broker(coordinatorId, coordinatorHost, coordinatorPort);
 }
 
-class _GroupCoordinatorRequestV0Encoder
-    implements RequestEncoder<GroupCoordinatorRequestV0> {
+class _GroupCoordinatorRequestEncoder
+    implements RequestEncoder<GroupCoordinatorRequest> {
+  const _GroupCoordinatorRequestEncoder();
+
   @override
-  List<int> encode(GroupCoordinatorRequestV0 request) {
+  List<int> encode(GroupCoordinatorRequest request) {
     var builder = new KafkaBytesBuilder();
-    builder.addString(request.consumerGroup);
+    builder.addString(request.group);
     return builder.takeBytes();
   }
 }
 
-class _GroupCoordinatorResponseV0Decoder
-    implements ResponseDecoder<GroupCoordinatorResponseV0> {
+class _GroupCoordinatorResponseDecoder
+    implements ResponseDecoder<GroupCoordinatorResponse> {
+  const _GroupCoordinatorResponseDecoder();
+
   @override
-  GroupCoordinatorResponseV0 decode(List<int> data) {
+  GroupCoordinatorResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var errorCode = reader.readInt16();
+    var error = reader.readInt16();
     var id = reader.readInt32();
     var host = reader.readString();
     var port = reader.readInt32();
-
-    return new GroupCoordinatorResponseV0(errorCode, id, host, port);
+    return new GroupCoordinatorResponse(error, id, host, port);
   }
 }

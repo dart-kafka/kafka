@@ -45,11 +45,10 @@ class OffsetCommitResponseV2 {
   final List<OffsetCommitResult> results;
 
   OffsetCommitResponseV2(this.results) {
-    var errorResult = results.firstWhere(
-        (_) => _.errorCode != KafkaServerError.NoError_,
+    var errorResult = results.firstWhere((_) => _.errorCode != Errors.NoError,
         orElse: () => null);
     if (errorResult != null) {
-      throw new KafkaServerError.fromCode(errorResult.errorCode, this);
+      throw new KafkaError.fromCode(errorResult.errorCode, this);
     }
   }
 }

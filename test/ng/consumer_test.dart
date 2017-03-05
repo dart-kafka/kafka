@@ -26,7 +26,7 @@ void main() {
     });
 
     test('it can consume messages from multiple brokers', () async {
-      var consumer = new KConsumer<String, String>(
+      var consumer = new Consumer<String, String>(
           group, new StringDeserializer(), new StringDeserializer(), session);
       await consumer.subscribe([topic]);
       var iterator = consumer.poll();

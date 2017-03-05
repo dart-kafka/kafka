@@ -14,6 +14,8 @@ import 'partition_assignor.dart';
 import 'serialization.dart';
 import 'session.dart';
 
+final Logger _logger = new Logger('KConsumer');
+
 /// Consumes messages from Kafka cluster.
 ///
 /// Consumer interacts with the server to allow multiple members of the same group
@@ -35,7 +37,7 @@ import 'session.dart';
 ///         });
 ///       }
 ///     }
-abstract class KConsumer<K, V> {
+abstract class Consumer<K, V> {
   /// The consumer group name.
   String get group;
 
@@ -50,26 +52,26 @@ abstract class KConsumer<K, V> {
   /// Commits current offsets to the server.
   Future commit();
 
-  factory KConsumer(String groupName, Deserializer<K> keyDeserializer,
+  factory Consumer(String groupName, Deserializer<K> keyDeserializer,
       Deserializer<V> valueDeserializer, KSession session) {
-    return new _KConsumerImpl(
+    return new _ConsumerImpl(
         groupName, keyDeserializer, valueDeserializer, session);
   }
 }
 
 /// Default implementation of Kafka consumer.
-class _KConsumerImpl<K, V> implements KConsumer<K, V> {
+class _ConsumerImpl<K, V> implements Consumer<K, V> {
   static const int DEFAULT_MAX_BYTES = 36864;
   static const int DEFAULT_MAX_WAIT_TIME = 1000;
   static const int DEFAULT_MIN_BYTES = 1;
-  static final Logger _logger = new Logger('KConsumer');
+
   final String group;
   final KSession session;
   final Deserializer<K> keyDeserializer;
   final Deserializer<V> valueDeserializer;
   final int requestMaxBytes;
 
-  _KConsumerImpl(
+  _ConsumerImpl(
       this.group, this.keyDeserializer, this.valueDeserializer, this.session,
       {int requestMaxBytes})
       : requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
@@ -153,7 +155,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         await resumeFuture;
       }
 
-      Map<Broker, FetchRequestV0> requests =
+      Map<Broker, FetchRequest> requests =
           await _buildRequests(_currentOffsets);
       var futures = requests.keys.map((broker) {
         return session
@@ -171,8 +173,8 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   Future<Map<TopicPartition, int>> _fetchOffsets() async {
-    Future<OffsetFetchResponseV1> fetchFunc() async {
-      var request = new OffsetFetchRequestV1(
+    Future<OffsetFetchResponse> fetchFunc() async {
+      var request = new OffsetFetchRequest(
           group, membership.assignment.partitionAssignment);
       var coord = await _getCoordinator();
       return await session.send(request, coord.host, coord.port);
@@ -186,7 +188,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         value: (_) => _.offset);
   }
 
-  Future<Map<Broker, FetchRequestV0>> _buildRequests(
+  Future<Map<Broker, FetchRequest>> _buildRequests(
       Map<TopicPartition, int> offsets) async {
     // TODO: There should be a better way to do all these traversals...
     var assignment = membership.assignment.partitionAssignment;
@@ -204,10 +206,10 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       });
     }).toList(growable: false);
 
-    Map<Broker, FetchRequestV0> requests = new Map();
+    Map<Broker, FetchRequest> requests = new Map();
     for (var item in data) {
       requests.putIfAbsent(item.$1,
-          () => new FetchRequestV0(DEFAULT_MAX_WAIT_TIME, DEFAULT_MIN_BYTES));
+          () => new FetchRequest(DEFAULT_MAX_WAIT_TIME, DEFAULT_MIN_BYTES));
       requests[item.$1].add(item.$2, new FetchData(item.$3, requestMaxBytes));
     }
     return requests;
@@ -217,12 +219,11 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   Future<Map<TopicPartition, Broker>> _fetchTopicMetadata(List<String> topics) {
     if (_topicBrokers == null) {
       _topicBrokers = new Future(() async {
-        var meta = new KMetadata(session);
+        var meta = new Metadata(session);
         var topicsMeta = await meta.fetchTopics(topics);
         var brokers = await meta.listBrokers();
         List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
-          return _.partitions
-              .map((p) => tuple3(_.topic, p.partitionId, p.leader));
+          return _.partitions.map((p) => tuple3(_.topic, p.id, p.leader));
         }).toList(growable: false);
         return new Map<TopicPartition, Broker>.fromIterable(data, key: (_) {
           return new TopicPartition(_.$1, _.$2);
@@ -268,7 +269,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     }
 
     if (_coordinator == null) {
-      var metadata = new KMetadata(session);
+      var metadata = new Metadata(session);
       _coordinator = metadata.fetchGroupCoordinator(group).catchError((error) {
         _coordinator = null;
         throw error;
@@ -281,9 +282,9 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   Future<GroupMembership> _join(int sessionTimeout, String memberId,
       String protocolType, Iterable<GroupProtocol> groupProtocols) async {
     var broker = await _getCoordinator();
-    var joinRequest = new JoinGroupRequestV0(
+    var joinRequest = new JoinGroupRequest(
         group, sessionTimeout, memberId, protocolType, groupProtocols);
-    JoinGroupResponseV0 joinResponse =
+    JoinGroupResponse joinResponse =
         await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
     var isLeader = joinResponse.leaderId == joinResponse.memberId;
@@ -293,9 +294,9 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
       groupAssignments = await _assignPartitions(protocol, joinResponse);
     }
 
-    var syncRequest = new SyncGroupRequestV0(group, joinResponse.generationId,
+    var syncRequest = new SyncGroupRequest(group, joinResponse.generationId,
         joinResponse.memberId, groupAssignments);
-    SyncGroupResponseV0 syncResponse;
+    SyncGroupResponse syncResponse;
     try {
       // Wait before sending SyncRequest to give the server some time to respond
       // to all the rest JoinRequests.
@@ -317,7 +318,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
   }
 
   Future<List<GroupAssignment>> _assignPartitions(
-      String protocol, JoinGroupResponseV0 joinResponse) async {
+      String protocol, JoinGroupResponse joinResponse) async {
     var groupAssignments = new List<GroupAssignment>();
     var assignor = new PartitionAssignor.forStrategy(protocol);
     var topics = new Set<String>();
@@ -328,7 +329,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var metadata = new KMetadata(session);
+    var metadata = new Metadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
         key: (_) => _.topic, value: (_) => _.partitions.length);
@@ -360,7 +361,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
 
   Future heartbeat(GroupMembership membership) async {
     var host = await _getCoordinator();
-    var request = new HeartbeatRequestV0(
+    var request = new HeartbeatRequest(
         group, membership.generationId, membership.memberId);
     _logger.fine(
         'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');

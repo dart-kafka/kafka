@@ -7,13 +7,13 @@ void main() {
     int partitionId;
     Broker broker;
     KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-    KMetadata metadata = new KMetadata(session);
+    Metadata metadata = new Metadata(session);
     int _offset;
 
     setUp(() async {
       var meta = await metadata.fetchTopics([topic]);
       var p = meta.first.partitions.first;
-      partitionId = p.partitionId;
+      partitionId = p.id;
       var leaderId = p.leader;
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);
@@ -30,9 +30,9 @@ void main() {
     });
 
     test('it fetches offset info', () async {
-      var request = new ListOffsetRequestV1(
-          -1, {new TopicPartition(topic, partitionId): -1});
-      ListOffsetResponseV1 response =
+      var request =
+          new ListOffsetRequest({new TopicPartition(topic, partitionId): -1});
+      ListOffsetResponse response =
           await session.send(request, broker.host, broker.port);
 
       expect(response.offsets, hasLength(1));

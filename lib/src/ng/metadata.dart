@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:logging/logging.dart';
+
 import '../util/retry.dart';
 import 'common.dart';
 import 'consumer_metadata_api.dart';
@@ -7,15 +9,16 @@ import 'errors.dart';
 import 'metadata_api.dart';
 import 'session.dart';
 
-class KMetadata {
-  static final Logger _logger = new Logger('KMetadata');
+final Logger _logger = new Logger('Metadata');
+
+class Metadata {
   final KSession session;
 
-  KMetadata(this.session);
+  Metadata(this.session);
 
   Future<List<TopicMetadata>> fetchTopics(List<String> topics) {
     Future<List<TopicMetadata>> fetch() {
-      var req = new MetadataRequestV0(topics);
+      var req = new MetadataRequest(topics);
       var broker = session.contactPoints.first;
       return session
           .send(req, broker.host, broker.port)
@@ -27,7 +30,7 @@ class KMetadata {
   }
 
   Future<List<String>> listTopics() {
-    var req = new MetadataRequestV0();
+    var req = new MetadataRequest();
     var broker = session.contactPoints.first;
     return session.send(req, broker.host, broker.port).then((response) {
       return response.topics.map((_) => _.topic).toList();
@@ -35,7 +38,7 @@ class KMetadata {
   }
 
   Future<List<Broker>> listBrokers() {
-    var req = new MetadataRequestV0();
+    var req = new MetadataRequest();
     var broker = session.contactPoints.first;
     return session
         .send(req, broker.host, broker.port)
@@ -45,7 +48,7 @@ class KMetadata {
   Future<Broker> fetchGroupCoordinator(String groupName) {
     Future<Broker> fetch() {
       _logger.info('Fetching group coordinator for group $groupName.');
-      var req = new GroupCoordinatorRequestV0(groupName);
+      var req = new GroupCoordinatorRequest(groupName);
       var broker = session.contactPoints.first;
       return session.send(req, broker.host, broker.port).then((res) =>
           new Broker(
