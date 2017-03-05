@@ -60,8 +60,8 @@ class OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
 
     builder.addString(request.group);
     builder.addInt32(request.topics.length);
-    request.topics.forEach((topicName, partitions) {
-      builder.addString(topicName);
+    request.topics.forEach((topic, partitions) {
+      builder.addString(topic);
       builder.addInt32Array(partitions.toList());
     });
 
@@ -99,9 +99,8 @@ class OffsetFetchResponseDecoder
           var partition = _.readInt32();
           var offset = _.readInt64();
           var metadata = _.readString();
-          var errorCode = _.readInt16();
-          return new ConsumerOffset(
-              topic, partition, offset, metadata, errorCode);
+          var error = _.readInt16();
+          return new ConsumerOffset(topic, partition, offset, metadata, error);
         });
 
         offsets.add(offset);

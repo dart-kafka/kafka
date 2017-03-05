@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('OffsetApi:', () {
     String topic = 'dartKafkaTest';
-    int partitionId;
+    int partition;
     Broker broker;
     Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata metadata = new Metadata(session);
@@ -13,7 +13,7 @@ void main() {
     setUp(() async {
       var meta = await metadata.fetchTopics([topic]);
       var p = meta.first.partitions.first;
-      partitionId = p.id;
+      partition = p.id;
       var leaderId = p.leader;
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);
@@ -21,7 +21,7 @@ void main() {
       var producer =
           new Producer(new StringSerializer(), new StringSerializer(), session);
       var result = await producer
-          .send(new ProducerRecord(topic, partitionId, 'key', 'value'));
+          .send(new ProducerRecord(topic, partition, 'key', 'value'));
       _offset = result.offset;
     });
 
@@ -31,13 +31,13 @@ void main() {
 
     test('it fetches offset info', () async {
       var request =
-          new ListOffsetRequest({new TopicPartition(topic, partitionId): -1});
+          new ListOffsetRequest({new TopicPartition(topic, partition): -1});
       ListOffsetResponse response =
           await session.send(request, broker.host, broker.port);
 
       expect(response.offsets, hasLength(1));
       var offset = response.offsets.first;
-      expect(offset.errorCode, equals(0));
+      expect(offset.error, equals(0));
       expect(offset.offset, equals(_offset + 1));
     });
   });

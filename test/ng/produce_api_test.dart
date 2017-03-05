@@ -3,17 +3,17 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('Kafka.NG Produce API: ', () {
-    String _topicName = 'dartKafkaTest' +
+    String _topic = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
     Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata metadata = new Metadata(session);
-    int partitionId;
+    int partition;
 
     setUp(() async {
-      var data = await metadata.fetchTopics([_topicName]);
+      var data = await metadata.fetchTopics([_topic]);
 
-      partitionId = data.first.partitions.first.id;
+      partition = data.first.partitions.first.id;
       var leaderId = data.first.partitions.first.leader;
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);
@@ -25,14 +25,14 @@ void main() {
 
     test('it publishes messages to Kafka topic', () async {
       var req = new ProduceRequest(1, 1000, {
-        _topicName: {
-          partitionId: [new Message('hello world'.codeUnits)]
+        _topic: {
+          partition: [new Message('hello world'.codeUnits)]
         }
       });
 
       var res = await session.send(req, broker.host, broker.port);
       expect(res.results, hasLength(1));
-      expect(res.results.first.topic, equals(_topicName));
+      expect(res.results.first.topic, equals(_topic));
       expect(res.results.first.error, equals(0));
       expect(res.results.first.offset, greaterThanOrEqualTo(0));
     });

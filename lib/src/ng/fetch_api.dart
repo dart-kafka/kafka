@@ -104,8 +104,7 @@ class FetchResponse {
   final List<FetchResult> results;
 
   FetchResponse(this.throttleTime, this.results) {
-    var errors =
-        results.map((_) => _.errorCode).where((_) => _ != Errors.NoError);
+    var errors = results.map((_) => _.error).where((_) => _ != Errors.NoError);
     if (errors.isNotEmpty) {
       throw new KafkaError.fromCode(errors.first, this);
     }
@@ -115,14 +114,14 @@ class FetchResponse {
 /// Represents result of fetching messages for a particular
 /// topic-partition.
 class FetchResult {
-  final String topicName;
-  final int partitionId;
-  final int errorCode;
+  final String topic;
+  final int partition;
+  final int error;
   final int highwaterMarkOffset;
   final Map<int, Message> messages;
 
-  FetchResult(this.topicName, this.partitionId, this.errorCode,
-      this.highwaterMarkOffset, this.messages);
+  FetchResult(this.topic, this.partition, this.error, this.highwaterMarkOffset,
+      this.messages);
 }
 
 class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
@@ -135,19 +134,19 @@ class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
     var count = reader.readInt32();
     var results = new List<FetchResult>();
     while (count > 0) {
-      var topicName = reader.readString();
+      var topic = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        var partitionId = reader.readInt32();
-        var errorCode = reader.readInt16();
+        var partition = reader.readInt32();
+        var error = reader.readInt16();
         var highwaterMarkOffset = reader.readInt64();
         var messageSetSize = reader.readInt32();
         var data = reader.readRaw(messageSetSize);
         var messageReader = new KafkaBytesReader.fromBytes(data);
         var messageSet = _readMessageSet(messageReader);
 
-        results.add(new FetchResult(topicName, partitionId, errorCode,
-            highwaterMarkOffset, messageSet));
+        results.add(new FetchResult(
+            topic, partition, error, highwaterMarkOffset, messageSet));
         partitionCount--;
       }
       count--;

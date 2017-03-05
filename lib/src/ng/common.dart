@@ -46,10 +46,10 @@ class TopicPartition {
 
   TopicPartition._(this.topic, this.partition);
 
-  factory TopicPartition(String topicName, int partitionId) {
-    var key = topicName + partitionId.toString();
+  factory TopicPartition(String topic, int partition) {
+    var key = topic + partition.toString();
     if (!_cache.containsKey(key)) {
-      _cache[key] = new TopicPartition._(topicName, partitionId);
+      _cache[key] = new TopicPartition._(topic, partition);
     }
 
     return _cache[key];

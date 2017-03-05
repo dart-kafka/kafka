@@ -93,8 +93,8 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
     request.messages.forEach((topic, partitions) {
       builder.addString(topic);
       builder.addInt32(partitions.length);
-      partitions.forEach((partitionId, messages) {
-        builder.addInt32(partitionId);
+      partitions.forEach((partition, messages) {
+        builder.addInt32(partition);
         builder.addRaw(_messageSetToBytes(messages));
       });
     });

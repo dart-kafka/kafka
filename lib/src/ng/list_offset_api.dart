@@ -42,10 +42,10 @@ class ListOffsetResponse {
   final List<TopicOffset> offsets;
 
   ListOffsetResponse(this.offsets) {
-    var errorOffset = offsets.firstWhere((_) => _.errorCode != Errors.NoError,
+    var errorOffset = offsets.firstWhere((_) => _.error != Errors.NoError,
         orElse: () => null);
     if (errorOffset != null) {
-      throw new KafkaError.fromCode(errorOffset.errorCode, this);
+      throw new KafkaError.fromCode(errorOffset.error, this);
     }
   }
 }
@@ -55,16 +55,16 @@ class ListOffsetResponse {
 class TopicOffset {
   final String topic;
   final int partition;
-  final int errorCode;
+  final int error;
   final int timestamp;
   final int offset;
 
   TopicOffset(
-      this.topic, this.partition, this.errorCode, this.timestamp, this.offset);
+      this.topic, this.partition, this.error, this.timestamp, this.offset);
 
   @override
   toString() =>
-      'TopicOffset{$topic-$partition, error: $errorCode, timestamp: $timestamp, offset: $offset}';
+      'TopicOffset{$topic-$partition, error: $error, timestamp: $timestamp, offset: $offset}';
 }
 
 class _ListOffsetRequestEncoder implements RequestEncoder<ListOffsetRequest> {
@@ -112,11 +112,11 @@ class _ListOffsetResponseDecoder
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
         var partition = reader.readInt32();
-        var errorCode = reader.readInt16();
+        var error = reader.readInt16();
         var timestamp = reader.readInt64();
         var offset = reader.readInt64();
-        offsets.add(
-            new TopicOffset(topic, partition, errorCode, timestamp, offset));
+        offsets
+            .add(new TopicOffset(topic, partition, error, timestamp, offset));
         partitionCount--;
       }
       count--;

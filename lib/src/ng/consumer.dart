@@ -130,7 +130,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
           var value =
               valueDeserializer.deserialize(result.messages[offset].value);
           return new KConsumerRecord<K, V>(
-              result.topicName, result.partitionId, offset, key, value);
+              result.topic, result.partition, offset, key, value);
         });
       }).toList(growable: false);
     }

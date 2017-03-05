@@ -75,8 +75,8 @@ class _OffsetCommitRequestEncoder
     builder.addString(request.consumerId);
     builder.addInt64(request.retentionTime);
     builder.addInt32(groupedByTopic.length);
-    groupedByTopic.forEach((topicName, partitionOffsets) {
-      builder.addString(topicName);
+    groupedByTopic.forEach((topic, partitionOffsets) {
+      builder.addString(topic);
       builder.addInt32(partitionOffsets.length);
       partitionOffsets.forEach((p) {
         builder.addInt32(p.partition);

@@ -17,13 +17,13 @@ class MetadataRequest extends KRequest<MetadataResponse> {
   final ResponseDecoder<MetadataResponse> decoder =
       const _MetadataResponseDecoder();
 
-  final List<String> topicNames;
+  final List<String> topics;
 
   /// Creates new MetadataRequest.
   ///
-  /// If [topicNames] is not set it fetches information about all existing
+  /// If [topics] is not set it fetches information about all existing
   /// topics in the Kafka cluster.
-  MetadataRequest([this.topicNames]);
+  MetadataRequest([this.topics]);
 }
 
 class MetadataResponse {
@@ -74,7 +74,7 @@ class _MetadataRequestEncoder implements RequestEncoder<MetadataRequest> {
   @override
   List<int> encode(MetadataRequest request) {
     var builder = new KafkaBytesBuilder();
-    List<String> topics = request.topicNames ?? new List();
+    List<String> topics = request.topics ?? new List();
     builder.addStringArray(topics);
     return builder.takeBytes();
   }
@@ -91,13 +91,13 @@ class _MetadataResponseDecoder implements ResponseDecoder<MetadataResponse> {
     });
 
     var topics = reader.readObjectArray((r) {
-      var errorCode = reader.readInt16();
-      var topicName = reader.readString();
+      var error = reader.readInt16();
+      var topic = reader.readString();
 
       List<PartitionMetadata> partitions = reader.readObjectArray((r) =>
           new PartitionMetadata(r.readInt16(), r.readInt32(), r.readInt32(),
               r.readInt32Array(), r.readInt32Array()));
-      return new TopicMetadata(errorCode, topicName, partitions);
+      return new TopicMetadata(error, topic, partitions);
     });
     return new MetadataResponse(brokers, topics);
   }

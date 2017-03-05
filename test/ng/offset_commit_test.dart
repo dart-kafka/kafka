@@ -4,7 +4,7 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('OffsetCommitApi:', () {
-    String _topicName = 'dartKafkaTest';
+    String _topic = 'dartKafkaTest';
     Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata metadata = new Metadata(session);
     Broker coordinator;
@@ -18,8 +18,7 @@ void main() {
     setUp(() async {
       var producer =
           new Producer(new StringSerializer(), new StringSerializer(), session);
-      var result =
-          await producer.send(new ProducerRecord(_topicName, 0, 'a', 'b'));
+      var result = await producer.send(new ProducerRecord(_topic, 0, 'a', 'b'));
 
       _offset = result.offset;
       var date = new DateTime.now();
@@ -32,7 +31,7 @@ void main() {
     });
 
     test('it commits consumer offsets', () async {
-      var offsets = [new ConsumerOffset(_topicName, 0, _offset, 'helloworld')];
+      var offsets = [new ConsumerOffset(_topic, 0, _offset, 'helloworld')];
 
       OffsetCommitRequest request =
           new OffsetCommitRequest(testGroup, offsets, -1, '', -1);
@@ -40,11 +39,11 @@ void main() {
       OffsetCommitResponse response =
           await session.send(request, coordinator.host, coordinator.port);
       expect(response.results, hasLength(equals(1)));
-      expect(response.results.first.topic, equals(_topicName));
+      expect(response.results.first.topic, equals(_topic));
       expect(response.results.first.error, equals(0));
 
       var fetch = new OffsetFetchRequest(testGroup, {
-        _topicName: [0]
+        _topic: [0]
       });
 
       OffsetFetchResponse fetchResponse =
