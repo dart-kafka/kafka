@@ -3,7 +3,7 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('KProducer:', () {
-    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
 
     tearDownAll(() async {
       await session.close();

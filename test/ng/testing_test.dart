@@ -1,53 +1,52 @@
-import 'package:kafka/protocol.dart';
 import 'package:kafka/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('MockKafkaSession: ', () {
-    test('it returns cluster and topic metadata', () async {
-      var session = new MockKafkaSession();
-      var meta = await session.getMetadata(['test'].toSet());
-      expect(meta.brokers, hasLength(1));
-      expect(meta.getBroker(1), new isInstanceOf<Broker>());
-      expect(meta.getBroker(1).host, '127.0.0.1');
-      expect(meta.getBroker(1).port, 9092);
-      expect(meta.topics, hasLength(1));
-      expect(meta.getTopicMetadata('test'), new isInstanceOf<TopicMetadata>());
-      expect(meta.getTopicMetadata('test').partitions, hasLength(1));
-    });
+  // group('MockKafkaSession: ', () {
+  //   test('it returns cluster and topic metadata', () async {
+  //     var session = new MockKafkaSession();
+  //     var meta = await session.getMetadata(['test'].toSet());
+  //     expect(meta.brokers, hasLength(1));
+  //     expect(meta.getBroker(1), new isInstanceOf<Broker>());
+  //     expect(meta.getBroker(1).host, '127.0.0.1');
+  //     expect(meta.getBroker(1).port, 9092);
+  //     expect(meta.topics, hasLength(1));
+  //     expect(meta.getTopicMetadata('test'), new isInstanceOf<TopicMetadata>());
+  //     expect(meta.getTopicMetadata('test').partitions, hasLength(1));
+  //   });
 
-    test('it returns consumer metadata', () async {
-      var session = new MockKafkaSession();
-      var meta = await session.getConsumerMetadata('myGroup');
-      expect(meta, new isInstanceOf<GroupCoordinatorResponse>());
-      expect(meta.errorCode, 0);
-      expect(meta.coordinatorId, 1);
-      expect(meta.coordinatorHost, '127.0.0.1');
-      expect(meta.coordinatorPort, 9092);
-    });
-  });
+  //   test('it returns consumer metadata', () async {
+  //     var session = new MockKafkaSession();
+  //     var meta = await session.getConsumerMetadata('myGroup');
+  //     expect(meta, new isInstanceOf<GroupCoordinatorResponse>());
+  //     expect(meta.errorCode, 0);
+  //     expect(meta.coordinatorId, 1);
+  //     expect(meta.coordinatorHost, '127.0.0.1');
+  //     expect(meta.coordinatorPort, 9092);
+  //   });
+  // });
 
-  group('Producer Mock: ', () {
-    test('it produces messages to MockSession', () async {
-      var session = new MockKafkaSession();
-      var producer = new Producer(session, -1, 1000);
-      var message = 'helloworld';
-      var messages = [
-        new ProduceEnvelope('test', 0, [new Message(message.codeUnits)])
-      ];
-      var result = await producer.produce(messages);
-      expect(result, new isInstanceOf<ProduceResult>());
-      expect(result.offsets, {
-        "test": {0: 0}
-      });
+  // group('Producer Mock: ', () {
+  //   test('it produces messages to MockSession', () async {
+  //     var session = new MockKafkaSession();
+  //     var producer = new Producer(session, -1, 1000);
+  //     var message = 'helloworld';
+  //     var messages = [
+  //       new ProduceEnvelope('test', 0, [new Message(message.codeUnits)])
+  //     ];
+  //     var result = await producer.produce(messages);
+  //     expect(result, new isInstanceOf<ProduceResult>());
+  //     expect(result.offsets, {
+  //       "test": {0: 0}
+  //     });
 
-      result = await producer.produce(messages);
-      expect(result, new isInstanceOf<ProduceResult>());
-      expect(result.offsets, {
-        "test": {0: 1}
-      });
-    });
-  });
+  //     result = await producer.produce(messages);
+  //     expect(result, new isInstanceOf<ProduceResult>());
+  //     expect(result.offsets, {
+  //       "test": {0: 1}
+  //     });
+  //   });
+  // });
 
   // group('ConsumerGroup Mock: ', () {
   //   test('it joins a group', () async {

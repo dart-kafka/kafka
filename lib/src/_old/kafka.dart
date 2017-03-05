@@ -13,14 +13,13 @@ import 'package:quiver/collection.dart';
 
 import 'common.dart';
 import 'errors.dart';
-import 'src/io/bytes_reader.dart';
+import 'io/bytes_reader.dart';
 import 'protocol.dart';
 
 export 'common.dart' hide groupBy, kafkaLogger;
 export 'protocol.dart' show TopicMetadata;
-export 'errors.dart';
 
-part 'src/consumer.dart';
-part 'src/producer.dart';
-part 'src/session.dart';
-part 'src/high_level_consumer.dart';
+part 'consumer.dart';
+part 'producer.dart';
+part 'session.dart';
+part 'high_level_consumer.dart';

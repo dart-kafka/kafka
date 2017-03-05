@@ -2,7 +2,7 @@ import 'package:kafka/ng.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
 
-class KSessionMock extends Mock implements KSession {}
+class KSessionMock extends Mock implements Session {}
 
 void main() {
   // TODO: move these tests to new Consumer implementation.

@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Consumer:', () {
-    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     var date = new DateTime.now().millisecondsSinceEpoch;
     String topic = 'testTopic-${date}';
     Map<int, int> expectedOffsets = new Map();

@@ -4,11 +4,11 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('Kafka.NG Consumer Metadata API: ', () {
-    KSession session;
+    Session session;
 
     setUpAll(() async {
       try {
-        session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+        session = new Session([new ContactPoint('127.0.0.1:9092')]);
         var request = new GroupCoordinatorRequest('testGroup');
         await session.send(request, '127.0.0.1', 9092);
       } catch (error) {

@@ -53,7 +53,7 @@ abstract class Consumer<K, V> {
   Future commit();
 
   factory Consumer(String groupName, Deserializer<K> keyDeserializer,
-      Deserializer<V> valueDeserializer, KSession session) {
+      Deserializer<V> valueDeserializer, Session session) {
     return new _ConsumerImpl(
         groupName, keyDeserializer, valueDeserializer, session);
   }
@@ -66,7 +66,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   static const int DEFAULT_MIN_BYTES = 1;
 
   final String group;
-  final KSession session;
+  final Session session;
   final Deserializer<K> keyDeserializer;
   final Deserializer<V> valueDeserializer;
   final int requestMaxBytes;

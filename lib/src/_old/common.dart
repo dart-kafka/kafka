@@ -3,9 +3,9 @@ library kafka.common;
 
 import 'package:logging/logging.dart';
 
-part 'src/common/messages.dart';
-part 'src/common/metadata.dart';
-part 'src/common/offsets.dart';
+part 'common/messages.dart';
+part 'common/metadata.dart';
+part 'common/offsets.dart';
 
 /// Logger for this library.
 ///

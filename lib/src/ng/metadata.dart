@@ -12,7 +12,7 @@ import 'session.dart';
 final Logger _logger = new Logger('Metadata');
 
 class Metadata {
-  final KSession session;
+  final Session session;
 
   Metadata(this.session);
 

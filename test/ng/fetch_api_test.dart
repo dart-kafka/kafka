@@ -5,7 +5,7 @@ void main() {
   group('FetchApi:', () {
     String topic = 'dartKafkaTest';
     Broker host;
-    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     String message;
 
     setUp(() async {

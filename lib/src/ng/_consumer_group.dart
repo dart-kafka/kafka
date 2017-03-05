@@ -24,7 +24,7 @@ class GroupMembership {
   static final Logger _logger = new Logger('ConsumerGroup');
 
   /// The session to communicate with Kafka cluster.
-  final KSession session;
+  final Session session;
 
   /// The unique name of this group.
   final String name;

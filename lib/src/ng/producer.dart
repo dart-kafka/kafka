@@ -17,7 +17,7 @@ final Logger _logger = new Logger('Producer');
 /// send messages to.
 abstract class Producer<K, V> {
   factory Producer(Serializer<K> keySerializer, Serializer<V> valueSerializer,
-      KSession session) {
+      Session session) {
     return new _ProducerImpl(keySerializer, valueSerializer, session);
   }
 
@@ -45,7 +45,7 @@ class ProduceResult {
 }
 
 class _ProducerImpl<K, V> implements Producer<K, V> {
-  final KSession session;
+  final Session session;
   final Serializer<K> keySerializer;
   final Serializer<V> valueSerializer;
 

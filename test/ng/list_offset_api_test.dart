@@ -6,7 +6,7 @@ void main() {
     String topic = 'dartKafkaTest';
     int partitionId;
     Broker broker;
-    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata metadata = new Metadata(session);
     int _offset;
 

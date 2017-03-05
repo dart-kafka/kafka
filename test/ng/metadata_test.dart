@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Metadata:', () {
-    KSession session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata metadata = new Metadata(session);
 
     tearDownAll(() async {

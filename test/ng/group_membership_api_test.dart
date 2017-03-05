@@ -6,7 +6,7 @@ void main() {
     String groupId;
     String _topicName = 'dartKafkaTest';
     Broker _broker;
-    KSession _session = new KSession([new ContactPoint('127.0.0.1:9092')]);
+    Session _session = new Session([new ContactPoint('127.0.0.1:9092')]);
     Metadata _metadata = new Metadata(_session);
 
     setUp(() async {
