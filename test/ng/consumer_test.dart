@@ -10,8 +10,8 @@ void main() {
     String group = 'cg:${date}';
 
     setUp(() async {
-      var producer = new KProducer(
-          new StringSerializer(), new StringSerializer(), session);
+      var producer =
+          new Producer(new StringSerializer(), new StringSerializer(), session);
       var res =
           await producer.send(new ProducerRecord(topic, 0, 'akey', 'avalue'));
       expectedOffsets[res.topicPartition.partition] = res.offset;

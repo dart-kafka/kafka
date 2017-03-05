@@ -3,7 +3,7 @@ import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
 
-class ProduceRequestV2 extends KRequest<ProduceResponseV2> {
+class ProduceRequest extends KRequest<ProduceResponse> {
   @override
   final int apiKey = 0;
 
@@ -21,33 +21,33 @@ class ProduceRequestV2 extends KRequest<ProduceResponseV2> {
   /// Collection of messages to produce.
   final Map<String, Map<int, List<Message>>> messages;
 
-  ProduceRequestV2(this.requiredAcks, this.timeout, this.messages);
+  ProduceRequest(this.requiredAcks, this.timeout, this.messages);
 
   @override
-  ResponseDecoder<ProduceResponseV2> get decoder =>
-      new _ProduceResponseV2Decoder();
+  ResponseDecoder<ProduceResponse> get decoder =>
+      const _ProduceResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _ProduceRequestV2Encoder();
+  RequestEncoder<KRequest> get encoder => const _ProduceRequestEncoder();
 }
 
-class ProduceResponseV2 {
+class ProduceResponse {
   /// List of produce results for each topic-partition.
   final List<TopicProduceResult> results;
   final int throttleTime;
 
-  ProduceResponseV2(this.results, this.throttleTime) {
-    var errorResult = results.firstWhere((_) => _.errorCode != Errors.NoError,
+  ProduceResponse(this.results, this.throttleTime) {
+    var errorResult = results.firstWhere((_) => _.error != Errors.NoError,
         orElse: () => null);
 
     if (errorResult is TopicProduceResult) {
-      throw new KafkaError.fromCode(errorResult.errorCode, this);
+      throw new KafkaError.fromCode(errorResult.error, this);
     }
   }
 }
 
 /// Data structure representing result of producing messages with
-/// [ProduceRequestV2].
+/// [ProduceRequest].
 class TopicProduceResult {
   /// The name of the topic.
   final String topic;
@@ -56,7 +56,7 @@ class TopicProduceResult {
   final int partition;
 
   /// Error code returned by the server.
-  final int errorCode;
+  final int error;
 
   /// Offset of the first message.
   final int offset;
@@ -73,16 +73,18 @@ class TopicProduceResult {
   final int timestamp;
 
   TopicProduceResult(
-      this.topic, this.partition, this.errorCode, this.offset, this.timestamp);
+      this.topic, this.partition, this.error, this.offset, this.timestamp);
 
   @override
   String toString() =>
-      'ProduceResult{${topic}:${partition}, error: ${errorCode}, offset: ${offset}, timestamp: $timestamp}';
+      'ProduceResult{${topic}:${partition}, error: ${error}, offset: ${offset}, timestamp: $timestamp}';
 }
 
-class _ProduceRequestV2Encoder implements RequestEncoder<ProduceRequestV2> {
+class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
+  const _ProduceRequestEncoder();
+
   @override
-  List<int> encode(ProduceRequestV2 request) {
+  List<int> encode(ProduceRequest request) {
     var builder = new KafkaBytesBuilder();
     builder.addInt16(request.requiredAcks);
     builder.addInt32(request.timeout);
@@ -144,27 +146,29 @@ class _ProduceRequestV2Encoder implements RequestEncoder<ProduceRequestV2> {
   }
 }
 
-class _ProduceResponseV2Decoder extends ResponseDecoder<ProduceResponseV2> {
+class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
+  const _ProduceResponseDecoder();
+
   @override
-  ProduceResponseV2 decode(List<int> data) {
+  ProduceResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var results = new List<TopicProduceResult>();
     var topicCount = reader.readInt32();
     while (topicCount > 0) {
-      var topicName = reader.readString();
+      var topic = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        var partitionId = reader.readInt32();
-        var errorCode = reader.readInt16();
+        var partition = reader.readInt32();
+        var error = reader.readInt16();
         var offset = reader.readInt64();
         var timestamp = reader.readInt64();
-        results.add(new TopicProduceResult(
-            topicName, partitionId, errorCode, offset, timestamp));
+        results.add(
+            new TopicProduceResult(topic, partition, error, offset, timestamp));
         partitionCount--;
       }
       topicCount--;
     }
     var throttleTime = reader.readInt32();
-    return new ProduceResponseV2(results, throttleTime);
+    return new ProduceResponse(results, throttleTime);
   }
 }

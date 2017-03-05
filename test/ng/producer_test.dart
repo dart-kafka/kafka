@@ -10,7 +10,7 @@ void main() {
     });
 
     test('it can produce messages to Kafka', () async {
-      var producer = new KProducer<String, String>(
+      var producer = new Producer<String, String>(
           new StringSerializer(), new StringSerializer(), session);
       var result = await producer
           .send(new ProducerRecord('testProduce', 0, 'key', 'value'));

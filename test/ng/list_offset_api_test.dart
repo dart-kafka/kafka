@@ -18,8 +18,8 @@ void main() {
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);
 
-      var producer = new KProducer(
-          new StringSerializer(), new StringSerializer(), session);
+      var producer =
+          new Producer(new StringSerializer(), new StringSerializer(), session);
       var result = await producer
           .send(new ProducerRecord(topic, partitionId, 'key', 'value'));
       _offset = result.offset;

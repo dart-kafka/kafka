@@ -21,7 +21,6 @@ export 'protocol.dart' show TopicMetadata;
 export 'errors.dart';
 
 part 'src/consumer.dart';
-part 'src/offset_master.dart';
 part 'src/producer.dart';
 part 'src/session.dart';
 part 'src/high_level_consumer.dart';

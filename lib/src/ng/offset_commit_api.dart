@@ -4,19 +4,17 @@ import 'errors.dart';
 import 'io.dart';
 
 /// Kafka OffsetCommitRequest.
-class OffsetCommitRequestV2 extends KRequest<OffsetCommitResponseV2> {
-  /// API key of this request.
+class OffsetCommitRequest extends KRequest<OffsetCommitResponse> {
   @override
   final int apiKey = 8;
 
-  /// API version of this request.
   @override
   final int apiVersion = 2;
 
-  /// Name of the consumer group.
-  final String consumerGroup;
+  /// The name of consumer group.
+  final String group;
 
-  /// Generation ID of the consumer group.
+  /// The generation ID of consumer group.
   final int generationId;
 
   /// The ID of consumer group member.
@@ -29,27 +27,26 @@ class OffsetCommitRequestV2 extends KRequest<OffsetCommitResponseV2> {
   final List<ConsumerOffset> offsets;
 
   /// Creates new instance of OffsetCommit request.
-  OffsetCommitRequestV2(this.consumerGroup, this.offsets, this.generationId,
+  OffsetCommitRequest(this.group, this.offsets, this.generationId,
       this.consumerId, this.retentionTime);
 
   @override
-  ResponseDecoder<OffsetCommitResponseV2> get decoder =>
-      const _OffsetCommitResponseV2Decoder();
+  ResponseDecoder<OffsetCommitResponse> get decoder =>
+      const _OffsetCommitResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => const _OffsetCommitRequestV2Encoder();
+  RequestEncoder<KRequest> get encoder => const _OffsetCommitRequestEncoder();
 }
 
 /// OffsetCommitResponse.
-class OffsetCommitResponseV2 {
+class OffsetCommitResponse {
   final List<OffsetCommitResult> results;
 
-  OffsetCommitResponseV2(this.results) {
-    var errorResult = results.firstWhere((_) => _.errorCode != Errors.NoError,
+  OffsetCommitResponse(this.results) {
+    var errorResult = results.firstWhere((_) => _.error != Errors.NoError,
         orElse: () => null);
-    if (errorResult != null) {
-      throw new KafkaError.fromCode(errorResult.errorCode, this);
-    }
+    if (errorResult != null)
+      throw new KafkaError.fromCode(errorResult.error, this);
   }
 }
 
@@ -57,23 +54,23 @@ class OffsetCommitResponseV2 {
 class OffsetCommitResult {
   final String topic;
   final int partition;
-  final int errorCode;
+  final int error;
 
-  OffsetCommitResult(this.topic, this.partition, this.errorCode);
+  OffsetCommitResult(this.topic, this.partition, this.error);
 }
 
-class _OffsetCommitRequestV2Encoder
-    implements RequestEncoder<OffsetCommitRequestV2> {
-  const _OffsetCommitRequestV2Encoder();
+class _OffsetCommitRequestEncoder
+    implements RequestEncoder<OffsetCommitRequest> {
+  const _OffsetCommitRequestEncoder();
 
   @override
-  List<int> encode(OffsetCommitRequestV2 request) {
+  List<int> encode(OffsetCommitRequest request) {
     var builder = new KafkaBytesBuilder();
 
     Map<String, List<ConsumerOffset>> groupedByTopic =
         groupBy(request.offsets, (o) => o.topic);
 
-    builder.addString(request.consumerGroup);
+    builder.addString(request.group);
     builder.addInt32(request.generationId);
     builder.addString(request.consumerId);
     builder.addInt64(request.retentionTime);
@@ -92,28 +89,28 @@ class _OffsetCommitRequestV2Encoder
   }
 }
 
-class _OffsetCommitResponseV2Decoder
-    implements ResponseDecoder<OffsetCommitResponseV2> {
-  const _OffsetCommitResponseV2Decoder();
+class _OffsetCommitResponseDecoder
+    implements ResponseDecoder<OffsetCommitResponse> {
+  const _OffsetCommitResponseDecoder();
 
   @override
-  OffsetCommitResponseV2 decode(List<int> data) {
+  OffsetCommitResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     List<OffsetCommitResult> results = [];
     var count = reader.readInt32();
 
     while (count > 0) {
-      var topicName = reader.readString();
+      var topic = reader.readString();
       var partitionCount = reader.readInt32();
       while (partitionCount > 0) {
-        var partitionId = reader.readInt32();
-        var errorCode = reader.readInt16();
-        results.add(new OffsetCommitResult(topicName, partitionId, errorCode));
+        var partition = reader.readInt32();
+        var error = reader.readInt16();
+        results.add(new OffsetCommitResult(topic, partition, error));
         partitionCount--;
       }
       count--;
     }
 
-    return new OffsetCommitResponseV2(results);
+    return new OffsetCommitResponse(results);
   }
 }

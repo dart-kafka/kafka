@@ -4,6 +4,9 @@ import 'package:logging/logging.dart';
 
 import 'io.dart';
 
+final Logger _logger = new Logger('Session');
+
+/// Contact point used by [KSession] to bootstrap connection to Kafka cluster.
 class ContactPoint {
   final String host;
   final int port;
@@ -16,6 +19,7 @@ class ContactPoint {
   }
 }
 
+/// Connection session responsible for communication with Kafka cluster.
 abstract class KSession {
   factory KSession(List<ContactPoint> contactPoints) {
     return new _KSessionImpl(contactPoints);
@@ -26,7 +30,6 @@ abstract class KSession {
 }
 
 class _KSessionImpl implements KSession {
-  static final Logger _logger = new Logger('KSession');
   final List<ContactPoint> contactPoints;
   final Map<String, Future<KSocket>> _sockets = new Map();
 

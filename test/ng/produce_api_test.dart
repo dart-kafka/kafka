@@ -24,7 +24,7 @@ void main() {
     });
 
     test('it publishes messages to Kafka topic', () async {
-      var req = new ProduceRequestV2(1, 1000, {
+      var req = new ProduceRequest(1, 1000, {
         _topicName: {
           partitionId: [new Message('hello world'.codeUnits)]
         }
@@ -33,7 +33,7 @@ void main() {
       var res = await session.send(req, broker.host, broker.port);
       expect(res.results, hasLength(1));
       expect(res.results.first.topic, equals(_topicName));
-      expect(res.results.first.errorCode, equals(0));
+      expect(res.results.first.error, equals(0));
       expect(res.results.first.offset, greaterThanOrEqualTo(0));
     });
 

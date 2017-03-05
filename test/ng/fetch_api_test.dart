@@ -24,8 +24,8 @@ void main() {
     test('it fetches messages from Kafka topic', () async {
       var now = new DateTime.now();
       message = 'test:' + now.toIso8601String();
-      var producer = new KProducer(
-          new StringSerializer(), new StringSerializer(), session);
+      var producer =
+          new Producer(new StringSerializer(), new StringSerializer(), session);
       var result =
           await producer.send(new ProducerRecord(topic, 0, 'key', message));
 
