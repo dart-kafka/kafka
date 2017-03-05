@@ -14,7 +14,7 @@ void main() {
       var topics = await metadata.fetchTopics(['testTopic']);
       expect(topics, isList);
       expect(topics, hasLength(1));
-      expect(topics.first.topicName, 'testTopic');
+      expect(topics.first.topic, 'testTopic');
       expect(topics.first.toString(),
           contains('TopicMetadata: testTopic, errorCode: 0;'));
     });

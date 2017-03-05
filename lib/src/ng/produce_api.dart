@@ -3,12 +3,12 @@ import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
 
-class ProduceRequestV0 extends KRequest<ProduceResponseV0> {
+class ProduceRequestV2 extends KRequest<ProduceResponseV2> {
   @override
   final int apiKey = 0;
 
   @override
-  final int apiVersion = 0;
+  final int apiVersion = 2;
 
   /// Indicates how many acknowledgements the servers
   /// should receive before responding to the request.
@@ -21,21 +21,22 @@ class ProduceRequestV0 extends KRequest<ProduceResponseV0> {
   /// Collection of messages to produce.
   final Map<String, Map<int, List<Message>>> messages;
 
-  ProduceRequestV0(this.requiredAcks, this.timeout, this.messages);
+  ProduceRequestV2(this.requiredAcks, this.timeout, this.messages);
 
   @override
-  ResponseDecoder<ProduceResponseV0> get decoder =>
-      new _ProduceResponseV0Decoder();
+  ResponseDecoder<ProduceResponseV2> get decoder =>
+      new _ProduceResponseV2Decoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => new _ProduceRequestV0Encoder();
+  RequestEncoder<KRequest> get encoder => new _ProduceRequestV2Encoder();
 }
 
-class ProduceResponseV0 {
+class ProduceResponseV2 {
   /// List of produce results for each topic-partition.
   final List<TopicProduceResult> results;
+  final int throttleTime;
 
-  ProduceResponseV0(this.results) {
+  ProduceResponseV2(this.results, this.throttleTime) {
     var errorResult = results.firstWhere(
         (_) => _.errorCode != KafkaServerError.NoError_,
         orElse: () => null);
@@ -47,13 +48,13 @@ class ProduceResponseV0 {
 }
 
 /// Data structure representing result of producing messages with
-/// [ProduceRequest].
+/// [ProduceRequestV2].
 class TopicProduceResult {
-  /// Name of the topic.
-  final String topicName;
+  /// The name of the topic.
+  final String topic;
 
-  /// ID of the partition.
-  final int partitionId;
+  /// The ID of the partition.
+  final int partition;
 
   /// Error code returned by the server.
   final int errorCode;
@@ -61,17 +62,28 @@ class TopicProduceResult {
   /// Offset of the first message.
   final int offset;
 
+  /// The creation timestamp of the message set.
+  ///
+  /// If `LogAppendTime` is used for the topic this is the timestamp assigned
+  /// by the broker to the message set. All the messages in the message set
+  /// have the same timestamp.
+  ///
+  /// If `CreateTime` is used, this field is always -1. The producer can assume
+  /// the timestamp of the messages in the produce request has been accepted
+  /// by the broker if there is no error code returned.
+  final int timestamp;
+
   TopicProduceResult(
-      this.topicName, this.partitionId, this.errorCode, this.offset);
+      this.topic, this.partition, this.errorCode, this.offset, this.timestamp);
 
   @override
   String toString() =>
-      'Topic: ${topicName}, partition: ${partitionId}, errorCode: ${errorCode}, offset: ${offset}';
+      'ProduceResult{${topic}:${partition}, error: ${errorCode}, offset: ${offset}, timestamp: $timestamp}';
 }
 
-class _ProduceRequestV0Encoder implements RequestEncoder<ProduceRequestV0> {
+class _ProduceRequestV2Encoder implements RequestEncoder<ProduceRequestV2> {
   @override
-  List<int> encode(ProduceRequestV0 request) {
+  List<int> encode(ProduceRequestV2 request) {
     var builder = new KafkaBytesBuilder();
     builder.addInt16(request.requiredAcks);
     builder.addInt32(request.timeout);
@@ -105,7 +117,7 @@ class _ProduceRequestV0Encoder implements RequestEncoder<ProduceRequestV0> {
 
   List<int> _messageToBytes(Message message) {
     var builder = new KafkaBytesBuilder();
-    builder.addInt8(0); // magicByte
+    builder.addInt8(1); // magicByte
     builder.addInt8(_encodeAttributes(message.attributes));
     builder.addBytes(message.key);
     builder.addBytes(message.value);
@@ -120,11 +132,11 @@ class _ProduceRequestV0Encoder implements RequestEncoder<ProduceRequestV0> {
 
   int _encodeAttributes(MessageAttributes attributes) {
     switch (attributes.compression) {
-      case KafkaCompression.none:
+      case Compression.none:
         return 0;
-      case KafkaCompression.gzip:
+      case Compression.gzip:
         return 1;
-      case KafkaCompression.snappy:
+      case Compression.snappy:
         return 2;
       default:
         throw new ArgumentError(
@@ -133,9 +145,9 @@ class _ProduceRequestV0Encoder implements RequestEncoder<ProduceRequestV0> {
   }
 }
 
-class _ProduceResponseV0Decoder extends ResponseDecoder<ProduceResponseV0> {
+class _ProduceResponseV2Decoder extends ResponseDecoder<ProduceResponseV2> {
   @override
-  ProduceResponseV0 decode(List<int> data) {
+  ProduceResponseV2 decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var results = new List<TopicProduceResult>();
     var topicCount = reader.readInt32();
@@ -146,12 +158,14 @@ class _ProduceResponseV0Decoder extends ResponseDecoder<ProduceResponseV0> {
         var partitionId = reader.readInt32();
         var errorCode = reader.readInt16();
         var offset = reader.readInt64();
-        results.add(
-            new TopicProduceResult(topicName, partitionId, errorCode, offset));
+        var timestamp = reader.readInt64();
+        results.add(new TopicProduceResult(
+            topicName, partitionId, errorCode, offset, timestamp));
         partitionCount--;
       }
       topicCount--;
     }
-    return new ProduceResponseV0(results);
+    var throttleTime = reader.readInt32();
+    return new ProduceResponseV2(results, throttleTime);
   }
 }

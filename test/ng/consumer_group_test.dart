@@ -5,28 +5,8 @@ import 'package:test/test.dart';
 class KSessionMock extends Mock implements KSession {}
 
 void main() {
+  // TODO: move these tests to new Consumer implementation.
   group('ConsumerGroup:', () {
-    KSession _session;
-    String _topicName = 'dartKafkaTest';
-    Broker _coordinator;
-    Broker _badCoordinator;
-
-    setUp(() async {
-      var session = new KSession([new ContactPoint('127.0.0.1:9092')]);
-      var metadata = new KMetadata(session);
-      List<Broker> brokers = await metadata.listBrokers();
-
-      _coordinator = await metadata.fetchGroupCoordinator('testGroup');
-      await session.close();
-      _badCoordinator = brokers.firstWhere((b) => b.id != _coordinator.id);
-      _session = spy(new KSessionMock(),
-          new KSession([new ContactPoint('127.0.0.1:9092')]));
-    });
-
-    tearDown(() async {
-      await _session.close();
-    });
-
     // test('it fetches offsets', () async {
     //   var group = new ConsumerGroup(_session, 'testGroup');
     //   var offsets = await group.fetchOffsets({

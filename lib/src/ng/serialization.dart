@@ -10,6 +10,17 @@ class StringSerializer implements Serializer<String> {
   List<int> serialize(String data) => UTF8.encode(data);
 }
 
+class CodecSerializer<S> implements Serializer<S> {
+  final Codec<S, List<int>> codec;
+
+  CodecSerializer(this.codec);
+
+  @override
+  List<int> serialize(S data) {
+    return codec.encode(data);
+  }
+}
+
 abstract class Deserializer<T> {
   T deserialize(List<int> data);
 }

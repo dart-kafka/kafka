@@ -30,7 +30,7 @@ class KMetadata {
     var req = new MetadataRequestV0();
     var broker = session.contactPoints.first;
     return session.send(req, broker.host, broker.port).then((response) {
-      return response.topics.map((_) => _.topicName).toList();
+      return response.topics.map((_) => _.topic).toList();
     });
   }
 

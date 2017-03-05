@@ -1,31 +1,26 @@
 import 'dart:collection';
-// import 'dart:io';
-// import '../util/crc32.dart';
 
 /// Compression types supported by Kafka.
-enum KafkaCompression { none, gzip, snappy }
+enum Compression { none, gzip, snappy }
 
-/// Kafka Message Attributes. Only [KafkaCompression] is supported by the
+final Map _kIntToCompression = {
+  0: Compression.none,
+  1: Compression.gzip,
+  2: Compression.snappy,
+};
+
+/// Kafka Message Attributes. Only [Compression] is supported by the
 /// server at the moment.
 class MessageAttributes {
   /// Compression codec.
-  final KafkaCompression compression;
+  final Compression compression;
 
   /// Creates new instance of MessageAttributes.
-  MessageAttributes([this.compression = KafkaCompression.none]);
+  MessageAttributes([this.compression = Compression.none]);
 
   /// Creates MessageAttributes from the raw byte.
-  MessageAttributes.fromByte(int byte) : compression = getCompression(byte);
-
-  static KafkaCompression getCompression(int byte) {
-    var c = byte & 3;
-    var map = {
-      0: KafkaCompression.none,
-      1: KafkaCompression.gzip,
-      2: KafkaCompression.snappy,
-    };
-    return map[c];
-  }
+  MessageAttributes.fromByte(int byte)
+      : compression = _kIntToCompression[byte & 3];
 }
 
 /// Kafka Message as defined in the protocol.

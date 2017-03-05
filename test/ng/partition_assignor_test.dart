@@ -33,7 +33,7 @@ void main() {
 
       expect(() {
         assignor.assign(partitionsPerTopic, memberSubscriptions);
-      }, throwsArgumentError);
+      }, throwsStateError);
     });
   });
 }

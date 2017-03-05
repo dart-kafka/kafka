@@ -222,7 +222,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
         var brokers = await meta.listBrokers();
         List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
           return _.partitions
-              .map((p) => tuple3(_.topicName, p.partitionId, p.leader));
+              .map((p) => tuple3(_.topic, p.partitionId, p.leader));
         }).toList(growable: false);
         return new Map<TopicPartition, Broker>.fromIterable(data, key: (_) {
           return new TopicPartition(_.$1, _.$2);
@@ -331,7 +331,7 @@ class _KConsumerImpl<K, V> implements KConsumer<K, V> {
     var metadata = new KMetadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
-        key: (_) => _.topicName, value: (_) => _.partitions.length);
+        key: (_) => _.topic, value: (_) => _.partitions.length);
 
     Map<String, List<TopicPartition>> assignments =
         assignor.assign(partitionsPerTopic, subscriptions);

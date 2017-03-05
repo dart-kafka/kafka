@@ -1,5 +1,3 @@
-library kafka.test.testing;
-
 import 'package:kafka/protocol.dart';
 import 'package:kafka/testing.dart';
 import 'package:test/test.dart';

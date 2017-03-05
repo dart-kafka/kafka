@@ -1,4 +1,4 @@
-FROM ches/kafka:0.10.0.0
+FROM ches/kafka:0.10.1.0
 
 USER root
 

@@ -80,7 +80,7 @@ class GroupMembership {
   //   }
   // }
 
-  /// Commits provided [offsets] to the server for this consumer group.
+  /// Commits provided [results] to the server for this consumer group.
   // Future commitOffsets(List<ConsumerOffset> offsets,
   //     {GroupMembershipInfo membership}) {
   //   return _commitOffsets(offsets, membership: membership, retries: 3);

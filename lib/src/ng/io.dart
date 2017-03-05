@@ -124,7 +124,8 @@ class KafkaBytesBuilder {
   List<int> toBytes() => _builder.toBytes();
 }
 
-/// Provides convenience methods read Kafka specific data types from a stream of bytes.
+/// Provides convenience methods to read Kafka specific data types from a
+/// stream of bytes.
 class KafkaBytesReader {
   Int8List _data;
   int _offset = 0;

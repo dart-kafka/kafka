@@ -1,9 +1,11 @@
 import 'package:quiver/core.dart';
 
+/// Creates tuple of two values.
 Tuple2<T1, T2> tuple2<T1, T2>(T1 $1, T2 $2) {
   return new Tuple2($1, $2);
 }
 
+/// Creates tuple of three values.
 Tuple3<T1, T2, T3> tuple3<T1, T2, T3>(T1 $1, T2 $2, T3 $3) {
   return new Tuple3($1, $2, $3);
 }

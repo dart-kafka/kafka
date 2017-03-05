@@ -37,13 +37,13 @@ class MetadataResponseV0 {
 
 class TopicMetadata {
   final int errorCode;
-  final String topicName;
+  final String topic;
   final List<PartitionMetadata> partitions;
 
-  TopicMetadata(this.errorCode, this.topicName, this.partitions);
+  TopicMetadata(this.errorCode, this.topic, this.partitions);
 
   @override
-  toString() => 'TopicMetadata: $topicName, errorCode: $errorCode; '
+  toString() => 'TopicMetadata: $topic, errorCode: $errorCode; '
       '$partitions';
 }
 

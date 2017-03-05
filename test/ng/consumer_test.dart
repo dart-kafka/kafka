@@ -7,6 +7,7 @@ void main() {
     var date = new DateTime.now().millisecondsSinceEpoch;
     String topic = 'testTopic-${date}';
     Map<int, int> expectedOffsets = new Map();
+    String group = 'cg:${date}';
 
     setUp(() async {
       var producer = new KProducer(
@@ -26,7 +27,7 @@ void main() {
 
     test('it can consume messages from multiple brokers', () async {
       var consumer = new KConsumer<String, String>(
-          'cg', new StringDeserializer(), new StringDeserializer(), session);
+          group, new StringDeserializer(), new StringDeserializer(), session);
       await consumer.subscribe([topic]);
       var iterator = consumer.poll();
       int i = 0;

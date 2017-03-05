@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:logging/logging.dart';
 import 'common.dart';
 import 'serialization.dart';
 import 'session.dart';
@@ -30,9 +30,13 @@ class ProduceResult {
   final int offset;
 
   ProduceResult(this.topicPartition, this.offset);
+
+  @override
+  toString() => 'ProduceResult{${topicPartition}, offset: $offset}';
 }
 
 class _ProducerImpl<K, V> implements KProducer<K, V> {
+  static final Logger logger = new Logger('KProducer');
   final KSession session;
   final Serializer<K> keySerializer;
   final Serializer<V> valueSerializer;
@@ -49,7 +53,7 @@ class _ProducerImpl<K, V> implements KProducer<K, V> {
         record.partition: [message]
       }
     };
-    var req = new ProduceRequestV0(1, 1000, messages);
+    var req = new ProduceRequestV2(1, 1000, messages);
     var metadata = new KMetadata(session);
     var meta = await metadata.fetchTopics([record.topic]);
     var leaderId = meta.first.partitions
@@ -58,7 +62,6 @@ class _ProducerImpl<K, V> implements KProducer<K, V> {
     var brokers = await metadata.listBrokers();
     var broker = brokers.firstWhere((_) => _.id == leaderId);
     var result = await session.send(req, broker.host, broker.port);
-
     return new Future.value(new ProduceResult(
         new TopicPartition(record.topic, record.partition),
         result.results.first.offset));

@@ -1,5 +1,7 @@
 import 'package:kafka/ng.dart';
+import 'package:logging/logging.dart';
 import 'package:test/test.dart';
+import '../setup.dart';
 
 void main() {
   group('FetchApi:', () {
@@ -12,7 +14,7 @@ void main() {
       var metadata = new KMetadata(session);
       var meta = await metadata.fetchTopics([topic]);
       var leaderId =
-          meta.firstWhere((_) => _.topicName == topic).partitions.first.leader;
+          meta.firstWhere((_) => _.topic == topic).partitions.first.leader;
       var brokers = await metadata.listBrokers();
       host = brokers.firstWhere((_) => _.id == leaderId);
     });

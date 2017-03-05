@@ -4,6 +4,8 @@ export 'src/ng/common.dart';
 export 'src/ng/consumer.dart';
 export 'src/ng/consumer_metadata_api.dart';
 export 'src/ng/consumer_offset_api.dart';
+export 'src/ng/offset_commit_api.dart';
+export 'src/ng/list_offset_api.dart';
 export 'src/ng/errors.dart';
 export 'src/ng/fetch_api.dart';
 export 'src/ng/group_membership_api.dart';

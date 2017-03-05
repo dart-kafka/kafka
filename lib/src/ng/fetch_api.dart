@@ -12,7 +12,7 @@ import 'messages.dart';
 class FetchRequestV0 implements KRequest<FetchResponseV0> {
   final int apiKey = 1;
 
-  final int apiVersion = 0;
+  final int apiVersion = 2;
 
   /// The replica id indicates the node id of the replica initiating this request.
   /// Normal consumers should always specify this as -1 as they have no node id.
@@ -90,10 +90,14 @@ class _FetchRequestV0Encoder implements RequestEncoder<FetchRequestV0> {
 
 /// Kafka FetchResponseV0.
 class FetchResponseV0 {
+  /// Duration in milliseconds for which the request was throttled due to quota
+  /// violation. (Zero if the request did not violate any quota.)
+  final int throttleTime;
+
   /// List of [FetchResult]s for each topic-partition.
   final List<FetchResult> results;
 
-  FetchResponseV0(this.results) {
+  FetchResponseV0(this.throttleTime, this.results) {
     var errors = results
         .map((_) => _.errorCode)
         .where((_) => _ != KafkaServerError.NoError_);
@@ -122,6 +126,7 @@ class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
   @override
   FetchResponseV0 decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
+    var throttleTime = reader.readInt32();
     var count = reader.readInt32();
     var results = new List<FetchResult>();
     while (count > 0) {
@@ -143,7 +148,7 @@ class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
       count--;
     }
 
-    return new FetchResponseV0(results);
+    return new FetchResponseV0(throttleTime, results);
   }
 
   /// Reads a set of messages from FetchResponse.
@@ -166,10 +171,10 @@ class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
         }
         var messageReader = new KafkaBytesReader.fromBytes(data);
         var message = _readMessage(messageReader);
-        if (message.attributes.compression == KafkaCompression.none) {
+        if (message.attributes.compression == Compression.none) {
           messages[offset] = message;
         } else {
-          if (message.attributes.compression == KafkaCompression.snappy)
+          if (message.attributes.compression == Compression.snappy)
             throw new UnimplementedError(
                 'Snappy compression is not supported yet by the client.');
 
@@ -193,8 +198,10 @@ class _FetchResponseV0Decoder implements ResponseDecoder<FetchResponseV0> {
   }
 
   Message _readMessage(KafkaBytesReader reader) {
-    reader.readInt8(); // magicByte
-    var attributes = new MessageAttributes.fromByte(reader.readInt8());
+    var magicByte = reader.readInt8();
+    // TODO: Handle Message v1 (with timestamp)
+    var attrByte = reader.readInt8();
+    var attributes = new MessageAttributes.fromByte(attrByte);
     var key = reader.readBytes();
     var value = reader.readBytes();
 
