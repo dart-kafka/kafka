@@ -1,5 +1,6 @@
 import 'io.dart';
 import 'errors.dart';
+import 'common.dart';
 
 class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   @override
@@ -189,10 +190,34 @@ class GroupAssignment {
 
 class MemberAssignment {
   final int version;
-  final Map<String, List<int>> partitionAssignment;
+  final Map<String, List<int>> partitions;
   final List<int> userData;
 
-  MemberAssignment(this.version, this.partitionAssignment, this.userData);
+  MemberAssignment(this.version, this.partitions, this.userData);
+
+  List<TopicPartition> _partitionsList;
+  List<TopicPartition> get partitionsAsList {
+    if (_partitionsList != null) return _partitionsList;
+    var result = new List<TopicPartition>();
+    for (var topic in partitions.keys) {
+      result.addAll(partitions[topic].map((p) => new TopicPartition(topic, p)));
+    }
+    _partitionsList = result.toList(growable: false);
+    return _partitionsList;
+  }
+
+  List<String> _topics;
+
+  /// List of topic names in this member assignment.
+  List<String> get topics {
+    if (_topics != null) return _topics;
+    _topics = partitions.keys.toList(growable: false);
+    return _topics;
+  }
+
+  @override
+  String toString() =>
+      'MemberAssignment{version: $version, partitions: $partitions}';
 }
 
 class SyncGroupResponse {
@@ -226,10 +251,10 @@ class _SyncGroupRequestEncoder implements RequestEncoder<SyncGroupRequest> {
   List<int> _encodeMemberAssignment(MemberAssignment assignment) {
     var builder = new KafkaBytesBuilder();
     builder.addInt16(assignment.version);
-    builder.addInt32(assignment.partitionAssignment.length);
-    for (var topic in assignment.partitionAssignment.keys) {
+    builder.addInt32(assignment.partitions.length);
+    for (var topic in assignment.partitions.keys) {
       builder.addString(topic);
-      builder.addInt32Array(assignment.partitionAssignment[topic]);
+      builder.addInt32Array(assignment.partitions[topic]);
     }
     builder.addBytes(assignment.userData);
     return builder.takeBytes();

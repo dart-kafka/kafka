@@ -1,20 +1,20 @@
 import 'dart:async';
 
+import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 
-import '../util/retry.dart';
 import '../util/tuple.dart';
 import 'common.dart';
-import 'consumer_offset_api.dart';
-import 'errors.dart';
+import 'consumer_group.dart';
 import 'fetch_api.dart';
+import 'consumer_offset_api.dart';
 import 'group_membership_api.dart';
 import 'metadata.dart';
-import 'partition_assignor.dart';
+import 'offset_master.dart';
 import 'serialization.dart';
 import 'session.dart';
 
-final Logger _logger = new Logger('KConsumer');
+final Logger _logger = new Logger('Consumer');
 
 /// Consumes messages from Kafka cluster.
 ///
@@ -42,20 +42,44 @@ abstract class Consumer<K, V> {
   String get group;
 
   /// Starts polling Kafka servers for new messages.
-  StreamIterator<KConsumerRecords<K, V>> poll();
+  StreamQueue<KConsumerRecords<K, V>> poll();
 
   /// Subscribes to [topics] as a member of consumer [group].
+  ///
+  /// Subscribe triggers rebalance of all currently active members of the same
+  /// consumer grouop.
   Future subscribe(List<String> topics);
 
+  /// Unsubscribes from all currently assigned partitions and leaves
+  /// consumer group.
+  ///
+  /// Unsubscribe triggers rebalance of all existing members of this consumer
+  /// group.
   Future unsubscribe();
 
   /// Commits current offsets to the server.
   Future commit();
 
-  factory Consumer(String groupName, Deserializer<K> keyDeserializer,
+  /// Seek to the first offset for all of the currently assigned partitions.
+  ///
+  /// This function evaluates lazily, seeking to the first offset in all
+  /// partitions only when [poll] is called.
+  ///
+  /// Requires active subscription, see [subscribe] for more details.
+  void seekToBeginning();
+
+  /// Seek to the last offset for all of the currently assigned partitions.
+  ///
+  /// This function evaluates lazily, seeking to the last offset in all
+  /// partitions only when [poll] is called.
+  ///
+  /// Requires active subscription, see [subscribe] for more details.
+  void seekToEnd();
+
+  factory Consumer(String group, Deserializer<K> keyDeserializer,
       Deserializer<V> valueDeserializer, Session session) {
     return new _ConsumerImpl(
-        groupName, keyDeserializer, valueDeserializer, session);
+        group, keyDeserializer, valueDeserializer, session);
   }
 }
 
@@ -65,35 +89,39 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   static const int DEFAULT_MAX_WAIT_TIME = 1000;
   static const int DEFAULT_MIN_BYTES = 1;
 
-  final String group;
   final Session session;
   final Deserializer<K> keyDeserializer;
   final Deserializer<V> valueDeserializer;
   final int requestMaxBytes;
 
-  _ConsumerImpl(
-      this.group, this.keyDeserializer, this.valueDeserializer, this.session,
-      {int requestMaxBytes})
-      : requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
+  final ConsumerGroup _group;
 
-  StreamController<KConsumerRecords> _streamController;
-  StreamIterator<KConsumerRecords> _streamIterator;
+  _ConsumerImpl(
+      String group, this.keyDeserializer, this.valueDeserializer, this.session,
+      {int requestMaxBytes})
+      : _group = new ConsumerGroup(session, group),
+        requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
+
+  String get group => _group.name;
+
+  StreamController<KConsumerRecords<K, V>> _streamController;
+  StreamQueue<KConsumerRecords<K, V>> _streamQueue;
 
   @override
-  StreamIterator<KConsumerRecords<K, V>> poll() {
-    assert(membership != null,
-        'No active subscription. Must first call KConsumer.subscribe().');
+  StreamQueue<KConsumerRecords<K, V>> poll() {
+    assert(subscription != null,
+        'No active subscription. Must first call subscribe().');
     assert(_streamController == null, 'Polling already started.');
 
     _streamController = new StreamController<KConsumerRecords>(
         onPause: onPause, onResume: onResume, onCancel: onCancel);
-    _streamIterator =
-        new StreamIterator<KConsumerRecords>(_streamController.stream);
+    _streamQueue =
+        new StreamQueue<KConsumerRecords<K, V>>(_streamController.stream);
     _poll().whenComplete(() {
       _streamController = null;
-      _streamIterator = null;
+      _streamQueue = null;
     });
-    return _streamIterator;
+    return _streamQueue;
   }
 
   Completer _resumeCompleter;
@@ -114,13 +142,12 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _isCanceled = true;
   }
 
-  Map<TopicPartition, int> _currentOffsets;
+  List<ConsumerOffset> _currentOffsets;
 
   /// Internal polling method.
   Future _poll() async {
-    _logger.info('Fetching initial offsets');
-    _currentOffsets = await _fetchOffsets();
-    _logger.info('Current offsets are: ${_currentOffsets}');
+    _currentOffsets = await _fetchOffsets(subscription);
+    _logger.info('Initial offsets are: ${_currentOffsets}');
 
     List<KConsumerRecord<K, V>> fetchResultsToRecords(
         List<FetchResult> results) {
@@ -136,13 +163,13 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
 
     void updateOffsets(List<KConsumerRecord> records) {
-      for (var record in records) {
-        var topicPartition = new TopicPartition(record.topic, record.partition);
-        var current = _currentOffsets[topicPartition];
-        if (record.offset > current) {
-          _currentOffsets[topicPartition] = record.offset + 1;
-        }
-      }
+      // for (var record in records) {
+      //   var topicPartition = new TopicPartition(record.topic, record.partition);
+      //   var current = _currentOffsets[topicPartition];
+      //   if (record.offset > current) {
+      //     _currentOffsets[topicPartition] = record.offset + 1;
+      //   }
+      // }
     }
 
     // TODO: Implement a more efficient polling algorithm.
@@ -172,39 +199,54 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
   }
 
-  Future<Map<TopicPartition, int>> _fetchOffsets() async {
-    Future<OffsetFetchResponse> fetchFunc() async {
-      var request = new OffsetFetchRequest(
-          group, membership.assignment.partitionAssignment);
-      var coord = await _getCoordinator();
-      return await session.send(request, coord.host, coord.port);
+  /// Fetches current consumer offsets from the server.
+  ///
+  /// Checks whether current offsets are valid by comparing to earliest
+  /// available offsets in the topics. Resets current offset if it's value is
+  /// lower than earliest available in the partition.
+  Future<List<ConsumerOffset>> _fetchOffsets(
+      GroupSubscription subscription) async {
+    _logger.finer('Fetching offsets for ${group}');
+    var currentOffsets =
+        await _group.fetchOffsets(subscription.assignment.partitionsAsList);
+    var offsetMaster = new OffsetMaster(session);
+    var earliestOffsets = await offsetMaster
+        .fetchEarliest(subscription.assignment.partitionsAsList);
+
+    List<ConsumerOffset> resetNeeded = new List();
+    for (var earliest in earliestOffsets) {
+      // Current consumer offset can be either -1 or a value >= 0, where
+      // `-1` means that no committed offset exists for this partition.
+      //
+      var current = currentOffsets.firstWhere((_) =>
+          _.topic == earliest.topic && _.partition == earliest.partition);
+      if (current.offset + 1 < earliest.offset) {
+        // reset to earliest
+        _logger.warning('Current consumer offset (${current.offset}) is less '
+            'than earliest available for partition (${earliest.offset}). '
+            'This can indicate that consumer missed some records in ${current.topicPartition}. '
+            'Resetting this offset to earliest.');
+        resetNeeded.add(current.copy(
+            offset: earliest.offset - 1, metadata: 'resetToEarliest'));
+      }
     }
 
-    var response =
-        await retryAsync(fetchFunc, 5, new Duration(milliseconds: 500));
+    if (resetNeeded.isNotEmpty) {
+      await _group.commitOffsets(resetNeeded, subscription: subscription);
+    }
 
-    return new Map.fromIterable(response.offsets,
-        key: (_) => new TopicPartition(_.topic, _.partition),
-        value: (_) => _.offset);
+    return _group.fetchOffsets(subscription.assignment.partitionsAsList);
   }
 
   Future<Map<Broker, FetchRequest>> _buildRequests(
-      Map<TopicPartition, int> offsets) async {
-    // TODO: There should be a better way to do all these traversals...
-    var assignment = membership.assignment.partitionAssignment;
-    var topics =
-        membership.assignment.partitionAssignment.keys.toList(growable: false);
-    var topicBrokers = await _fetchTopicMetadata(topics);
+      List<ConsumerOffset> offsets) async {
+    Map<TopicPartition, Broker> brokers =
+        await _fetchTopicMetadata(subscription.assignment.topics);
 
-    List<Tuple3<Broker, TopicPartition, int>> data = topics.expand((topic) {
-      return assignment[topic].map((p) {
-        var topicPartition = new TopicPartition(topic, p);
-        var broker = topicBrokers[topicPartition];
-        var offset = offsets[topicPartition];
-        offset = (offset == -1) ? 0 : offset;
-        return tuple3(broker, topicPartition, offset);
-      });
-    }).toList(growable: false);
+    List<Tuple3<Broker, TopicPartition, int>> data = offsets
+        .map((o) =>
+            tuple3(brokers[o.topicPartition], o.topicPartition, o.offset + 1))
+        .toList(growable: false);
 
     Map<Broker, FetchRequest> requests = new Map();
     for (var item in data) {
@@ -235,9 +277,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     return _topicBrokers;
   }
 
-  GroupMembership _membership;
+  GroupSubscription _subscription;
 
-  GroupMembership get membership => _membership;
+  GroupSubscription get subscription => _subscription;
   bool _isSubscribing = false;
 
   @override
@@ -247,9 +289,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _isSubscribing = true;
     var protocols = [new GroupProtocol.roundrobin(0, topics.toSet())];
     _logger.info('Joining to consumer group ${group}.');
-    return _join(30000, '', 'consumer', protocols).then((result) {
-      _membership = result;
-      _logger.info('Subscription result: ${membership}.');
+    return _group.join(30000, '', 'consumer', protocols).then((result) {
+      _subscription = result;
+      _logger.info('Subscription result: ${subscription}.');
     }).whenComplete(() {
       _isSubscribing = false;
     });
@@ -261,126 +303,21 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     return null;
   }
 
-  Future<Broker> _coordinator;
-
-  Future<Broker> _getCoordinator({bool refresh: false}) {
-    if (refresh) {
-      _coordinator = null;
-    }
-
-    if (_coordinator == null) {
-      var metadata = new Metadata(session);
-      _coordinator = metadata.fetchGroupCoordinator(group).catchError((error) {
-        _coordinator = null;
-        throw error;
-      });
-    }
-
-    return _coordinator;
-  }
-
-  Future<GroupMembership> _join(int sessionTimeout, String memberId,
-      String protocolType, Iterable<GroupProtocol> groupProtocols) async {
-    var broker = await _getCoordinator();
-    var joinRequest = new JoinGroupRequest(
-        group, sessionTimeout, memberId, protocolType, groupProtocols);
-    JoinGroupResponse joinResponse =
-        await session.send(joinRequest, broker.host, broker.port);
-    var protocol = joinResponse.groupProtocol;
-    var isLeader = joinResponse.leaderId == joinResponse.memberId;
-
-    var groupAssignments = new List<GroupAssignment>();
-    if (isLeader) {
-      groupAssignments = await _assignPartitions(protocol, joinResponse);
-    }
-
-    var syncRequest = new SyncGroupRequest(group, joinResponse.generationId,
-        joinResponse.memberId, groupAssignments);
-    SyncGroupResponse syncResponse;
-    try {
-      // Wait before sending SyncRequest to give the server some time to respond
-      // to all the rest JoinRequests.
-      syncResponse = await new Future.delayed(new Duration(seconds: 1), () {
-        return session.send(syncRequest, broker.host, broker.port);
-      });
-
-      return new GroupMembership(
-          joinResponse.memberId,
-          joinResponse.leaderId,
-          syncResponse.assignment,
-          joinResponse.generationId,
-          joinResponse.groupProtocol);
-    } on RebalanceInProgressError {
-      _logger.warning(
-          'Received "RebalanceInProgress" error code for SyncRequest, will attempt to rejoin again now.');
-      return _join(sessionTimeout, memberId, protocolType, groupProtocols);
-    }
-  }
-
-  Future<List<GroupAssignment>> _assignPartitions(
-      String protocol, JoinGroupResponse joinResponse) async {
-    var groupAssignments = new List<GroupAssignment>();
-    var assignor = new PartitionAssignor.forStrategy(protocol);
-    var topics = new Set<String>();
-    Map<String, Set<String>> subscriptions = new Map();
-    joinResponse.members.forEach((m) {
-      var memberProtocol = new GroupProtocol.fromBytes(protocol, m.metadata);
-      subscriptions[m.id] = memberProtocol.topics;
-    });
-    subscriptions.values.forEach(topics.addAll);
-
-    var metadata = new Metadata(session);
-    var meta = await metadata.fetchTopics(topics.toList());
-    var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
-        key: (_) => _.topic, value: (_) => _.partitions.length);
-
-    Map<String, List<TopicPartition>> assignments =
-        assignor.assign(partitionsPerTopic, subscriptions);
-
-    for (var memberId in assignments.keys) {
-      var topics = assignments[memberId].map((_) => _.topic).toSet();
-      var partitionAssignment = new Map<String, List<int>>.fromIterable(topics,
-          value: (_) => new List<int>());
-      for (var topicPartition in assignments[memberId]) {
-        var topic = topicPartition.topic;
-        partitionAssignment[topic].add(topicPartition.partition);
-      }
-      groupAssignments.add(new GroupAssignment(
-          memberId, new MemberAssignment(0, partitionAssignment, null)));
-    }
-
-    return groupAssignments;
-  }
-
   @override
   Future commit() async {
-    assert(_streamIterator.current != null);
     // Get current offsets.
     // Send OffsetCommitRequest to the coordinator node.
   }
 
-  Future heartbeat(GroupMembership membership) async {
-    var host = await _getCoordinator();
-    var request = new HeartbeatRequest(
-        group, membership.generationId, membership.memberId);
-    _logger.fine(
-        'Sending heartbeat for member ${membership.memberId} (generationId: ${membership.generationId})');
-    // TODO: retry, handle coordinator errors...
-    return session.send(request, host.host, host.port);
+  @override
+  void seekToBeginning() {
+    // TODO: implement seekToBeginning
   }
-}
 
-class GroupMembership {
-  final String memberId;
-  final String leaderId;
-  final MemberAssignment assignment;
-  final int generationId;
-  final String groupProtocol;
-
-  GroupMembership(this.memberId, this.leaderId, this.assignment,
-      this.generationId, this.groupProtocol);
-
-  bool get isLeader => leaderId == memberId;
+  @override
+  void seekToEnd() {
+    // TODO: implement seekToEnd
+  }
 }
 
 class KConsumerRecord<K, V> {

@@ -42,9 +42,8 @@ void main() {
       expect(response.results.first.topic, equals(_topic));
       expect(response.results.first.error, equals(0));
 
-      var fetch = new OffsetFetchRequest(testGroup, {
-        _topic: [0]
-      });
+      var fetch =
+          new OffsetFetchRequest(testGroup, [new TopicPartition(_topic, 0)]);
 
       OffsetFetchResponse fetchResponse =
           await session.send(fetch, coordinator.host, coordinator.port);

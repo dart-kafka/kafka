@@ -1,5 +1,7 @@
 import 'io.dart';
 import 'errors.dart';
+import 'common.dart';
+import '../util/group_by.dart';
 
 /// Consumer position in particular [topic] and [partition].
 class ConsumerOffset {
@@ -20,6 +22,18 @@ class ConsumerOffset {
 
   ConsumerOffset(this.topic, this.partition, this.offset, this.metadata,
       [this.error]);
+
+  TopicPartition get topicPartition => new TopicPartition(topic, partition);
+
+  /// Copies this offset and overwrites [offset] and [metadata] if provided.
+  ConsumerOffset copy({int offset, String metadata}) {
+    assert(offset != null);
+    return new ConsumerOffset(topic, partition, offset, metadata);
+  }
+
+  @override
+  String toString() =>
+      'ConsumerOffset{partition: $topic:$partition, offset: $offset, metadata: $metadata';
 }
 
 /// Kafka OffsetFetchRequest.
@@ -38,10 +52,10 @@ class OffsetFetchRequest extends KRequest<OffsetFetchResponse> {
   final String group;
 
   /// Map of topic names and partition IDs to fetch offsets for.
-  final Map<String, List<int>> topics;
+  final List<TopicPartition> partitions;
 
   /// Creates new instance of [OffsetFetchRequest].
-  OffsetFetchRequest(this.group, this.topics);
+  OffsetFetchRequest(this.group, this.partitions);
 
   @override
   ResponseDecoder<OffsetFetchResponse> get decoder =>
@@ -59,10 +73,15 @@ class OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
     var builder = new KafkaBytesBuilder();
 
     builder.addString(request.group);
-    builder.addInt32(request.topics.length);
-    request.topics.forEach((topic, partitions) {
+    Map<String, List<TopicPartition>> grouped = groupBy<String, TopicPartition>(
+        request.partitions, (partition) => partition.topic);
+
+    builder.addInt32(grouped.length);
+    grouped.forEach((topic, partitions) {
       builder.addString(topic);
-      builder.addInt32Array(partitions.toList());
+      var partitionIds =
+          partitions.map((_) => _.partition).toList(growable: false);
+      builder.addInt32Array(partitionIds);
     });
 
     return builder.takeBytes();

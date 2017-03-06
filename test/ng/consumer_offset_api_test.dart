@@ -13,9 +13,8 @@ void main() {
       var metadata = new Metadata(session);
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
       _coordinator = await metadata.fetchGroupCoordinator(_testGroup);
-      _request = new OffsetFetchRequest(_testGroup, {
-        'dartKafkaTest': [0]
-      });
+      _request = new OffsetFetchRequest(
+          _testGroup, [new TopicPartition('dartKafkaTest', 0)]);
     });
 
     tearDownAll(() async {

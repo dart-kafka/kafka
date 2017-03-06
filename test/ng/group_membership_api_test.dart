@@ -46,7 +46,7 @@ void main() {
       SyncGroupResponse syncResponse =
           await _session.send(syncRequest, _broker.host, _broker.port);
       expect(syncResponse.error, Errors.NoError);
-      expect(syncResponse.assignment.partitionAssignment, topics);
+      expect(syncResponse.assignment.partitions, topics);
 
       var heartbeatRequest = new HeartbeatRequest(
           group, joinResponse.generationId, joinResponse.memberId);

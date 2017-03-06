@@ -1,13 +1,14 @@
 name: 'kafka'
 version: 0.1.0
-description: Kafka Client library for Dartlang
-homepage: https://github.com/pulyaevskiy/dart-kafka
+description: Kafka client library for Dartlang
+homepage: https://github.com/dart-drivers/kafka
 author: Anatoly Pulyaevskiy <anatoly.pulyaevskiy@gmail.com>
 
 environment:
-  sdk: '>=1.12.0 <2.0.0'
+  sdk: '>=1.22.0 <2.0.0'
 
 dependencies:
+  async: 
   quiver: '>=0.24.0<0.25.0'
   logging: "^0.11.1+1"
 

@@ -17,3 +17,4 @@ export 'src/ng/produce_api.dart';
 export 'src/ng/producer.dart';
 export 'src/ng/serialization.dart';
 export 'src/ng/session.dart';
+export 'src/ng/offset_master.dart';

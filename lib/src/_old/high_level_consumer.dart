@@ -66,7 +66,7 @@ class HighLevelConsumer {
             _membership = await _join(previousMembership);
             _logger.info('Joined consumer group. '
                 'MemberId: "${_membership.memberId}". GenerationId: ${_membership.generationId}. '
-                'Assignment: ${_membership.assignment.partitionAssignment}');
+                'Assignment: ${_membership.assignment.partitions}');
           } else {
             _logger.info('Re-using existing membership.');
             _membership = previousMembership;
@@ -188,7 +188,7 @@ class _HLWorker {
       group) async {
     var workers = new List<_HLWorker>();
 
-    var topics = membership.assignment.partitionAssignment.keys.toSet();
+    var topics = membership.assignment.partitions.keys.toSet();
     if (topics.isEmpty) {
       // Worker just to send pings to the server.
       HighLevelConsumer._logger.warning('Received empty assignment.');
@@ -200,7 +200,7 @@ class _HLWorker {
       var topicsByBroker = new Map<Broker, Map<String, Set<int>>>();
       for (var topic in meta.topics) {
         for (var partition in topic.partitions) {
-          if (!membership.assignment.partitionAssignment[topic.topicName]
+          if (!membership.assignment.partitions[topic.topicName]
               .contains(partition.partitionId)) continue;
           var broker = meta.getBroker(partition.leader);
           topicsByBroker.putIfAbsent(broker, () => new Map());
@@ -272,7 +272,7 @@ class _HLWorker {
               new ConsumerOffset(item.topicName, item.partitionId, offset,
                   result.commitMetadata)
             ];
-            await group.commitOffsets(offsets, membership: membership);
+            await group.commitOffsets(offsets, subscription: membership);
           }
         }
       }
