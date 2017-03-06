@@ -19,6 +19,7 @@ Future main() async {
       print(
           "[${record.topic}:${record.partition}] ${record.key}, ${record.value}");
     }
+    await consumer.commit();
   }
   await session.close();
 }

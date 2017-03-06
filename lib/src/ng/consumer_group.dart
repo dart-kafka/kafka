@@ -115,7 +115,6 @@ class ConsumerGroup {
 
   Future resetOffsetsToEarliest(List<TopicPartition> topicPartitions,
       {GroupSubscription subscription}) async {
-    var earliest = new Map.fromIterable(topicPartitions, value: (_) => -1);
     var offsetMaster = new OffsetMaster(session);
     var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
     var offsets = new List<ConsumerOffset>();

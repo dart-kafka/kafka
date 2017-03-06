@@ -24,25 +24,13 @@ final Logger _logger = new Logger('Consumer');
 ///
 /// ## Usage example
 ///
-///     void main() async {
-///       var session = new KSession();
-///       var consumer = new KConsumer<String, String>(
-///         'test_group', new StringDeserializer(), new StringDeserializer(), session);
-///       await consumer.subscribe(['foo', 'bar']);
-///       var iterator = consumer.poll();
-///       while (await iterator.moveNext()) {
-///         KConsumerRecords records = iterator.current;
-///         records.records.forEach((_) {
-///           print('offset: ${_.offset}, key: ${_.key}, value: ${_.value}');
-///         });
-///       }
-///     }
+///     TODO: write an example
 abstract class Consumer<K, V> {
   /// The consumer group name.
   String get group;
 
   /// Starts polling Kafka servers for new messages.
-  StreamQueue<KConsumerRecords<K, V>> poll();
+  StreamQueue<ConsumerRecords<K, V>> poll();
 
   /// Subscribes to [topics] as a member of consumer [group].
   ///
@@ -104,19 +92,19 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   String get group => _group.name;
 
-  StreamController<KConsumerRecords<K, V>> _streamController;
-  StreamQueue<KConsumerRecords<K, V>> _streamQueue;
+  StreamController<ConsumerRecords<K, V>> _streamController;
+  StreamQueue<ConsumerRecords<K, V>> _streamQueue;
 
   @override
-  StreamQueue<KConsumerRecords<K, V>> poll() {
+  StreamQueue<ConsumerRecords<K, V>> poll() {
     assert(subscription != null,
         'No active subscription. Must first call subscribe().');
     assert(_streamController == null, 'Polling already started.');
 
-    _streamController = new StreamController<KConsumerRecords>(
+    _streamController = new StreamController<ConsumerRecords>(
         onPause: onPause, onResume: onResume, onCancel: onCancel);
     _streamQueue =
-        new StreamQueue<KConsumerRecords<K, V>>(_streamController.stream);
+        new StreamQueue<ConsumerRecords<K, V>>(_streamController.stream);
     _poll().whenComplete(() {
       _streamController = null;
       _streamQueue = null;
@@ -142,55 +130,55 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _isCanceled = true;
   }
 
-  List<ConsumerOffset> _currentOffsets;
-
   /// Internal polling method.
   Future _poll() async {
-    _currentOffsets = await _fetchOffsets(subscription);
-    _logger.info('Initial offsets are: ${_currentOffsets}');
+    var currentOffsets = await _fetchOffsets(subscription);
+    Map<TopicPartition, ConsumerOffset> consumedOffsets = new Map();
 
-    List<KConsumerRecord<K, V>> fetchResultsToRecords(
+    _logger.fine('Initial offsets are: ${currentOffsets}');
+
+    List<ConsumerRecord<K, V>> fetchResultsToRecords(
         List<FetchResult> results) {
       return results.expand((result) {
         return result.messages.keys.map((offset) {
           var key = keyDeserializer.deserialize(result.messages[offset].key);
           var value =
               valueDeserializer.deserialize(result.messages[offset].value);
-          return new KConsumerRecord<K, V>(
+          return new ConsumerRecord<K, V>(
               result.topic, result.partition, offset, key, value);
         });
       }).toList(growable: false);
     }
 
-    void updateOffsets(List<KConsumerRecord> records) {
-      // for (var record in records) {
-      //   var topicPartition = new TopicPartition(record.topic, record.partition);
-      //   var current = _currentOffsets[topicPartition];
-      //   if (record.offset > current) {
-      //     _currentOffsets[topicPartition] = record.offset + 1;
-      //   }
-      // }
+    List<ConsumerOffset> updateOffsets(List<ConsumerRecord> records) {
+      for (var record in records) {
+        var topicPartition = new TopicPartition(record.topic, record.partition);
+        consumedOffsets[topicPartition] = new ConsumerOffset(
+            record.topic, record.partition, record.offset, '');
+      }
+      return consumedOffsets.values.toList(growable: false);
     }
 
     // TODO: Implement a more efficient polling algorithm.
     while (true) {
       if (_isCanceled) {
+        _logger.fine('Stream subscription was canceled. Finishing up...');
         _streamController.close();
         break;
       }
       if (_streamController.isPaused) {
+        _logger.fine('Stream subscription is paused. Waiting for resume...');
         await resumeFuture;
       }
 
-      Map<Broker, FetchRequest> requests =
-          await _buildRequests(_currentOffsets);
+      Map<Broker, FetchRequest> requests = await _buildRequests(currentOffsets);
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
             .then((response) {
           var records = fetchResultsToRecords(response.results);
-          updateOffsets(records);
-          _streamController.add(new KConsumerRecords(records));
+          var commitOffsets = updateOffsets(records);
+          _streamController.add(new ConsumerRecords(records, commitOffsets));
         });
       });
       // Depending on configuration this can be very inefficient.
@@ -233,9 +221,10 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
     if (resetNeeded.isNotEmpty) {
       await _group.commitOffsets(resetNeeded, subscription: subscription);
+      return _group.fetchOffsets(subscription.assignment.partitionsAsList);
+    } else {
+      return currentOffsets;
     }
-
-    return _group.fetchOffsets(subscription.assignment.partitionsAsList);
   }
 
   Future<Map<Broker, FetchRequest>> _buildRequests(
@@ -243,6 +232,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     Map<TopicPartition, Broker> brokers =
         await _fetchTopicMetadata(subscription.assignment.topics);
 
+    // Add 1 to current offset since current offset indicates already
+    // processed message and we don't want to consume it again.
     List<Tuple3<Broker, TopicPartition, int>> data = offsets
         .map((o) =>
             tuple3(brokers[o.topicPartition], o.topicPartition, o.offset + 1))
@@ -320,19 +311,22 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   }
 }
 
-class KConsumerRecord<K, V> {
+class ConsumerRecord<K, V> {
   final String topic;
   final int partition;
   final int offset;
   final K key;
   final V value;
 
-  KConsumerRecord(
-      this.topic, this.partition, this.offset, this.key, this.value);
+  ConsumerRecord(this.topic, this.partition, this.offset, this.key, this.value);
 }
 
-class KConsumerRecords<K, V> {
-  final List<KConsumerRecord<K, V>> records;
+class ConsumerRecords<K, V> {
+  /// List of consumed records.
+  final List<ConsumerRecord<K, V>> records;
 
-  KConsumerRecords(this.records);
+  /// Offsets to be committed with this set of records.
+  final List<ConsumerOffset> commitOffsets;
+
+  ConsumerRecords(this.records, this.commitOffsets);
 }
