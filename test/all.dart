@@ -1,3 +1,4 @@
+import 'ng/async_test.dart' as async_test;
 import 'ng/consumer_group_test.dart' as consumer_group_test;
 import 'ng/consumer_metadata_api_test.dart' as consumer_metadata_api_test;
 import 'ng/consumer_offset_api_test.dart' as consumer_offset_api_test;
@@ -18,6 +19,7 @@ import 'util/crc32_test.dart' as crc32_test;
 // import 'testing_test.dart' as testing_test;
 
 void main() {
+  async_test.main();
   consumer_group_test.main();
   consumer_offset_api_test.main();
   offset_commit_test.main();

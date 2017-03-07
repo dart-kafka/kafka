@@ -32,8 +32,8 @@ void main() {
       var iterator = consumer.poll();
       int i = 0;
       var consumedOffsets = new Map();
-      while (await iterator.hasNext) {
-        var records = await iterator.next;
+      while (await iterator.moveNext()) {
+        var records = iterator.current;
         records.records.forEach((record) {
           consumedOffsets[record.partition] = record.offset;
           print("Record: [${record.key}, ${record.value}]");

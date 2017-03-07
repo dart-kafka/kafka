@@ -13,8 +13,8 @@ Future main() async {
 
   await consumer.subscribe(['simple_topic']);
   var queue = consumer.poll();
-  while (await queue.hasNext) {
-    var records = await queue.next;
+  while (await queue.moveNext()) {
+    var records = queue.current;
     for (var record in records.records) {
       print(
           "[${record.topic}:${record.partition}] ${record.key}, ${record.value}");

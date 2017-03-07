@@ -56,8 +56,7 @@ num.partitions=3
 # from the end of the log.
 
 # The minimum age of a log file to be eligible for deletion
-log.retention.minutes=1
-log.retention.check.interval.ms=10000
+log.retention.minutes=5
 
 ############################# Zookeeper #############################
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 
 import '../util/tuple.dart';
@@ -13,6 +12,7 @@ import 'metadata.dart';
 import 'offset_master.dart';
 import 'serialization.dart';
 import 'session.dart';
+import 'async.dart';
 
 final Logger _logger = new Logger('Consumer');
 
@@ -30,7 +30,7 @@ abstract class Consumer<K, V> {
   String get group;
 
   /// Starts polling Kafka servers for new messages.
-  StreamQueue<ConsumerRecords<K, V>> poll();
+  StreamIterator<ConsumerRecords<K, V>> poll();
 
   /// Subscribes to [topics] as a member of consumer [group].
   ///
@@ -93,23 +93,25 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   String get group => _group.name;
 
   StreamController<ConsumerRecords<K, V>> _streamController;
-  StreamQueue<ConsumerRecords<K, V>> _streamQueue;
+  ConsumerStreamIterator<K, V> _streamIterator;
 
   @override
-  StreamQueue<ConsumerRecords<K, V>> poll() {
+  StreamIterator<ConsumerRecords<K, V>> poll() {
     assert(subscription != null,
         'No active subscription. Must first call subscribe().');
     assert(_streamController == null, 'Polling already started.');
 
     _streamController = new StreamController<ConsumerRecords>(
         onPause: onPause, onResume: onResume, onCancel: onCancel);
-    _streamQueue =
-        new StreamQueue<ConsumerRecords<K, V>>(_streamController.stream);
+    _streamIterator =
+        new ConsumerStreamIterator<K, V>(_streamController.stream);
     _poll().whenComplete(() {
+      // TODO: might need to ensure cleanup here
+      assert(_streamController.isClosed);
       _streamController = null;
-      _streamQueue = null;
+      _streamIterator = null;
     });
-    return _streamQueue;
+    return _streamIterator;
   }
 
   Completer _resumeCompleter;
@@ -132,10 +134,12 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   /// Internal polling method.
   Future _poll() async {
-    var currentOffsets = await _fetchOffsets(subscription);
-    Map<TopicPartition, ConsumerOffset> consumedOffsets = new Map();
+    var offsetList = await _fetchOffsets(subscription);
+    Map<TopicPartition, ConsumerOffset> partitionOffsets = new Map.fromIterable(
+        offsetList,
+        key: (ConsumerOffset offset) => offset.topicPartition);
 
-    _logger.fine('Initial offsets are: ${currentOffsets}');
+    _logger.fine('Initial offsets are: ${offsetList}');
 
     List<ConsumerRecord<K, V>> fetchResultsToRecords(
         List<FetchResult> results) {
@@ -150,13 +154,12 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       }).toList(growable: false);
     }
 
-    List<ConsumerOffset> updateOffsets(List<ConsumerRecord> records) {
-      for (var record in records) {
-        var topicPartition = new TopicPartition(record.topic, record.partition);
-        consumedOffsets[topicPartition] = new ConsumerOffset(
-            record.topic, record.partition, record.offset, '');
+    void updateOffsets(List<ConsumerRecord> records) {
+      for (var rec in records) {
+        var partition = new TopicPartition(rec.topic, rec.partition);
+        partitionOffsets[partition] =
+            new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
       }
-      return consumedOffsets.values.toList(growable: false);
     }
 
     // TODO: Implement a more efficient polling algorithm.
@@ -168,17 +171,20 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       }
       if (_streamController.isPaused) {
         _logger.fine('Stream subscription is paused. Waiting for resume...');
-        await resumeFuture;
+        await resumeFuture.then((_) {
+          _logger.fine('Stream subscription resumed.');
+        });
       }
 
-      Map<Broker, FetchRequest> requests = await _buildRequests(currentOffsets);
+      Map<Broker, FetchRequest> requests =
+          await _buildRequests(partitionOffsets.values.toList(growable: false));
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
             .then((response) {
           var records = fetchResultsToRecords(response.results);
-          var commitOffsets = updateOffsets(records);
-          _streamController.add(new ConsumerRecords(records, commitOffsets));
+          updateOffsets(records);
+          _streamController.add(new ConsumerRecords(records));
         });
       });
       // Depending on configuration this can be very inefficient.
@@ -212,7 +218,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         // reset to earliest
         _logger.warning('Current consumer offset (${current.offset}) is less '
             'than earliest available for partition (${earliest.offset}). '
-            'This can indicate that consumer missed some records in ${current.topicPartition}. '
+            'This may indicate that consumer missed some records in ${current.topicPartition}. '
             'Resetting this offset to earliest.');
         resetNeeded.add(current.copy(
             offset: earliest.offset - 1, metadata: 'resetToEarliest'));
@@ -296,8 +302,12 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   @override
   Future commit() async {
-    // Get current offsets.
-    // Send OffsetCommitRequest to the coordinator node.
+    assert(_streamIterator != null);
+    assert(_streamIterator.current != null);
+    var offsets = _streamIterator.offsets;
+    if (offsets.isNotEmpty)
+      await _group.commitOffsets(_streamIterator.offsets,
+          subscription: _subscription);
   }
 
   @override
@@ -325,8 +335,5 @@ class ConsumerRecords<K, V> {
   /// List of consumed records.
   final List<ConsumerRecord<K, V>> records;
 
-  /// Offsets to be committed with this set of records.
-  final List<ConsumerOffset> commitOffsets;
-
-  ConsumerRecords(this.records, this.commitOffsets);
+  ConsumerRecords(this.records);
 }
