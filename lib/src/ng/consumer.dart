@@ -104,13 +104,19 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   GroupSubscription get subscription => _subscription;
   bool _isSubscribing = false;
-  List<String> _subscriptionTopics;
+
+  /// List of topics to subscribe to when joining the group.
+  List<String> _topics;
 
   @override
   Future subscribe(List<String> topics) {
     assert(!_isSubscribing, 'Subscription already in progress.');
-    _subscriptionTopics = new List.from(topics);
-    return _resubscribeState();
+    assert(_subscription != null, 'Already subscribed.');
+    _isSubscribing = true;
+    _topics = new List.from(topics, growable: false);
+    return _resubscribeState().whenComplete(() {
+      _isSubscribing = false;
+    });
   }
 
   /// State of this consumer during (re)subscription.
@@ -118,15 +124,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// Consumer enters this state initially on [subscribe] call and may
   /// re-enter this state in case of a rebalance event triggerred by the server.
   Future _resubscribeState() {
-    assert(!_isSubscribing, 'Subscription already in progress.');
-    assert(_subscription != null, 'Already subscribed.');
-    _logger.info(
-        'Subscribing to topics ${_subscriptionTopics} as a member of group $group');
-    _isSubscribing = true;
-    var protocols = [
-      new GroupProtocol.roundrobin(0, _subscriptionTopics.toSet())
-    ];
-    _logger.info('Joining to consumer group ${group}.');
+    _logger
+        .info('Subscribing to topics ${_topics} as a member of group $group');
+    var protocols = [new GroupProtocol.roundrobin(0, _topics.toSet())];
     return _group.join(30000, '', 'consumer', protocols).then((result) {
       _subscription = result;
       _logger.info('Subscription result: ${subscription}.');
@@ -134,8 +134,6 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       if (_streamController != null) {
         _activeState = _pollState;
       }
-    }).whenComplete(() {
-      _isSubscribing = false;
     });
   }
 
@@ -165,8 +163,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   /// Starts execution of state machine.
   ///
-  /// Returned future will complete whenever there is no active state
-  /// (execution of state machine completed) or unhandled error occures.
+  /// Returned future completes whenever there is no active state
+  /// (execution completed) or unhandled error occured.
   Future _run() async {
     while (_activeState != null) {
       await _activeState();
@@ -191,8 +189,14 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _isCanceled = true;
   }
 
+  Map<TopicPartition, ConsumerOffset> _partitionOffsets;
+  bool _resubscriptionNeeded = false;
+
   Future _pollState() async {
-    return _poll().catchError((error) {
+    return _poll().then((_) {
+      _partitionOffsets = null;
+      if (_resubscriptionNeeded) _activeState = _resubscribeState;
+    }).catchError((error) {
       // Switch to resubscribe state because server is performing rebalance.
       _activeState = _resubscribeState;
       // Clear any accumulated uncommitted offsets in the iterator to avoid
@@ -206,32 +210,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// Internal polling method.
   Future _poll() async {
     var offsetList = await _fetchOffsets(subscription);
-    Map<TopicPartition, ConsumerOffset> partitionOffsets = new Map.fromIterable(
-        offsetList,
+    _partitionOffsets = new Map.fromIterable(offsetList,
         key: (ConsumerOffset offset) => offset.topicPartition);
-
-    _logger.fine('Initial offsets are: ${offsetList}');
-
-    List<ConsumerRecord<K, V>> fetchResultsToRecords(
-        List<FetchResult> results) {
-      return results.expand((result) {
-        return result.messages.keys.map((offset) {
-          var key = keyDeserializer.deserialize(result.messages[offset].key);
-          var value =
-              valueDeserializer.deserialize(result.messages[offset].value);
-          return new ConsumerRecord<K, V>(
-              result.topic, result.partition, offset, key, value);
-        });
-      }).toList(growable: false);
-    }
-
-    void updateOffsets(List<ConsumerRecord> records) {
-      for (var rec in records) {
-        var partition = new TopicPartition(rec.topic, rec.partition);
-        partitionOffsets[partition] =
-            new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
-      }
-    }
+    _logger.fine('Polling started from following offsets: ${offsetList}');
 
     // TODO: Implement a more efficient polling algorithm.
     while (true) {
@@ -240,28 +221,63 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         _streamController.close();
         break;
       }
-      if (_streamController.isPaused) {
-        _logger.fine('Stream subscription is paused. Waiting for resume...');
-        await resumeFuture.then((_) {
-          _logger.fine('Stream subscription resumed.');
-        });
-      }
 
-      Map<Broker, FetchRequest> requests =
-          await _buildRequests(partitionOffsets.values.toList(growable: false));
+      Map<Broker, FetchRequest> requests = await _buildRequests(
+          _partitionOffsets.values.toList(growable: false));
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
-            .then((response) {
-          var records = fetchResultsToRecords(response.results);
-          updateOffsets(records);
-          _streamController.add(new ConsumerRecords(records));
-        });
+            .then((response) => add(response));
       });
       // Depending on configuration this can be very inefficient.
       // It always waits for all responses before returning to the user.
       await Future.wait(futures);
     }
+  }
+
+  /// Adds consumed messages to the stream.
+  Future add(FetchResponse response) async {
+    if (_isCanceled) return;
+    if (_streamController.isPaused) {
+      _logger.fine('Stream subscription is paused. Waiting for resume...');
+      await resumeFuture;
+    }
+
+    /// Iterator resumes subscription when it starts waiting for the next event
+    /// which means previous event is fully processed at this point. However
+    /// we might be in a state which requires resubscription, for instance,
+    /// when `commit()` completed with `RebalanceInProgressError`.
+    /// In this case we should not add current record set to the stream and
+    /// instead just skip this step here to avoid having en-route records
+    /// between two different subscriptions, this can lead to undesirable
+    /// offset commits by the client.
+    if (_resubscriptionNeeded) return;
+
+    // There was no errors, subscription is active, go ahead and add this
+    // record set to the stream.
+    var records = fetchResultsToRecords(response.results);
+    updateOffsets(records);
+    _streamController.add(new ConsumerRecords(records));
+  }
+
+  void updateOffsets(List<ConsumerRecord> records) {
+    for (var rec in records) {
+      var partition = new TopicPartition(rec.topic, rec.partition);
+      _partitionOffsets[partition] =
+          new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
+    }
+  }
+
+  List<ConsumerRecord<K, V>> fetchResultsToRecords(List<FetchResult> results) {
+    return results.expand((result) {
+      return result.messages.keys.map((offset) {
+        var key = keyDeserializer.deserialize(result.messages[offset].key);
+        var value =
+            valueDeserializer.deserialize(result.messages[offset].value);
+        return new ConsumerRecord<K, V>(
+            result.topic, result.partition, offset, key, value);
+      });
+    }).toList(growable: false);
   }
 
   /// Fetches current consumer offsets from the server.
