@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 
 import '../util/tuple.dart';
 import 'common.dart';
+import 'errors.dart';
 import 'consumer_group.dart';
 import 'fetch_api.dart';
 import 'consumer_offset_api.dart';
@@ -71,7 +72,12 @@ abstract class Consumer<K, V> {
   }
 }
 
+/// Defines type of consumer state function.
+typedef Future _ConsumerState();
+
 /// Default implementation of Kafka consumer.
+///
+/// Implements a finite state machine which is started by a call to [poll].
 class _ConsumerImpl<K, V> implements Consumer<K, V> {
   static const int DEFAULT_MAX_BYTES = 36864;
   static const int DEFAULT_MAX_WAIT_TIME = 1000;
@@ -84,6 +90,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   final ConsumerGroup _group;
 
+  _ConsumerState _activeState;
+
   _ConsumerImpl(
       String group, this.keyDeserializer, this.valueDeserializer, this.session,
       {int requestMaxBytes})
@@ -92,6 +100,45 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   String get group => _group.name;
 
+  GroupSubscription _subscription;
+
+  GroupSubscription get subscription => _subscription;
+  bool _isSubscribing = false;
+  List<String> _subscriptionTopics;
+
+  @override
+  Future subscribe(List<String> topics) {
+    assert(!_isSubscribing, 'Subscription already in progress.');
+    _subscriptionTopics = new List.from(topics);
+    return _resubscribeState();
+  }
+
+  /// State of this consumer during (re)subscription.
+  ///
+  /// Consumer enters this state initially on [subscribe] call and may
+  /// re-enter this state in case of a rebalance event triggerred by the server.
+  Future _resubscribeState() {
+    assert(!_isSubscribing, 'Subscription already in progress.');
+    assert(_subscription != null, 'Already subscribed.');
+    _logger.info(
+        'Subscribing to topics ${_subscriptionTopics} as a member of group $group');
+    _isSubscribing = true;
+    var protocols = [
+      new GroupProtocol.roundrobin(0, _subscriptionTopics.toSet())
+    ];
+    _logger.info('Joining to consumer group ${group}.');
+    return _group.join(30000, '', 'consumer', protocols).then((result) {
+      _subscription = result;
+      _logger.info('Subscription result: ${subscription}.');
+      // If polling already started switch to polling state
+      if (_streamController != null) {
+        _activeState = _pollState;
+      }
+    }).whenComplete(() {
+      _isSubscribing = false;
+    });
+  }
+
   StreamController<ConsumerRecords<K, V>> _streamController;
   ConsumerStreamIterator<K, V> _streamIterator;
 
@@ -99,19 +146,31 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   StreamIterator<ConsumerRecords<K, V>> poll() {
     assert(subscription != null,
         'No active subscription. Must first call subscribe().');
-    assert(_streamController == null, 'Polling already started.');
+    assert(_streamController == null, 'Already polling.');
 
     _streamController = new StreamController<ConsumerRecords>(
         onPause: onPause, onResume: onResume, onCancel: onCancel);
     _streamIterator =
         new ConsumerStreamIterator<K, V>(_streamController.stream);
-    _poll().whenComplete(() {
+    _activeState = _pollState;
+
+    _run().whenComplete(() {
       // TODO: might need to ensure cleanup here
       assert(_streamController.isClosed);
       _streamController = null;
       _streamIterator = null;
     });
     return _streamIterator;
+  }
+
+  /// Starts execution of state machine.
+  ///
+  /// Returned future will complete whenever there is no active state
+  /// (execution of state machine completed) or unhandled error occures.
+  Future _run() async {
+    while (_activeState != null) {
+      await _activeState();
+    }
   }
 
   Completer _resumeCompleter;
@@ -130,6 +189,18 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   bool _isCanceled = false;
   void onCancel() {
     _isCanceled = true;
+  }
+
+  Future _pollState() async {
+    return _poll().catchError((error) {
+      // Switch to resubscribe state because server is performing rebalance.
+      _activeState = _resubscribeState;
+      // Clear any accumulated uncommitted offsets in the iterator to avoid
+      // any additional errors triggerred by OffsetCommit requests.
+      // When rejoined we'll start consuming from latest committed offsets
+      // (at-least-once delivery).
+      _streamIterator.clearOffsets();
+    }, test: (_) => _ is RebalanceInProgressError || _ is UnknownMemberIdError);
   }
 
   /// Internal polling method.
@@ -274,26 +345,6 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     return _topicBrokers;
   }
 
-  GroupSubscription _subscription;
-
-  GroupSubscription get subscription => _subscription;
-  bool _isSubscribing = false;
-
-  @override
-  Future subscribe(List<String> topics) {
-    assert(!_isSubscribing, 'Subscription already in progress.');
-    _logger.info('Subscribing to topics $topics as a member of group $group');
-    _isSubscribing = true;
-    var protocols = [new GroupProtocol.roundrobin(0, topics.toSet())];
-    _logger.info('Joining to consumer group ${group}.');
-    return _group.join(30000, '', 'consumer', protocols).then((result) {
-      _subscription = result;
-      _logger.info('Subscription result: ${subscription}.');
-    }).whenComplete(() {
-      _isSubscribing = false;
-    });
-  }
-
   @override
   Future unsubscribe() {
     // TODO: implement unsubscribe
@@ -302,12 +353,19 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   @override
   Future commit() async {
+    // TODO: What should happen in case of an unexpected error in here?
+    // This should probably cancel polling and complete returned future
+    // with this unexpected error.
     assert(_streamIterator != null);
     assert(_streamIterator.current != null);
     var offsets = _streamIterator.offsets;
-    if (offsets.isNotEmpty)
+    if (offsets.isNotEmpty) {
+      // TODO: handle RebalanceInProgressError and UnknownMemberIdError
+      // Should notify state machine to switch to resubscribe state.
       await _group.commitOffsets(_streamIterator.offsets,
           subscription: _subscription);
+      _streamIterator.clearOffsets();
+    }
   }
 
   @override
