@@ -140,7 +140,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   @override
   Future subscribe(List<String> topics) {
     assert(!_isSubscribing, 'Subscription already in progress.');
-    assert(_subscription != null, 'Already subscribed.');
+    assert(_subscription == null, 'Already subscribed.');
     _isSubscribing = true;
     _topics = new List.from(topics, growable: false);
     return _resubscribeState().whenComplete(() {
@@ -306,6 +306,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     // There was no errors, subscription is active, go ahead and add this
     // record set to the stream.
     var records = fetchResultsToRecords(response.results);
+    if (records.isEmpty) return;
     updateOffsets(records);
     _streamController.add(new ConsumerRecords(records));
   }
@@ -424,6 +425,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     // with this unexpected error.
     assert(_streamIterator != null);
     assert(_streamIterator.current != null);
+    _logger.fine('Committing offsets.');
     var offsets = _streamIterator.offsets;
     if (offsets.isNotEmpty) {
       return _group
@@ -436,6 +438,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
             'Received $error on offset commit. Requiring resubscription.');
         _resubscriptionNeeded = true;
       }, test: isRebalanceError).whenComplete(() {
+        _logger.fine('Done committing offsets.');
+
         /// Clear accumulated offsets regardless of the result of OffsetCommit.
         /// If commit successeded clearing current offsets is safe.
         /// If commit failed we either go to resubscribe state which requires re-fetch

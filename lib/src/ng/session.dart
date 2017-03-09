@@ -36,6 +36,7 @@ class _KSessionImpl implements Session {
   _KSessionImpl(this.contactPoints);
 
   Future<T> send<T>(KRequest<T> request, String host, int port) {
+    _logger.finest('Sending $request to $host:$port');
     var payload = request.encoder.encode(request);
     return _getSocket(host, port).then((socket) {
       return socket.sendPacket(request.apiKey, request.apiVersion, payload);
