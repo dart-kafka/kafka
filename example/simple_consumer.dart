@@ -17,7 +17,7 @@ Future main() async {
     var records = queue.current;
     for (var record in records.records) {
       print(
-          "[${record.topic}:${record.partition}] ${record.key}, ${record.value}");
+          "[${record.topic}:${record.partition}], offset: ${record.offset}, ${record.key}, ${record.value}");
     }
     await consumer.commit();
   }

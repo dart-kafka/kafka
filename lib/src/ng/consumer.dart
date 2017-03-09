@@ -98,15 +98,44 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       : _group = new ConsumerGroup(session, group),
         requestMaxBytes = requestMaxBytes ?? DEFAULT_MAX_BYTES;
 
+  /// The consumer group name.
   String get group => _group.name;
 
   GroupSubscription _subscription;
 
+  /// Current consumer subscription.
   GroupSubscription get subscription => _subscription;
+
+  /// Returns `true` if initial subscription is in progress.
+  ///
+  /// This is not used by following resubscriptions since it's handled by
+  /// the state machine.
   bool _isSubscribing = false;
 
   /// List of topics to subscribe to when joining the group.
+  ///
+  /// Set by initial call to [subscribe] and used during initial
+  /// subscribe and possible resubscriptions.
   List<String> _topics;
+
+  StreamController<ConsumerRecords<K, V>> _streamController;
+  ConsumerStreamIterator<K, V> _streamIterator;
+  Completer _resumeCompleter;
+  Future get resumeFuture => _resumeCompleter.future;
+
+  /// Whether user canceled stream subscription.
+  ///
+  /// This triggers shutdown of polling phase.
+  bool _isCanceled = false;
+
+  /// Current position of this consumer in subscribed topic-partitions.
+  ///
+  /// Different from current committed offsets of this consumer.
+  Map<TopicPartition, ConsumerOffset> _partitionOffsets;
+
+  /// Whether resubscription is required due to rebalance event received from
+  /// the server.
+  bool _resubscriptionNeeded = false;
 
   @override
   Future subscribe(List<String> topics) {
@@ -128,7 +157,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         .info('Subscribing to topics ${_topics} as a member of group $group');
     var protocols = [new GroupProtocol.roundrobin(0, _topics.toSet())];
     return _group.join(30000, '', 'consumer', protocols).then((result) {
+      // TODO: resume heartbeat timer.
       _subscription = result;
+      _resubscriptionNeeded = false;
       _logger.info('Subscription result: ${subscription}.');
       // If polling already started switch to polling state
       if (_streamController != null) {
@@ -136,9 +167,6 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       }
     });
   }
-
-  StreamController<ConsumerRecords<K, V>> _streamController;
-  ConsumerStreamIterator<K, V> _streamIterator;
 
   @override
   StreamIterator<ConsumerRecords<K, V>> poll() {
@@ -153,10 +181,11 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _activeState = _pollState;
 
     _run().whenComplete(() {
-      // TODO: might need to ensure cleanup here
-      assert(_streamController.isClosed);
+      // TODO: ensure cleanup here, e.g. shutdown heartbeats
+      var closeFuture = _streamController.close();
       _streamController = null;
       _streamIterator = null;
+      return closeFuture;
     });
     return _streamIterator;
   }
@@ -171,8 +200,6 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
   }
 
-  Completer _resumeCompleter;
-  Future get resumeFuture => _resumeCompleter.future;
   void onPause() {
     assert(_resumeCompleter == null);
     _resumeCompleter = new Completer();
@@ -184,28 +211,43 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _resumeCompleter = null;
   }
 
-  bool _isCanceled = false;
   void onCancel() {
     _isCanceled = true;
   }
 
-  Map<TopicPartition, ConsumerOffset> _partitionOffsets;
-  bool _resubscriptionNeeded = false;
-
+  /// Poll state of this consumer's state machine.
+  ///
+  /// Consumer enters this state when [poll] is executed and stays in this state
+  /// until:
+  ///
+  /// - user cancels the poll, results in "clean exit".
+  /// - a rebalance error received from the server, which transitions state machine to
+  ///   the [_resubscribeState].
+  /// - an unhandled error occurs, closes underlying stream and forwards the error to the
+  ///   user.
   Future _pollState() async {
-    return _poll().then((_) {
-      _partitionOffsets = null;
+    return _poll().catchError(
+      (error) {
+        // Switch to resubscribe state because server is performing rebalance.
+        _resubscriptionNeeded = true;
+      },
+      test: isRebalanceError,
+    ).whenComplete(() {
+      // Check if resubscription is needed in case there were rebalance
+      // errors from either offset commit or heartbeat requests.
       if (_resubscriptionNeeded) _activeState = _resubscribeState;
-    }).catchError((error) {
-      // Switch to resubscribe state because server is performing rebalance.
-      _activeState = _resubscribeState;
+      // reset offsets and addQueue(?)
+      _partitionOffsets = null;
       // Clear any accumulated uncommitted offsets in the iterator to avoid
       // any additional errors triggerred by OffsetCommit requests.
       // When rejoined we'll start consuming from latest committed offsets
       // (at-least-once delivery).
       _streamIterator.clearOffsets();
-    }, test: (_) => _ is RebalanceInProgressError || _ is UnknownMemberIdError);
+    });
   }
+
+  bool isRebalanceError(error) =>
+      error is RebalanceInProgressError || error is UnknownMemberIdError;
 
   /// Internal polling method.
   Future _poll() async {
@@ -214,20 +256,26 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         key: (ConsumerOffset offset) => offset.topicPartition);
     _logger.fine('Polling started from following offsets: ${offsetList}');
 
-    // TODO: Implement a more efficient polling algorithm.
     while (true) {
+      if (_resubscriptionNeeded) {
+        _logger.info('Stoping poll for resubscription.');
+        break;
+      }
       if (_isCanceled) {
         _logger.fine('Stream subscription was canceled. Finishing up...');
-        _streamController.close();
         break;
       }
 
+      // TODO: Implement a more efficient polling algorithm.
       Map<Broker, FetchRequest> requests = await _buildRequests(
           _partitionOffsets.values.toList(growable: false));
       var futures = requests.keys.map((broker) {
         return session
             .send(requests[broker], broker.host, broker.port)
-            .then((response) => add(response));
+            .then((response) {
+          _addQueue = _addQueue.then((_) => add(response));
+          return _addQueue;
+        });
       });
       // Depending on configuration this can be very inefficient.
       // It always waits for all responses before returning to the user.
@@ -235,11 +283,13 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
   }
 
+  Future _addQueue = new Future.value();
+
   /// Adds consumed messages to the stream.
   Future add(FetchResponse response) async {
     if (_isCanceled) return;
     if (_streamController.isPaused) {
-      _logger.fine('Stream subscription is paused. Waiting for resume...');
+      _logger.fine('Will not add to the stream while it\'s paused. Waiting.');
       await resumeFuture;
     }
 
@@ -376,11 +426,23 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     assert(_streamIterator.current != null);
     var offsets = _streamIterator.offsets;
     if (offsets.isNotEmpty) {
-      // TODO: handle RebalanceInProgressError and UnknownMemberIdError
-      // Should notify state machine to switch to resubscribe state.
-      await _group.commitOffsets(_streamIterator.offsets,
-          subscription: _subscription);
-      _streamIterator.clearOffsets();
+      return _group
+          .commitOffsets(_streamIterator.offsets, subscription: _subscription)
+          .catchError((error) {
+        /// It is possible to receive a rebalance error in response to OffsetCommit
+        /// request. We set `_resubscriptionNeeded` to `true` so that next cycle
+        /// of polling can exit and switch to [_resubscribeState].
+        _logger.warning(
+            'Received $error on offset commit. Requiring resubscription.');
+        _resubscriptionNeeded = true;
+      }, test: isRebalanceError).whenComplete(() {
+        /// Clear accumulated offsets regardless of the result of OffsetCommit.
+        /// If commit successeded clearing current offsets is safe.
+        /// If commit failed we either go to resubscribe state which requires re-fetch
+        /// of offsets, or we have unexpected error so we need to shutdown polling and
+        /// cleanup internal state.
+        _streamIterator.clearOffsets();
+      });
     }
   }
 
