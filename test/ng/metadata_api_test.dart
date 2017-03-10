@@ -20,7 +20,7 @@ void main() {
     test('metadata response throws server error if present', () {
       var metadata = new Topic(Errors.InvalidTopic, 'test', new Partitions([]));
       expect(() {
-        new MetadataResponse([], new Topics([metadata], []));
+        new MetadataResponse([], new Topics([metadata], new Brokers([])));
       }, throwsA(new isInstanceOf<KafkaError>()));
     });
   });
