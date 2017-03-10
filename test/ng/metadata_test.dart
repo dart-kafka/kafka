@@ -12,11 +12,11 @@ void main() {
 
     test('it can fetch specific topic metadata', () async {
       var topics = await metadata.fetchTopics(['testTopic']);
-      expect(topics, isList);
+      expect(topics, new isInstanceOf<Topics>());
       expect(topics, hasLength(1));
-      expect(topics.first.topic, 'testTopic');
-      expect(topics.first.toString(),
-          contains('TopicMetadata{testTopic, error: 0;'));
+      expect(topics['testTopic'], isNotNull);
+      expect(topics['testTopic'].toString(),
+          contains('Topic{testTopic, error: 0;'));
     });
 
     test('it can list existing topics', () async {

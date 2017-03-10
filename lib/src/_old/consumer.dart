@@ -267,7 +267,7 @@ class _ConsumerWorker {
     var offsets = await group.fetchOffsets(topicPartitions);
     var request = new FetchRequest(maxWaitTime, minBytes);
     for (var o in offsets) {
-      request.add(o.topic, o.id, o.offset + 1);
+      request.add(o.name, o.id, o.offset + 1);
     }
 
     return request;

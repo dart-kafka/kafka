@@ -13,8 +13,8 @@ void main() {
     setUp(() async {
       var data = await metadata.fetchTopics([_topic]);
 
-      partition = data.first.partitions.first.id;
-      var leaderId = data.first.partitions.first.leader;
+      partition = data[_topic].partitions[0].id;
+      var leaderId = data[_topic].partitions[0].leader;
       var brokers = await metadata.listBrokers();
       broker = brokers.firstWhere((_) => _.id == leaderId);
     });

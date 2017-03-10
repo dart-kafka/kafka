@@ -11,8 +11,7 @@ void main() {
     setUp(() async {
       var metadata = new Metadata(session);
       var meta = await metadata.fetchTopics([topic]);
-      var leaderId =
-          meta.firstWhere((_) => _.topic == topic).partitions.first.leader;
+      var leaderId = meta[topic].partitions[0].leader;
       var brokers = await metadata.listBrokers();
       host = brokers.firstWhere((_) => _.id == leaderId);
     });

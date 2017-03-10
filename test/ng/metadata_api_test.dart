@@ -18,9 +18,9 @@ void main() {
     });
 
     test('metadata response throws server error if present', () {
-      var metadata = new TopicMetadata(Errors.InvalidTopic, 'test', []);
+      var metadata = new Topic(Errors.InvalidTopic, 'test', new Partitions([]));
       expect(() {
-        new MetadataResponse([], [metadata]);
+        new MetadataResponse([], new Topics([metadata], []));
       }, throwsA(new isInstanceOf<KafkaError>()));
     });
   });

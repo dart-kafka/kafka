@@ -215,8 +215,8 @@ class ConsumerGroup {
 
     var metadata = new Metadata(session);
     var meta = await metadata.fetchTopics(topics.toList());
-    var partitionsPerTopic = new Map<String, int>.fromIterable(meta,
-        key: (_) => _.topic, value: (_) => _.partitions.length);
+    var partitionsPerTopic = new Map<String, int>.fromIterable(meta.asList,
+        key: (_) => _.name, value: (_) => _.partitions.length);
 
     Map<String, List<TopicPartition>> assignments =
         assignor.assign(partitionsPerTopic, subscriptions);

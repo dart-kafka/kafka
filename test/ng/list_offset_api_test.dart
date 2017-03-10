@@ -12,7 +12,7 @@ void main() {
 
     setUp(() async {
       var meta = await metadata.fetchTopics([topic]);
-      var p = meta.first.partitions.first;
+      var p = meta[topic].partitions[0];
       partition = p.id;
       var leaderId = p.leader;
       var brokers = await metadata.listBrokers();

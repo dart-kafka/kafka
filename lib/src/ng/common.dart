@@ -39,15 +39,18 @@ class Broker {
 
 /// Represents one partition in a topic.
 class TopicPartition {
+  /// The name of Kafka topic.
   final String topic;
+
+  /// The partition ID.
   final int partition;
 
-  static final Map<String, TopicPartition> _cache = new Map();
+  static final Map<int, TopicPartition> _cache = new Map();
 
   TopicPartition._(this.topic, this.partition);
 
   factory TopicPartition(String topic, int partition) {
-    var key = topic + partition.toString();
+    var key = hash2(topic, partition);
     if (!_cache.containsKey(key)) {
       _cache[key] = new TopicPartition._(topic, partition);
     }

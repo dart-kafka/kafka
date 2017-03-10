@@ -64,9 +64,7 @@ class _ProducerImpl<K, V> implements Producer<K, V> {
     var req = new ProduceRequest(1, 1000, messages);
     var metadata = new Metadata(session);
     var meta = await metadata.fetchTopics([record.topic]);
-    var leaderId = meta.first.partitions
-        .firstWhere((_) => _.id == record.partition)
-        .leader;
+    var leaderId = meta[record.topic].partitions[record.partition].leader;
     var brokers = await metadata.listBrokers();
     var broker = brokers.firstWhere((_) => _.id == leaderId);
     var result = await session.send(req, broker.host, broker.port);

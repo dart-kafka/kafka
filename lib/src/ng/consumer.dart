@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import '../util/tuple.dart';
+import '../util/group_by.dart';
 import 'common.dart';
 import 'errors.dart';
 import 'consumer_group.dart';
@@ -262,7 +263,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         break;
       }
       if (_isCanceled) {
-        _logger.fine('Stream subscription was canceled. Finishing up...');
+        _logger.fine('Stream subscription was canceled. Stoping poll.');
         break;
       }
 
@@ -373,8 +374,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   Future<Map<Broker, FetchRequest>> _buildRequests(
       List<ConsumerOffset> offsets) async {
-    Map<TopicPartition, Broker> brokers =
-        await _fetchTopicMetadata(subscription.assignment.topics);
+    Map<Broker, List<TopicPartition>> brokers =
+        await _fetchPartitionLeaders(subscription.assignment.topics);
 
     // Add 1 to current offset since current offset indicates already
     // processed message and we don't want to consume it again.
@@ -392,24 +393,20 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     return requests;
   }
 
-  Future<Map<TopicPartition, Broker>> _topicBrokers;
-  Future<Map<TopicPartition, Broker>> _fetchTopicMetadata(List<String> topics) {
-    if (_topicBrokers == null) {
-      _topicBrokers = new Future(() async {
+  Future<Map<Broker, List<TopicPartition>>> _partitionLeaders;
+  Future<Map<Broker, List<TopicPartition>>> _fetchPartitionLeaders(
+      List<String> topics) {
+    if (_partitionLeaders == null) {
+      _partitionLeaders = new Future(() async {
         var meta = new Metadata(session);
         var topicsMeta = await meta.fetchTopics(topics);
-        var brokers = await meta.listBrokers();
-        List<Tuple3<String, int, int>> data = topicsMeta.expand((_) {
-          return _.partitions.map((p) => tuple3(_.topic, p.id, p.leader));
-        }).toList(growable: false);
-        return new Map<TopicPartition, Broker>.fromIterable(data, key: (_) {
-          return new TopicPartition(_.$1, _.$2);
-        }, value: (_) {
-          return brokers.firstWhere((b) => b.id == _.$3);
+        return groupBy(topicsMeta.topicPartitions, (_) {
+          var leaderId = topicsMeta[_.topic].partitions[_.partition].leader;
+          return topicsMeta.brokers[leaderId];
         });
       });
     }
-    return _topicBrokers;
+    return _partitionLeaders;
   }
 
   @override

@@ -11,13 +11,14 @@ import 'session.dart';
 
 final Logger _logger = new Logger('Metadata');
 
+/// Provides information about topics and brokers in a Kafka cluster.
 class Metadata {
   final Session session;
 
   Metadata(this.session);
 
-  Future<List<TopicMetadata>> fetchTopics(List<String> topics) {
-    Future<List<TopicMetadata>> fetch() {
+  Future<Topics> fetchTopics(List<String> topics) {
+    Future<Topics> fetch() {
       var req = new MetadataRequest(topics);
       var broker = session.contactPoints.first;
       return session
@@ -33,7 +34,7 @@ class Metadata {
     var req = new MetadataRequest();
     var broker = session.contactPoints.first;
     return session.send(req, broker.host, broker.port).then((response) {
-      return response.topics.map((_) => _.topic).toList();
+      return response.topics.names;
     });
   }
 
@@ -57,5 +58,10 @@ class Metadata {
 
     return retryAsync(fetch, 5, new Duration(milliseconds: 500),
         test: (err) => err is ConsumerCoordinatorNotAvailableError);
+  }
+
+  Future<Map<TopicPartition, Broker>> fetchLeaders(
+      List<TopicPartition> partitions) async {
+    ///
   }
 }

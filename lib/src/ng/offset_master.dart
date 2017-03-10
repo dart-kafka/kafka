@@ -35,11 +35,7 @@ class OffsetMaster {
     var requests = new Map<Broker, List<TopicPartition>>();
     var brokers = await metadata.listBrokers();
     for (var p in partitions) {
-      var leaderId = meta
-          .firstWhere((_) => _.topic == p.topic)
-          .partitions
-          .firstWhere((_) => _.id == p.partition)
-          .leader;
+      var leaderId = meta[p.topic].partitions[p.partition].leader;
       var broker = brokers.firstWhere((_) => _.id == leaderId);
       requests.putIfAbsent(broker, () => new List());
       requests[broker].add(p);
