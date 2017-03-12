@@ -84,7 +84,7 @@ class ConsumerStreamIterator<K, V>
 
   void _updateOffsets(ConsumerRecords<K, V> records) {
     for (var record in records.records) {
-      var partition = new TopicPartition(record.topic, record.partition);
+      var partition = record.topicPartition;
       // TODO: handle metadata?
       _offsets[partition] =
           new ConsumerOffset(record.topic, record.partition, record.offset, '');
@@ -98,9 +98,48 @@ class ConsumerStreamIterator<K, V>
     return null;
   }
 
+  /// Attaches new stream to this iterator.
+  ///
+  /// [Consumer] calls this method in case of a rebalance event.
+  /// This cancels active subscription (if exists) so that no new events can be
+  /// delivered to the listener from the previous stream.
+  /// Subscription to the new [stream] is created immediately and current state
+  /// of the listener is preserved.
+  void attachStream(Stream<ConsumerRecords<K, V>> stream) {
+    Completer<bool> completer;
+    Object records;
+    if (_subscription != null) {
+      _subscription.cancel();
+      _subscription == null;
+      if (!_isPaused) {
+        // User  waits for `moveNext` to complete.
+        completer = _stateData as Completer<bool>;
+      } else {
+        records = _stateData;
+      }
+    }
+    // During rebalance offset commits are not accepted by the server and result
+    // in RebalanceInProgress error (or UnknownMemberId if rebalance completed).
+    clearOffsets();
+    _stateData = stream;
+    _initializeOrDone();
+    // Restore state after initialize.
+    if (_isPaused) {
+      _subscription.pause();
+      _stateData = records;
+    } else {
+      _subscription.resume();
+      _stateData = completer;
+    }
+  }
+
   Future<bool> moveNext() {
     if (_subscription != null) {
       if (_isPaused) {
+        var records = _stateData as ConsumerRecords<K, V>;
+        // Acknowledge this record set. Signals to consumer to resume polling.
+        records.ack();
+
         var completer = new Completer<bool>();
         _stateData = completer;
         _isPaused = false;

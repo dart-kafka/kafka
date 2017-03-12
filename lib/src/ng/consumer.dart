@@ -121,18 +121,11 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   StreamController<ConsumerRecords<K, V>> _streamController;
   ConsumerStreamIterator<K, V> _streamIterator;
-  Completer _resumeCompleter;
-  Future get resumeFuture => _resumeCompleter.future;
 
   /// Whether user canceled stream subscription.
   ///
   /// This triggers shutdown of polling phase.
   bool _isCanceled = false;
-
-  /// Current position of this consumer in subscribed topic-partitions.
-  ///
-  /// Different from current committed offsets of this consumer.
-  Map<TopicPartition, ConsumerOffset> _partitionOffsets;
 
   /// Whether resubscription is required due to rebalance event received from
   /// the server.
@@ -176,18 +169,10 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     assert(_streamController == null, 'Already polling.');
 
     _streamController = new StreamController<ConsumerRecords>(
-        onPause: onPause, onResume: onResume, onCancel: onCancel);
+        onListen: onListen, onCancel: onCancel);
     _streamIterator =
         new ConsumerStreamIterator<K, V>(_streamController.stream);
-    _activeState = _pollState;
 
-    _run().whenComplete(() {
-      // TODO: ensure cleanup here, e.g. shutdown heartbeats
-      var closeFuture = _streamController.close();
-      _streamController = null;
-      _streamIterator = null;
-      return closeFuture;
-    });
     return _streamIterator;
   }
 
@@ -201,19 +186,30 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
   }
 
-  void onPause() {
-    assert(_resumeCompleter == null);
-    _resumeCompleter = new Completer();
-  }
-
-  void onResume() {
-    assert(_resumeCompleter is Completer && !_resumeCompleter.isCompleted);
-    _resumeCompleter.complete();
-    _resumeCompleter = null;
+  /// Only set in initial stream controler. Rebalance events create new streams
+  /// but we don't set onListen callback on those since our state machine
+  /// is already running.
+  void onListen() {
+    // Start polling only after there is active listener.
+    _activeState = _pollState;
+    _run().catchError((error) {
+      _streamController.addError(error);
+    }).whenComplete(() {
+      // TODO: ensure cleanup here, e.g. shutdown heartbeats
+      var closeFuture = _streamController.close();
+      _streamController = null;
+      _streamIterator = null;
+      return closeFuture;
+    });
   }
 
   void onCancel() {
     _isCanceled = true;
+    // Listener canceled subscription so we need to drop any records waiting
+    // to be processed.
+    _waitingRecords.values.forEach((_) {
+      _.ack();
+    });
   }
 
   /// Poll state of this consumer's state machine.
@@ -224,8 +220,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// - user cancels the poll, results in "clean exit".
   /// - a rebalance error received from the server, which transitions state machine to
   ///   the [_resubscribeState].
-  /// - an unhandled error occurs, closes underlying stream and forwards the error to the
-  ///   user.
+  /// - an unhandled error occurs, adds error to the stream.
   Future _pollState() async {
     return _poll().catchError(
       (error) {
@@ -236,92 +231,75 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     ).whenComplete(() {
       // Check if resubscription is needed in case there were rebalance
       // errors from either offset commit or heartbeat requests.
-      if (_resubscriptionNeeded) _activeState = _resubscribeState;
-      // reset offsets and addQueue(?)
-      _partitionOffsets = null;
-      // Clear any accumulated uncommitted offsets in the iterator to avoid
-      // any additional errors triggerred by OffsetCommit requests.
-      // When rejoined we'll start consuming from latest committed offsets
-      // (at-least-once delivery).
-      _streamIterator.clearOffsets();
+      if (_resubscriptionNeeded) {
+        // Switch to resubscribe state.
+        _activeState = _resubscribeState;
+        // Create new stream controller and attach to the stream iterator.
+        // This cancels subscription on existing stream and prevents delivery
+        // of any in-flight events to the listener. It also clears uncommitted
+        // offsets to prevent offset commits during rebalance.
+
+        // Remove onCancel callback on existing controller.
+        _streamController.onCancel = null;
+        _streamController =
+            new StreamController<ConsumerRecords>(onCancel: onCancel);
+        _streamIterator.attachStream(_streamController.stream);
+      }
     });
   }
 
+  /// Returns `true` if [error] requires resubscription.
   bool isRebalanceError(error) =>
       error is RebalanceInProgressError || error is UnknownMemberIdError;
 
   /// Internal polling method.
   Future _poll() async {
-    var offsetList = await _fetchOffsets(subscription);
-    _partitionOffsets = new Map.fromIterable(offsetList,
-        key: (ConsumerOffset offset) => offset.topicPartition);
-    _logger.fine('Polling started from following offsets: ${offsetList}');
+    var offsets = await _fetchOffsets(subscription);
+    _logger.fine('Polling started from following offsets: ${offsets}');
+    Map<Broker, List<ConsumerOffset>> leaders =
+        await _fetchPartitionLeaders(subscription, offsets);
+
+    List<Future> brokerPolls = new List();
+    for (var broker in leaders.keys) {
+      brokerPolls.add(_pollBroker(broker, leaders[broker]));
+    }
+    await Future.wait(brokerPolls);
+  }
+
+  /// Stores references to consumer records in each polling broker that this
+  /// consumer is currently waiting to be processed.
+  /// The `onCancel` callback acknowledges all of these so that polling can
+  /// shutdown gracefully.
+  final Map<Broker, ConsumerRecords> _waitingRecords = new Map();
+
+  Future _pollBroker(Broker broker, List<ConsumerOffset> initialOffsets) async {
+    Map<TopicPartition, ConsumerOffset> currentOffsets = new Map.fromIterable(
+        initialOffsets,
+        key: (ConsumerOffset _) => _.topicPartition);
 
     while (true) {
-      if (_resubscriptionNeeded) {
-        _logger.info('Stoping poll for resubscription.');
-        break;
-      }
-      if (_isCanceled) {
-        _logger.fine('Stream subscription was canceled. Stoping poll.');
+      if (_isCanceled || _resubscriptionNeeded) {
+        _logger.fine('Stoping poll on $broker.');
         break;
       }
 
-      // TODO: Implement a more efficient polling algorithm.
-      Map<Broker, FetchRequest> requests = await _buildRequests(
-          _partitionOffsets.values.toList(growable: false));
-      var futures = requests.keys.map((broker) {
-        return session
-            .send(requests[broker], broker.host, broker.port)
-            .then((response) {
-          _addQueue = _addQueue.then((_) => add(response));
-          return _addQueue;
-        });
-      });
-      // Depending on configuration this can be very inefficient.
-      // It always waits for all responses before returning to the user.
-      await Future.wait(futures);
+      var request = _buildRequest(currentOffsets.values);
+      var response = await session.send(request, broker.host, broker.port);
+      var records = recordsFromResponse(response.results);
+      if (records.records.isEmpty) continue; // empty response, continue polling
+      for (var rec in records.records) {
+        currentOffsets[rec.topicPartition] =
+            new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
+      }
+
+      _waitingRecords[broker] = records;
+      _streamController.add(records);
+      await records.future;
     }
   }
 
-  Future _addQueue = new Future.value();
-
-  /// Adds consumed messages to the stream.
-  Future add(FetchResponse response) async {
-    if (_isCanceled) return;
-    if (_streamController.isPaused) {
-      _logger.fine('Will not add to the stream while it\'s paused. Waiting.');
-      await resumeFuture;
-    }
-
-    /// Iterator resumes subscription when it starts waiting for the next event
-    /// which means previous event is fully processed at this point. However
-    /// we might be in a state which requires resubscription, for instance,
-    /// when `commit()` completed with `RebalanceInProgressError`.
-    /// In this case we should not add current record set to the stream and
-    /// instead just skip this step here to avoid having en-route records
-    /// between two different subscriptions, this can lead to undesirable
-    /// offset commits by the client.
-    if (_resubscriptionNeeded) return;
-
-    // There was no errors, subscription is active, go ahead and add this
-    // record set to the stream.
-    var records = fetchResultsToRecords(response.results);
-    if (records.isEmpty) return;
-    updateOffsets(records);
-    _streamController.add(new ConsumerRecords(records));
-  }
-
-  void updateOffsets(List<ConsumerRecord> records) {
-    for (var rec in records) {
-      var partition = new TopicPartition(rec.topic, rec.partition);
-      _partitionOffsets[partition] =
-          new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
-    }
-  }
-
-  List<ConsumerRecord<K, V>> fetchResultsToRecords(List<FetchResult> results) {
-    return results.expand((result) {
+  ConsumerRecords<K, V> recordsFromResponse(List<FetchResult> results) {
+    var records = results.expand((result) {
       return result.messages.keys.map((offset) {
         var key = keyDeserializer.deserialize(result.messages[offset].key);
         var value =
@@ -330,6 +308,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
             result.topic, result.partition, offset, key, value);
       });
     }).toList(growable: false);
+    return new ConsumerRecords(records);
   }
 
   /// Fetches current consumer offsets from the server.
@@ -372,41 +351,28 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     }
   }
 
-  Future<Map<Broker, FetchRequest>> _buildRequests(
-      List<ConsumerOffset> offsets) async {
-    Map<Broker, List<TopicPartition>> brokers =
-        await _fetchPartitionLeaders(subscription.assignment.topics);
-
-    // Add 1 to current offset since current offset indicates already
-    // processed message and we don't want to consume it again.
-    List<Tuple3<Broker, TopicPartition, int>> data = offsets
-        .map((o) =>
-            tuple3(brokers[o.topicPartition], o.topicPartition, o.offset + 1))
-        .toList(growable: false);
-
-    Map<Broker, FetchRequest> requests = new Map();
-    for (var item in data) {
-      requests.putIfAbsent(item.$1,
-          () => new FetchRequest(DEFAULT_MAX_WAIT_TIME, DEFAULT_MIN_BYTES));
-      requests[item.$1].add(item.$2, new FetchData(item.$3, requestMaxBytes));
+  FetchRequest _buildRequest(List<ConsumerOffset> offsets) {
+    var request = new FetchRequest(DEFAULT_MAX_WAIT_TIME, DEFAULT_MIN_BYTES);
+    for (var offset in offsets) {
+      request.add(offset.topicPartition,
+          new FetchData(offset.offset + 1, requestMaxBytes));
     }
-    return requests;
+    return request;
   }
 
-  Future<Map<Broker, List<TopicPartition>>> _partitionLeaders;
-  Future<Map<Broker, List<TopicPartition>>> _fetchPartitionLeaders(
-      List<String> topics) {
-    if (_partitionLeaders == null) {
-      _partitionLeaders = new Future(() async {
-        var meta = new Metadata(session);
-        var topicsMeta = await meta.fetchTopics(topics);
-        return groupBy(topicsMeta.topicPartitions, (_) {
-          var leaderId = topicsMeta[_.topic].partitions[_.partition].leader;
-          return topicsMeta.brokers[leaderId];
-        });
-      });
-    }
-    return _partitionLeaders;
+  Future<Map<Broker, List<ConsumerOffset>>> _fetchPartitionLeaders(
+      GroupSubscription subscription, List<ConsumerOffset> offsets) async {
+    var meta = new Metadata(session);
+    var topics = subscription.assignment.topics;
+    var topicsMeta = await meta.fetchTopics(topics);
+    var brokerOffsets = offsets
+        .where((_) =>
+            subscription.assignment.partitionsAsList.contains(_.topicPartition))
+        .toList(growable: false);
+    return groupBy<Broker, ConsumerOffset>(brokerOffsets, (_) {
+      var leaderId = topicsMeta[_.topic].partitions[_.partition].leader;
+      return topicsMeta.brokers[leaderId];
+    });
   }
 
   @override
@@ -466,11 +432,24 @@ class ConsumerRecord<K, V> {
   final V value;
 
   ConsumerRecord(this.topic, this.partition, this.offset, this.key, this.value);
+
+  TopicPartition get topicPartition => new TopicPartition(topic, partition);
 }
 
+// TODO: bad name, figure out better one
 class ConsumerRecords<K, V> {
-  /// List of consumed records.
+  final Completer<bool> _completer = new Completer();
+
+  /// Collection of consumed records.
   final List<ConsumerRecord<K, V>> records;
 
   ConsumerRecords(this.records);
+
+  Future<bool> get future => _completer.future;
+
+  void ack() {
+    _completer.complete(true);
+  }
+
+  bool get isCompleted => _completer.isCompleted;
 }
