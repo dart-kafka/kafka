@@ -24,6 +24,19 @@ final Logger _logger = new Logger('Consumer');
 /// load balance consumption by distributing topics and partitions evenly across
 /// all members.
 ///
+/// ## Subscription and rebalance
+///
+/// Before it can start consuming messages, Consumer must [subscribe] to a set
+/// of topics. Every instance subscribes as a distinct member of it's [group].
+/// Each member receives assignment which contains a unique subset of topics and
+/// partitions it must consume. So if there is only one member then it gets
+/// assigned all topics and partitions when subscribed.
+///
+/// When another member wants to join the same group a rebalance is triggered by
+/// the Kafka server. During rebalance all members must rejoin the group and
+/// receive their updated assignments. Rebalance is handled transparently by
+/// this client and does not require any additional action.
+///
 /// ## Usage example
 ///
 ///     TODO: write an example
@@ -32,13 +45,15 @@ abstract class Consumer<K, V> {
   String get group;
 
   /// Starts polling Kafka servers for new messages.
+  ///
+  /// Must first call [subscribe] to indicate which topics must be consumed.
   StreamIterator<ConsumerRecords<K, V>> poll();
 
-  /// Subscribes to [topics] as a member of consumer [group].
+  /// Subscribe this consumer to a set of [topics].
   ///
-  /// Subscribe triggers rebalance of all currently active members of the same
-  /// consumer grouop.
-  Future subscribe(List<String> topics);
+  /// Only sets configuration of this consumer, actual subscription may not start
+  /// until [poll] is called.
+  void subscribe(List<String> topics);
 
   /// Unsubscribes from all currently assigned partitions and leaves
   /// consumer group.
@@ -81,7 +96,7 @@ typedef Future _ConsumerState();
 /// Implements a finite state machine which is started by a call to [poll].
 class _ConsumerImpl<K, V> implements Consumer<K, V> {
   static const int DEFAULT_MAX_BYTES = 36864;
-  static const int DEFAULT_MAX_WAIT_TIME = 1000;
+  static const int DEFAULT_MAX_WAIT_TIME = 10000;
   static const int DEFAULT_MIN_BYTES = 1;
 
   final Session session;
@@ -107,12 +122,6 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// Current consumer subscription.
   GroupSubscription get subscription => _subscription;
 
-  /// Returns `true` if initial subscription is in progress.
-  ///
-  /// This is not used by following resubscriptions since it's handled by
-  /// the state machine.
-  bool _isSubscribing = false;
-
   /// List of topics to subscribe to when joining the group.
   ///
   /// Set by initial call to [subscribe] and used during initial
@@ -132,20 +141,16 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   bool _resubscriptionNeeded = false;
 
   @override
-  Future subscribe(List<String> topics) {
-    assert(!_isSubscribing, 'Subscription already in progress.');
+  void subscribe(List<String> topics) {
     assert(_subscription == null, 'Already subscribed.');
-    _isSubscribing = true;
     _topics = new List.from(topics, growable: false);
-    return _resubscribeState().whenComplete(() {
-      _isSubscribing = false;
-    });
   }
 
   /// State of this consumer during (re)subscription.
   ///
-  /// Consumer enters this state initially on [subscribe] call and may
-  /// re-enter this state in case of a rebalance event triggerred by the server.
+  /// Consumer enters this state initially when listener is added to the stream
+  /// and may re-enter this state in case of a rebalance event triggerred by
+  /// the server.
   Future _resubscribeState() {
     _logger
         .info('Subscribing to topics ${_topics} as a member of group $group');
@@ -155,17 +160,15 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       _subscription = result;
       _resubscriptionNeeded = false;
       _logger.info('Subscription result: ${subscription}.');
-      // If polling already started switch to polling state
-      if (_streamController != null) {
-        _activeState = _pollState;
-      }
+      // Switch to polling state
+      _activeState = _pollState;
     });
   }
 
   @override
   StreamIterator<ConsumerRecords<K, V>> poll() {
-    assert(subscription != null,
-        'No active subscription. Must first call subscribe().');
+    assert(_topics != null,
+        'No topics set for subscription. Must first call subscribe().');
     assert(_streamController == null, 'Already polling.');
 
     _streamController = new StreamController<ConsumerRecords>(
@@ -191,7 +194,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// is already running.
   void onListen() {
     // Start polling only after there is active listener.
-    _activeState = _pollState;
+    _activeState = _resubscribeState;
     _run().catchError((error) {
       _streamController.addError(error);
     }).whenComplete(() {
