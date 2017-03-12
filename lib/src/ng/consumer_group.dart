@@ -3,15 +3,14 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import 'common.dart';
-import 'errors.dart';
 import 'consumer_offset_api.dart';
-import 'offset_commit_api.dart';
+import 'errors.dart';
 import 'group_membership_api.dart';
-import 'list_offset_api.dart';
 import 'metadata.dart';
+import 'offset_commit_api.dart';
+import 'offset_master.dart';
 import 'partition_assignor.dart';
 import 'session.dart';
-import 'offset_master.dart';
 
 final Logger _logger = new Logger('ConsumerGroup');
 
@@ -91,12 +90,9 @@ class ConsumerGroup {
       bool refresh: false}) async {
     try {
       var host = await _getCoordinator(refresh: refresh);
-      var generationId =
-          (subscription is GroupSubscription) ? subscription.generationId : -1;
-      var memberId =
-          (subscription is GroupSubscription) ? subscription.memberId : '';
-      var retentionInMsecs =
-          (retentionTime is Duration) ? retentionTime.inMilliseconds : -1;
+      var generationId = subscription?.generationId ?? -1;
+      var memberId = subscription?.memberId ?? '';
+      var retentionInMsecs = retentionTime?.inMilliseconds ?? -1;
       var request = new OffsetCommitRequest(
           name, offsets, generationId, memberId, retentionInMsecs);
       await session.send(request, host.host, host.port);
@@ -163,11 +159,15 @@ class ConsumerGroup {
     return _coordinatorHost;
   }
 
-  Future<GroupSubscription> join(int sessionTimeout, String memberId,
-      String protocolType, Iterable<GroupProtocol> groupProtocols) async {
+  Future<GroupSubscription> join(
+      int sessionTimeout,
+      int rebalanceTimeout,
+      String memberId,
+      String protocolType,
+      Iterable<GroupProtocol> groupProtocols) async {
     var broker = await _getCoordinator();
-    var joinRequest = new JoinGroupRequest(
-        name, sessionTimeout, memberId, protocolType, groupProtocols);
+    var joinRequest = new JoinGroupRequest(name, sessionTimeout,
+        rebalanceTimeout, memberId, protocolType, groupProtocols);
     JoinGroupResponse joinResponse =
         await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
@@ -197,7 +197,8 @@ class ConsumerGroup {
     } on RebalanceInProgressError {
       _logger.warning(
           'Received "RebalanceInProgress" error code for SyncRequest, will attempt to rejoin again now.');
-      return join(sessionTimeout, memberId, protocolType, groupProtocols);
+      return join(sessionTimeout, rebalanceTimeout, memberId, protocolType,
+          groupProtocols);
     }
   }
 

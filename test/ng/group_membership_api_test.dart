@@ -24,7 +24,7 @@ void main() {
         new GroupProtocol.roundrobin(0, [_topic].toSet())
       ];
       var joinRequest =
-          new JoinGroupRequest(group, 15000, '', 'consumer', protocols);
+          new JoinGroupRequest(group, 15000, 1000, '', 'consumer', protocols);
       JoinGroupResponse joinResponse =
           await _session.send(joinRequest, _broker.host, _broker.port);
       expect(joinResponse, new isInstanceOf<JoinGroupResponse>());

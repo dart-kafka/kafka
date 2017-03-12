@@ -2,19 +2,18 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 
-import '../util/tuple.dart';
 import '../util/group_by.dart';
+import 'async.dart';
 import 'common.dart';
-import 'errors.dart';
 import 'consumer_group.dart';
-import 'fetch_api.dart';
 import 'consumer_offset_api.dart';
+import 'errors.dart';
+import 'fetch_api.dart';
 import 'group_membership_api.dart';
 import 'metadata.dart';
 import 'offset_master.dart';
 import 'serialization.dart';
 import 'session.dart';
-import 'async.dart';
 
 final Logger _logger = new Logger('Consumer');
 
@@ -51,8 +50,8 @@ abstract class Consumer<K, V> {
 
   /// Subscribe this consumer to a set of [topics].
   ///
-  /// Only sets configuration of this consumer, actual subscription may not start
-  /// until [poll] is called.
+  /// This function evaluates lazily, subscribing to the specified topics only
+  /// when [poll] is called.
   void subscribe(List<String> topics);
 
   /// Unsubscribes from all currently assigned partitions and leaves
@@ -155,7 +154,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
     _logger
         .info('Subscribing to topics ${_topics} as a member of group $group');
     var protocols = [new GroupProtocol.roundrobin(0, _topics.toSet())];
-    return _group.join(30000, '', 'consumer', protocols).then((result) {
+    return _group.join(30000, 3000, '', 'consumer', protocols).then((result) {
       // TODO: resume heartbeat timer.
       _subscription = result;
       _resubscriptionNeeded = false;

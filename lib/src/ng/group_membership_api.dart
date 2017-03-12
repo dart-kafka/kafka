@@ -7,7 +7,7 @@ class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   final int apiKey = 11;
 
   @override
-  final int apiVersion = 0;
+  final int apiVersion = 1;
 
   /// The name of consumer group to join.
   final String group;
@@ -15,6 +15,10 @@ class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   /// The coordinator considers the consumer dead if it receives no heartbeat
   /// after this timeout (in ms).
   final int sessionTimeout;
+
+  /// The maximum time that the coordinator will wait for each member to rejoin
+  /// when rebalancing the group.
+  final int rebalanceTimeout;
 
   /// The assigned consumer id or an empty string for a new consumer.
   final String memberId;
@@ -38,8 +42,8 @@ class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   ///
   /// [groupProtocols] depends on `protocolType`. Each member joining member must
   /// provide list of protocols it supports. See Kafka docs for more details.
-  JoinGroupRequest(this.group, this.sessionTimeout, this.memberId,
-      this.protocolType, this.groupProtocols);
+  JoinGroupRequest(this.group, this.sessionTimeout, this.rebalanceTimeout,
+      this.memberId, this.protocolType, this.groupProtocols);
 
   @override
   ResponseDecoder<JoinGroupResponse> get decoder =>
@@ -128,6 +132,7 @@ class _JoinGroupRequestEncoder implements RequestEncoder<JoinGroupRequest> {
 
     builder.addString(request.group);
     builder.addInt32(request.sessionTimeout);
+    builder.addInt32(request.rebalanceTimeout);
     builder.addString(request.memberId);
     builder.addString(request.protocolType);
     builder.addInt32(request.groupProtocols.length);
@@ -351,6 +356,8 @@ class HeartbeatRequest implements KRequest<HeartbeatResponse> {
 
   /// The name of consumer group.
   final String group;
+
+  /// The ID of group generation.
   final int generationId;
 
   /// The ID of the member sending this heartbeat.
