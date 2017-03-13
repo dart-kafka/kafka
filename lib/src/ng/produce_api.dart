@@ -6,7 +6,7 @@ import 'messages.dart';
 
 class ProduceRequest extends KRequest<ProduceResponse> {
   @override
-  final int apiKey = 0;
+  final int apiKey = ApiKeys.produce;
 
   @override
   final int apiVersion = 2;

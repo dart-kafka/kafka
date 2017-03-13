@@ -7,7 +7,7 @@ import 'io.dart';
 /// Kafka ListOffsetRequest.
 class ListOffsetRequest extends KRequest<ListOffsetResponse> {
   @override
-  final int apiKey = 2;
+  final int apiKey = ApiKeys.offsets;
 
   @override
   final int apiVersion = 1;

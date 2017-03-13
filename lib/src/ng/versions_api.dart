@@ -30,7 +30,7 @@ class ApiVersion {
   final int min;
   final int max;
 
-  ApiVersion(this.key, this.min, this.max);
+  const ApiVersion(this.key, this.min, this.max);
 
   @override
   String toString() => 'ApiVersion{$key, min: $min, max: $max}';

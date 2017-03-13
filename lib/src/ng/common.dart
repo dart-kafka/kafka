@@ -2,6 +2,31 @@ import 'package:quiver/core.dart';
 
 import '../util/tuple.dart';
 
+/// Numeric codes of Kafka API requests.
+class ApiKeys {
+  static const produce = 0;
+  static const fetch = 1;
+  static const offsets = 2;
+  static const metadata = 3;
+  static const leaderAndIsr = 4;
+  static const stopReplica = 5;
+  static const updateMetadata = 6;
+  static const controlledShutdown = 7;
+  static const offsetCommit = 8;
+  static const offsetFetch = 9;
+  static const groupCoordinator = 10;
+  static const joinGroup = 11;
+  static const heartbeat = 12;
+  static const leaveGroup = 13;
+  static const syncGroup = 14;
+  static const describeGroups = 15;
+  static const listGroups = 16;
+  static const saslHandshake = 17;
+  static const apiVersions = 18;
+  static const createTopics = 19;
+  static const deleteTopics = 20;
+}
+
 /// Represents single broker in Kafka cluster.
 class Broker {
   /// The unique identifier of this broker.

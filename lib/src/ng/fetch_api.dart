@@ -13,7 +13,7 @@ final _logger = new Logger('FetchApi');
 /// Kafka FetchRequest.
 class FetchRequest implements KRequest<FetchResponse> {
   @override
-  final int apiKey = 1;
+  final int apiKey = ApiKeys.fetch;
 
   @override
   final int apiVersion = 2;

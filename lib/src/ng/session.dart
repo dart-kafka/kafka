@@ -19,21 +19,25 @@ class ContactPoint {
   }
 }
 
-/// Connection session responsible for communication with Kafka cluster.
+/// Session responsible for handling connections to all brokers in a Kafka
+/// cluster.
+///
+/// Handles resolution of supported API versions by the server and the client.
+/// The latest version supported by both sides is used.
 abstract class Session {
   factory Session(List<ContactPoint> contactPoints) {
-    return new _KSessionImpl(contactPoints);
+    return new _SessionImpl(contactPoints);
   }
   List<ContactPoint> get contactPoints;
   Future<T> send<T>(KRequest<T> request, String host, int port);
   Future close();
 }
 
-class _KSessionImpl implements Session {
+class _SessionImpl implements Session {
   final List<ContactPoint> contactPoints;
   final Map<String, Future<KSocket>> _sockets = new Map();
 
-  _KSessionImpl(this.contactPoints);
+  _SessionImpl(this.contactPoints);
 
   Future<T> send<T>(KRequest<T> request, String host, int port) {
     _logger.finest('Sending $request to $host:$port');
