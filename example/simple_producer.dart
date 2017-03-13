@@ -6,12 +6,13 @@ Future main() async {
   var producer = new Producer<String, String>(
       new StringSerializer(), new StringSerializer(), session);
   List<Future> results = [];
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < 10; i++) {
     // Loop through a list of partitions.
     for (var p in [0, 1, 2]) {
       var future = producer.send(new ProducerRecord(
           'simple_topic', p, 'key:${p},$i', 'value:${p},$i'));
-      results.add(future);
+      var res = await future;
+      print(res);
     }
   }
   await Future.wait(results);

@@ -303,11 +303,11 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   ConsumerRecords<K, V> recordsFromResponse(List<FetchResult> results) {
     var records = results.expand((result) {
       return result.messages.keys.map((offset) {
-        var key = keyDeserializer.deserialize(result.messages[offset].key);
-        var value =
-            valueDeserializer.deserialize(result.messages[offset].value);
-        return new ConsumerRecord<K, V>(
-            result.topic, result.partition, offset, key, value);
+        var message = result.messages[offset];
+        var key = keyDeserializer.deserialize(message.key);
+        var value = valueDeserializer.deserialize(message.value);
+        return new ConsumerRecord<K, V>(result.topic, result.partition, offset,
+            key, value, message.timestamp);
       });
     }).toList(growable: false);
     return new ConsumerRecords(records);
@@ -432,8 +432,10 @@ class ConsumerRecord<K, V> {
   final int offset;
   final K key;
   final V value;
+  final int timestamp;
 
-  ConsumerRecord(this.topic, this.partition, this.offset, this.key, this.value);
+  ConsumerRecord(this.topic, this.partition, this.offset, this.key, this.value,
+      this.timestamp);
 
   TopicPartition get topicPartition => new TopicPartition(topic, partition);
 }

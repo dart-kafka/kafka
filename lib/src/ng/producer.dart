@@ -30,18 +30,22 @@ class ProducerRecord<K, V> {
   final int partition;
   final K key;
   final V value;
+  final int timestamp;
 
-  ProducerRecord(this.topic, this.partition, this.key, this.value);
+  ProducerRecord(this.topic, this.partition, this.key, this.value,
+      {this.timestamp});
 }
 
 class ProduceResult {
   final TopicPartition topicPartition;
   final int offset;
+  final int timestamp;
 
-  ProduceResult(this.topicPartition, this.offset);
+  ProduceResult(this.topicPartition, this.offset, this.timestamp);
 
   @override
-  toString() => 'ProduceResult{${topicPartition}, offset: $offset}';
+  toString() =>
+      'ProduceResult{${topicPartition}, offset: $offset, timestamp: $timestamp}';
 }
 
 class _ProducerImpl<K, V> implements Producer<K, V> {
@@ -53,23 +57,24 @@ class _ProducerImpl<K, V> implements Producer<K, V> {
 
   @override
   Future<ProduceResult> send(ProducerRecord<K, V> record) async {
-    var key = keySerializer.serialize(record.key);
-    var value = valueSerializer.serialize(record.value);
-    var message = new Message(value, key: key);
-    var messages = {
+    final key = keySerializer.serialize(record.key);
+    final value = valueSerializer.serialize(record.value);
+    final timestamp =
+        record.timestamp ?? new DateTime.now().millisecondsSinceEpoch;
+    final message = new Message(value, key: key, timestamp: timestamp);
+    final messages = {
       record.topic: {
         record.partition: [message]
       }
     };
-    var req = new ProduceRequest(1, 1000, messages);
-    var metadata = new Metadata(session);
-    var meta = await metadata.fetchTopics([record.topic]);
-    var leaderId = meta[record.topic].partitions[record.partition].leader;
-    var brokers = await metadata.listBrokers();
-    var broker = brokers.firstWhere((_) => _.id == leaderId);
-    var result = await session.send(req, broker.host, broker.port);
+    final req = new ProduceRequest(1, 1000, messages);
+    final metadata = new Metadata(session);
+    final meta = await metadata.fetchTopics([record.topic]);
+    final leaderId = meta[record.topic].partitions[record.partition].leader;
+    final broker = meta.brokers[leaderId];
+    final response = await session.send(req, broker.host, broker.port);
+    final result = response.results.first;
     return new Future.value(new ProduceResult(
-        new TopicPartition(record.topic, record.partition),
-        result.results.first.offset));
+        result.topicPartition, result.offset, result.timestamp));
   }
 }

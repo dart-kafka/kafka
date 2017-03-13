@@ -3,24 +3,43 @@ import 'dart:collection';
 /// Compression types supported by Kafka.
 enum Compression { none, gzip, snappy }
 
-final Map _kIntToCompression = {
+/// Types of [Message]'s timestamp supported by Kafka.
+enum TimestampType { createTime, logAppendTime }
+
+const int _kCompressionMask = 0x07;
+const int _kTimestampTypeMask = 0x08;
+
+const Map _kIntToCompression = const {
   0: Compression.none,
   1: Compression.gzip,
   2: Compression.snappy,
 };
 
-/// Kafka Message Attributes. Only [Compression] is supported by the
-/// server at the moment.
+const Map _kIntToTimestamptype = const {
+  0: TimestampType.createTime,
+  1: TimestampType.logAppendTime,
+};
+
+/// Kafka Message Attributes.
 class MessageAttributes {
   /// Compression codec.
   final Compression compression;
 
+  /// The type of this message's timestamp.
+  final TimestampType timestampType;
+
   /// Creates new instance of MessageAttributes.
-  MessageAttributes([this.compression = Compression.none]);
+  MessageAttributes(
+      {this.compression = Compression.none,
+      this.timestampType = TimestampType.createTime});
 
   /// Creates MessageAttributes from the raw byte.
   MessageAttributes.fromByte(int byte)
-      : compression = _kIntToCompression[byte & 3];
+      : compression = _kIntToCompression[byte & _kCompressionMask],
+        timestampType = _kIntToTimestamptype[byte & _kTimestampTypeMask];
+
+  @override
+  String toString() => '{compression: $compression, tsType: $timestampType}';
 }
 
 /// Kafka Message as defined in the protocol.
@@ -35,14 +54,17 @@ class Message {
   /// The key can be `null`.
   final List<int> key;
 
+  /// The timestamp of this message, in msecs.
+  final int timestamp;
+
   /// Default internal constructor.
-  Message._(this.attributes, this.key, this.value);
+  Message._(this.attributes, this.key, this.value, this.timestamp);
 
   /// Creates new [Message].
   factory Message(List<int> value,
-      {MessageAttributes attributes, List<int> key}) {
+      {MessageAttributes attributes, List<int> key, int timestamp}) {
     attributes ??= new MessageAttributes();
-    return new Message._(attributes, key, value);
+    return new Message._(attributes, key, value, timestamp);
   }
 }
 

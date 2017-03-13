@@ -1,4 +1,5 @@
 import '../util/crc32.dart';
+import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
@@ -75,9 +76,11 @@ class TopicProduceResult {
   TopicProduceResult(
       this.topic, this.partition, this.error, this.offset, this.timestamp);
 
+  TopicPartition get topicPartition => new TopicPartition(topic, partition);
+
   @override
   String toString() =>
-      'ProduceResult{${topic}:${partition}, error: ${error}, offset: ${offset}, timestamp: $timestamp}';
+      'TopicProduceResult{${topic}:${partition}, error: ${error}, offset: ${offset}, timestamp: $timestamp}';
 }
 
 class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
@@ -120,6 +123,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
     var builder = new KafkaBytesBuilder();
     builder.addInt8(1); // magicByte
     builder.addInt8(_encodeAttributes(message.attributes));
+    builder.addInt64(message.timestamp);
     builder.addBytes(message.key);
     builder.addBytes(message.value);
 

@@ -56,9 +56,9 @@ num.partitions=3
 # from the end of the log.
 
 # The minimum age of a log file to be eligible for deletion
-log.retention.minutes=5
+log.retention.hours=1
 
-############################# Zookeeper #############################
+############################# Zookeeper ########################################
 
 # Zk connection string (see zk docs for details).
 # This is a comma separated host:port pairs, each corresponding to a zk
@@ -71,3 +71,8 @@ controlled.shutdown.enable=true
 zookeeper.session.timeout.ms=10000
 
 # vim:set filetype=jproperties
+
+############################# Message Format ###################################
+
+message.format.version=0.10.1
+message.timestamp.type=LogAppendTime

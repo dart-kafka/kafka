@@ -93,15 +93,17 @@ main() {
 }
 
 Stream<ConsumerRecords<String, String>> createStream() async* {
-  yield new ConsumerRecords([new ConsumerRecord('test', 0, 100, 'k1', 'v1')]);
-  yield new ConsumerRecords([new ConsumerRecord('test', 1, 200, 'k2', 'v2')]);
+  yield new ConsumerRecords(
+      [new ConsumerRecord('test', 0, 100, 'k1', 'v1', 0)]);
+  yield new ConsumerRecords(
+      [new ConsumerRecord('test', 1, 200, 'k2', 'v2', 0)]);
 }
 
 Stream<ConsumerRecords<String, String>> createErrorStream() async* {
-  yield new ConsumerRecords([new ConsumerRecord('test', 0, 1, 'k1', 'v1')]);
+  yield new ConsumerRecords([new ConsumerRecord('test', 0, 1, 'k1', 'v1', 0)]);
   // Emit an error without stopping the generator.
   yield* (new Future<ConsumerRecords<String, String>>.error("BAD").asStream());
-  yield new ConsumerRecords([new ConsumerRecord('test', 1, 1, 'k2', 'v2')]);
+  yield new ConsumerRecords([new ConsumerRecord('test', 1, 1, 'k2', 'v2', 0)]);
 }
 
 /// Create a stream that throws when cancelled.
@@ -110,7 +112,7 @@ Stream<ConsumerRecords<String, String>> createCancelErrorStream() async* {
   try {
     while (true)
       yield new ConsumerRecords(
-          [new ConsumerRecord('test', 0, i++, 'k1', 'v1')]);
+          [new ConsumerRecord('test', 0, i++, 'k1', 'v1', 0)]);
   } finally {
     throw "BAD";
   }
