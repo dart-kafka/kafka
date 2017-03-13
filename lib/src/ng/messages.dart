@@ -6,8 +6,7 @@ enum Compression { none, gzip, snappy }
 /// Types of [Message]'s timestamp supported by Kafka.
 enum TimestampType { createTime, logAppendTime }
 
-const int _kCompressionMask = 0x07;
-const int _kTimestampTypeMask = 0x08;
+const int _compressionMask = 0x07;
 
 const Map _kIntToCompression = const {
   0: Compression.none,
@@ -35,8 +34,8 @@ class MessageAttributes {
 
   /// Creates MessageAttributes from the raw byte.
   MessageAttributes.fromByte(int byte)
-      : compression = _kIntToCompression[byte & _kCompressionMask],
-        timestampType = _kIntToTimestamptype[byte & _kTimestampTypeMask];
+      : compression = _kIntToCompression[byte & _compressionMask],
+        timestampType = _kIntToTimestamptype[(byte >> 3) & 1];
 
   @override
   String toString() => '{compression: $compression, tsType: $timestampType}';

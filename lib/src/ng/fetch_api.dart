@@ -202,17 +202,15 @@ class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
   }
 
   Message _readMessage(KafkaBytesReader reader) {
-    var magicByte = reader.readInt8();
-    var attrByte = reader.readInt8();
-    var attributes = new MessageAttributes.fromByte(attrByte);
-    int timestamp;
-    if (magicByte == 1) {
-      timestamp = reader.readInt64();
-    }
+    final magicByte = reader.readInt8();
+    assert(magicByte == 1,
+        'Unsupported message format $magicByte. Only version 1 is supported by the client.');
+    final attrByte = reader.readInt8();
+    final attributes = new MessageAttributes.fromByte(attrByte);
+    final timestamp = reader.readInt64();
 
-    var key = reader.readBytes();
-    var value = reader.readBytes();
-
+    final key = reader.readBytes();
+    final value = reader.readBytes();
     return new Message(value,
         attributes: attributes, key: key, timestamp: timestamp);
   }

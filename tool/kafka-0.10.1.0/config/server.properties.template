@@ -75,4 +75,4 @@ zookeeper.session.timeout.ms=10000
 ############################# Message Format ###################################
 
 message.format.version=0.10.1
-message.timestamp.type=LogAppendTime
+log.message.timestamp.type=LogAppendTime
