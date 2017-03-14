@@ -59,9 +59,4 @@ class Metadata {
     return retryAsync(fetch, 5, new Duration(milliseconds: 500),
         test: (err) => err is ConsumerCoordinatorNotAvailableError);
   }
-
-  Future<Map<TopicPartition, Broker>> fetchLeaders(
-      List<TopicPartition> partitions) async {
-    ///
-  }
 }

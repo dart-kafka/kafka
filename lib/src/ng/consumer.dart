@@ -194,8 +194,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   void onListen() {
     // Start polling only after there is active listener.
     _activeState = _resubscribeState;
-    _run().catchError((error) {
-      _streamController.addError(error);
+    _run().catchError((error, stackTrace) {
+      _streamController.addError(error, stackTrace);
     }).whenComplete(() {
       // TODO: ensure cleanup here, e.g. shutdown heartbeats
       var closeFuture = _streamController.close();
@@ -285,7 +285,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         break;
       }
 
-      var request = _buildRequest(currentOffsets.values);
+      var request =
+          _buildRequest(currentOffsets.values.toList(growable: false));
       var response = await session.send(request, broker.host, broker.port);
       var records = recordsFromResponse(response.results);
       if (records.records.isEmpty) continue; // empty response, continue polling

@@ -63,6 +63,7 @@ class Message {
   factory Message(List<int> value,
       {MessageAttributes attributes, List<int> key, int timestamp}) {
     attributes ??= new MessageAttributes();
+    timestamp ??= new DateTime.now().millisecondsSinceEpoch;
     return new Message._(attributes, key, value, timestamp);
   }
 }

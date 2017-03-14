@@ -14,7 +14,7 @@ void main() {
       var response = await session.send(request, '127.0.0.1', 9092);
       expect(response, new isInstanceOf<MetadataResponse>());
       expect(response.brokers, hasLength(2));
-      expect(response.topics, isList);
+      expect(response.topics, new isInstanceOf<Topics>());
     });
 
     test('metadata response throws server error if present', () {
