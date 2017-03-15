@@ -3,7 +3,7 @@ import 'package:quiver/core.dart';
 import '../util/tuple.dart';
 
 /// Numeric codes of Kafka API requests.
-class ApiKeys {
+class ApiKey {
   static const produce = 0;
   static const fetch = 1;
   static const offsets = 2;

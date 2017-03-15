@@ -13,10 +13,7 @@ final _logger = new Logger('FetchApi');
 /// Kafka FetchRequest.
 class FetchRequest implements KRequest<FetchResponse> {
   @override
-  final int apiKey = ApiKeys.fetch;
-
-  @override
-  final int apiVersion = 2;
+  final int apiKey = ApiKey.fetch;
 
   /// The replica id indicates the node id of the replica initiating this request.
   /// Normal consumers should always specify this as -1 as they have no node id.
@@ -73,7 +70,9 @@ class _FetchRequestEncoder implements RequestEncoder<FetchRequest> {
   const _FetchRequestEncoder();
 
   @override
-  List<int> encode(FetchRequest request) {
+  List<int> encode(FetchRequest request, int version) {
+    assert(
+        version == 2, 'Only v2 of Fetch request is supported by the client.');
     var builder = new KafkaBytesBuilder();
 
     builder.addInt32(FetchRequest.replicaId);

@@ -43,10 +43,7 @@ class ConsumerOffset {
 /// `GroupAuthorizationFailedError`.
 class OffsetFetchRequest extends KRequest<OffsetFetchResponse> {
   @override
-  final int apiKey = 9;
-
-  @override
-  final int apiVersion = 1;
+  final int apiKey = ApiKey.offsetFetch;
 
   /// Name of consumer group.
   final String group;
@@ -59,17 +56,19 @@ class OffsetFetchRequest extends KRequest<OffsetFetchResponse> {
 
   @override
   ResponseDecoder<OffsetFetchResponse> get decoder =>
-      const OffsetFetchResponseDecoder();
+      const _OffsetFetchResponseDecoder();
 
   @override
-  RequestEncoder<KRequest> get encoder => const OffsetFetchRequestEncoder();
+  RequestEncoder<KRequest> get encoder => const _OffsetFetchRequestEncoder();
 }
 
-class OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
-  const OffsetFetchRequestEncoder();
+class _OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
+  const _OffsetFetchRequestEncoder();
 
   @override
-  List<int> encode(OffsetFetchRequest request) {
+  List<int> encode(OffsetFetchRequest request, int version) {
+    assert(version == 1,
+        'Only v1 of OffsetFetch request supported by the client.');
     var builder = new KafkaBytesBuilder();
 
     builder.addString(request.group);
@@ -100,9 +99,9 @@ class OffsetFetchResponse {
   }
 }
 
-class OffsetFetchResponseDecoder
+class _OffsetFetchResponseDecoder
     implements ResponseDecoder<OffsetFetchResponse> {
-  const OffsetFetchResponseDecoder();
+  const _OffsetFetchResponseDecoder();
 
   @override
   OffsetFetchResponse decode(List<int> data) {

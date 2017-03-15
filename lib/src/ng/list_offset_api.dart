@@ -7,10 +7,7 @@ import 'io.dart';
 /// Kafka ListOffsetRequest.
 class ListOffsetRequest extends KRequest<ListOffsetResponse> {
   @override
-  final int apiKey = ApiKeys.offsets;
-
-  @override
-  final int apiVersion = 1;
+  final int apiKey = ApiKey.offsets;
 
   /// Unique ID assigned to the host within Kafka cluster. Regular consumers
   /// should always pass `-1`.
@@ -71,7 +68,9 @@ class _ListOffsetRequestEncoder implements RequestEncoder<ListOffsetRequest> {
   const _ListOffsetRequestEncoder();
 
   @override
-  List<int> encode(ListOffsetRequest request) {
+  List<int> encode(ListOffsetRequest request, int version) {
+    assert(version == 1,
+        'Only v1 of ListOffset request is supported by the client.');
     var builder = new KafkaBytesBuilder();
     builder.addInt32(ListOffsetRequest.replicaId);
 

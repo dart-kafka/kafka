@@ -1,12 +1,10 @@
+import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 
 class ApiVersionsRequest implements KRequest<ApiVersionsResponse> {
   @override
-  final int apiKey = 18;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.apiVersions;
 
   @override
   ResponseDecoder<ApiVersionsResponse> get decoder =>
@@ -23,6 +21,9 @@ class ApiVersionsResponse {
   ApiVersionsResponse(this.error, this.versions) {
     if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
   }
+
+  @override
+  String toString() => 'ApiVersionsResponse{$versions}';
 }
 
 class ApiVersion {
@@ -40,7 +41,9 @@ class _ApiVersionsRequestEncoder implements RequestEncoder<ApiVersionsRequest> {
   const _ApiVersionsRequestEncoder();
 
   @override
-  List<int> encode(ApiVersionsRequest request) {
+  List<int> encode(ApiVersionsRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of ApiVersions request is supported by the client.');
     return <int>[];
   }
 }

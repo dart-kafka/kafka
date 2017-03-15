@@ -339,7 +339,7 @@ class KSocket {
 }
 
 abstract class RequestEncoder<T extends KRequest> {
-  List<int> encode(T request);
+  List<int> encode(T request, int version);
 }
 
 abstract class ResponseDecoder<T> {
@@ -350,8 +350,6 @@ abstract class KRequest<T> {
   /// Unique numeric key of this API request.
   int get apiKey;
 
-  /// Numeric version of this API request.
-  int get apiVersion;
   RequestEncoder<KRequest> get encoder;
   ResponseDecoder<T> get decoder;
 }

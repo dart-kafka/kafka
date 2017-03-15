@@ -5,10 +5,7 @@ import 'errors.dart';
 /// Kafka GroupCoordinator request.
 class GroupCoordinatorRequest extends KRequest<GroupCoordinatorResponse> {
   @override
-  final int apiKey = 10;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.groupCoordinator;
 
   /// The name of consumer group to fetch coordinator details for.
   final String group;
@@ -46,7 +43,9 @@ class _GroupCoordinatorRequestEncoder
   const _GroupCoordinatorRequestEncoder();
 
   @override
-  List<int> encode(GroupCoordinatorRequest request) {
+  List<int> encode(GroupCoordinatorRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of GroupCoordinator request is supported by the client.');
     var builder = new KafkaBytesBuilder();
     builder.addString(request.group);
     return builder.takeBytes();

@@ -6,10 +6,7 @@ import 'messages.dart';
 
 class ProduceRequest extends KRequest<ProduceResponse> {
   @override
-  final int apiKey = ApiKeys.produce;
-
-  @override
-  final int apiVersion = 2;
+  final int apiKey = ApiKey.produce;
 
   /// Indicates how many acknowledgements the servers
   /// should receive before responding to the request.
@@ -87,7 +84,9 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
   const _ProduceRequestEncoder();
 
   @override
-  List<int> encode(ProduceRequest request) {
+  List<int> encode(ProduceRequest request, int version) {
+    assert(
+        version == 2, 'Only v2 of Produce request is supported by the client.');
     var builder = new KafkaBytesBuilder();
     builder.addInt16(request.requiredAcks);
     builder.addInt32(request.timeout);

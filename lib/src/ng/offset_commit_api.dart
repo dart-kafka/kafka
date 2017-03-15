@@ -1,4 +1,5 @@
 import '../util/group_by.dart';
+import 'common.dart';
 import 'consumer_offset_api.dart';
 import 'errors.dart';
 import 'io.dart';
@@ -6,10 +7,7 @@ import 'io.dart';
 /// Kafka OffsetCommitRequest.
 class OffsetCommitRequest extends KRequest<OffsetCommitResponse> {
   @override
-  final int apiKey = 8;
-
-  @override
-  final int apiVersion = 2;
+  final int apiKey = ApiKey.offsetCommit;
 
   /// The name of consumer group.
   final String group;
@@ -64,9 +62,11 @@ class _OffsetCommitRequestEncoder
   const _OffsetCommitRequestEncoder();
 
   @override
-  List<int> encode(OffsetCommitRequest request) {
-    var builder = new KafkaBytesBuilder();
+  List<int> encode(OffsetCommitRequest request, int version) {
+    assert(version == 2,
+        'Only v2 of OffsetCommit request is supported by the client.');
 
+    var builder = new KafkaBytesBuilder();
     Map<String, List<ConsumerOffset>> groupedByTopic =
         groupBy(request.offsets, (o) => o.topic);
 

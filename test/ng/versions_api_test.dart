@@ -14,7 +14,7 @@ void main() {
       var response = await session.send(request, '127.0.0.1', 9092);
       expect(response, new isInstanceOf<ApiVersionsResponse>());
       expect(response.error, 0);
-      print(response.versions);
+      expect(response.versions, isNotEmpty);
     });
   });
 }

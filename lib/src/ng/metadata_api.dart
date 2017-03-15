@@ -5,10 +5,7 @@ import 'io.dart';
 /// Kafka MetadataRequest.
 class MetadataRequest extends KRequest<MetadataResponse> {
   @override
-  final int apiKey = 3;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.metadata;
 
   @override
   final RequestEncoder<KRequest> encoder = const _MetadataRequestEncoder();
@@ -155,7 +152,9 @@ class _MetadataRequestEncoder implements RequestEncoder<MetadataRequest> {
   const _MetadataRequestEncoder();
 
   @override
-  List<int> encode(MetadataRequest request) {
+  List<int> encode(MetadataRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of Metadata request is supported by the client, $version given.');
     var builder = new KafkaBytesBuilder();
     List<String> topics = request.topics ?? new List();
     builder.addStringArray(topics);

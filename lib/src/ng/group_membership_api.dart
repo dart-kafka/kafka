@@ -4,10 +4,7 @@ import 'common.dart';
 
 class JoinGroupRequest implements KRequest<JoinGroupResponse> {
   @override
-  final int apiKey = 11;
-
-  @override
-  final int apiVersion = 1;
+  final int apiKey = ApiKey.joinGroup;
 
   /// The name of consumer group to join.
   final String group;
@@ -127,9 +124,11 @@ class _JoinGroupRequestEncoder implements RequestEncoder<JoinGroupRequest> {
   const _JoinGroupRequestEncoder();
 
   @override
-  List<int> encode(JoinGroupRequest request) {
-    var builder = new KafkaBytesBuilder();
+  List<int> encode(JoinGroupRequest request, int version) {
+    assert(version == 1,
+        'Only v1 of JoinGroup request is supported by the client.');
 
+    var builder = new KafkaBytesBuilder();
     builder.addString(request.group);
     builder.addInt32(request.sessionTimeout);
     builder.addInt32(request.rebalanceTimeout);
@@ -164,10 +163,7 @@ class _JoinGroupResponseDecoder implements ResponseDecoder<JoinGroupResponse> {
 
 class SyncGroupRequest implements KRequest<SyncGroupResponse> {
   @override
-  final int apiKey = 14;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.syncGroup;
 
   /// The name of consumer group.
   final String group;
@@ -238,9 +234,11 @@ class _SyncGroupRequestEncoder implements RequestEncoder<SyncGroupRequest> {
   const _SyncGroupRequestEncoder();
 
   @override
-  List<int> encode(SyncGroupRequest request) {
-    var builder = new KafkaBytesBuilder();
+  List<int> encode(SyncGroupRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of SyncGroup request is supported by the client.');
 
+    var builder = new KafkaBytesBuilder();
     builder.addString(request.group);
     builder.addInt32(request.generationId);
     builder.addString(request.memberId);
@@ -295,10 +293,7 @@ class _SyncGroupResponseDecoder implements ResponseDecoder<SyncGroupResponse> {
 
 class LeaveGroupRequest implements KRequest<LeaveGroupResponse> {
   @override
-  final int apiKey = 13;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.leaveGroup;
 
   /// The name of consumer group.
   final String group;
@@ -328,7 +323,9 @@ class _LeaveGroupRequestEncoder implements RequestEncoder<LeaveGroupRequest> {
   const _LeaveGroupRequestEncoder();
 
   @override
-  List<int> encode(LeaveGroupRequest request) {
+  List<int> encode(LeaveGroupRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of LeaveGroup request is supported by the client.');
     var builder = new KafkaBytesBuilder();
     builder..addString(request.group)..addString(request.memberId);
     return builder.takeBytes();
@@ -349,10 +346,7 @@ class _LeaveGroupResponseDecoder
 
 class HeartbeatRequest implements KRequest<HeartbeatResponse> {
   @override
-  final int apiKey = 12;
-
-  @override
-  final int apiVersion = 0;
+  final int apiKey = ApiKey.heartbeat;
 
   /// The name of consumer group.
   final String group;
@@ -384,7 +378,9 @@ class _HeartbeatRequestEncoder implements RequestEncoder<HeartbeatRequest> {
   const _HeartbeatRequestEncoder();
 
   @override
-  List<int> encode(HeartbeatRequest request) {
+  List<int> encode(HeartbeatRequest request, int version) {
+    assert(version == 0,
+        'Only v0 of Heartbeat request is supported by the client.');
     var builder = new KafkaBytesBuilder();
     builder
       ..addString(request.group)

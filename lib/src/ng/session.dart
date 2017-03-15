@@ -60,9 +60,10 @@ class _SessionImpl implements Session {
     return result.then((socket) {
       var version = _apiVersions[request.apiKey];
       _logger.finest('Sending $request (v$version) to $host:$port');
-      var payload = request.encoder.encode(request);
-      return socket.sendPacket(request.apiKey, request.apiVersion, payload);
+      var payload = request.encoder.encode(request, version);
+      return socket.sendPacket(request.apiKey, version, payload);
     }).then((responseData) {
+      var version = _apiVersions[request.apiKey];
       return request.decoder.decode(responseData);
     });
   }
@@ -72,11 +73,11 @@ class _SessionImpl implements Session {
     _apiResolution = new Completer();
     var request = new ApiVersionsRequest();
     _getSocket(host, port).then((socket) {
-      var payload = request.encoder.encode(request);
-      return socket.sendPacket(request.apiKey, request.apiVersion, payload);
+      var payload = request.encoder.encode(request, 0);
+      return socket.sendPacket(request.apiKey, 0, payload);
     }).then((data) {
       var response = request.decoder.decode(data);
-      _apiVersions = resolveApiVersions(response.versions);
+      _apiVersions = resolveApiVersions(response.versions, supportedVersions);
     }).whenComplete(() {
       _apiResolution.complete();
     });
