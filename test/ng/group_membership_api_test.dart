@@ -6,13 +6,12 @@ void main() {
     String group;
     String _topic = 'dartKafkaTest';
     Broker _broker;
-    Session _session = new Session([new ContactPoint('127.0.0.1:9092')]);
-    Metadata _metadata = new Metadata(_session);
+    Session _session = new Session(['127.0.0.1:9092']);
 
     setUp(() async {
       var now = new DateTime.now().millisecondsSinceEpoch.toString();
       group = 'test-group-' + now;
-      _broker = await _metadata.fetchGroupCoordinator(group);
+      _broker = await _session.metadata.fetchGroupCoordinator(group);
     });
 
     tearDownAll(() async {

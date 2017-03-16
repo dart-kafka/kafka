@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:kafka/ng.dart';
 
 Future main() async {
-  var session = new Session([new ContactPoint('127.0.0.1:9092')]);
+  var config = new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']);
   var producer = new Producer<String, String>(
-      new StringSerializer(), new StringSerializer(), session);
+      new StringSerializer(), new StringSerializer(), config);
   List<Future> results = [];
   for (var i = 0; i < 10; i++) {
     // Loop through a list of partitions.
@@ -16,5 +16,5 @@ Future main() async {
     }
   }
   await Future.wait(results);
-  await session.close();
+  await producer.close();
 }

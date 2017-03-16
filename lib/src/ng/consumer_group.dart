@@ -147,9 +147,8 @@ class ConsumerGroup {
     }
 
     if (_coordinatorHost == null) {
-      var metadata = new Metadata(session);
       _coordinatorHost =
-          metadata.fetchGroupCoordinator(name).catchError((error) {
+          session.metadata.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
         _logger.severe('Error fetching consumer coordinator.', error);
         throw error;
@@ -214,8 +213,7 @@ class ConsumerGroup {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var metadata = new Metadata(session);
-    var meta = await metadata.fetchTopics(topics.toList());
+    var meta = await session.metadata.fetchTopics(topics.toList());
     var partitionsPerTopic = new Map<String, int>.fromIterable(meta.asList,
         key: (_) => _.name, value: (_) => _.partitions.length);
 

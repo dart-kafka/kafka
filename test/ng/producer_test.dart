@@ -3,15 +3,16 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('KProducer:', () {
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
+    var producer = new Producer<String, String>(
+        new StringSerializer(),
+        new StringSerializer(),
+        new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
 
     tearDownAll(() async {
-      await session.close();
+      await producer.close();
     });
 
     test('it can produce messages to Kafka', () async {
-      var producer = new Producer<String, String>(
-          new StringSerializer(), new StringSerializer(), session);
       var result = await producer
           .send(new ProducerRecord('testProduce', 0, 'key', 'value'));
       expect(result, new isInstanceOf<ProduceResult>());
@@ -29,17 +30,6 @@ void main() {
     //   expect(result.offsets[_topicName][0], greaterThanOrEqualTo(0));
     //   expect(result.offsets[_topicName][1], greaterThanOrEqualTo(0));
     //   expect(result.offsets[_topicName][2], greaterThanOrEqualTo(0));
-    // });
-
-    // test(
-    //     'compression can not be set on individual messages in produce envelope',
-    //     () {
-    //   expect(() {
-    //     new ProduceEnvelope('test', 0, [
-    //       new Message([1],
-    //           attributes: new MessageAttributes(KafkaCompression.gzip))
-    //     ]);
-    //   }, throwsStateError);
     // });
   });
 }

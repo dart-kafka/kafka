@@ -3,16 +3,15 @@ import 'package:kafka/ng.dart';
 
 void main() {
   group('OffsetFetchApi:', () {
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session(['127.0.0.1:9092']);
     OffsetFetchRequest _request;
     Broker _coordinator;
     String _testGroup;
 
     setUp(() async {
       var now = new DateTime.now();
-      var metadata = new Metadata(session);
       _testGroup = 'group:' + now.millisecondsSinceEpoch.toString();
-      _coordinator = await metadata.fetchGroupCoordinator(_testGroup);
+      _coordinator = await session.metadata.fetchGroupCoordinator(_testGroup);
       _request = new OffsetFetchRequest(
           _testGroup, [new TopicPartition('dartKafkaTest', 0)]);
     });

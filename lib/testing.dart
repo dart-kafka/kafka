@@ -16,11 +16,6 @@ library kafka.testing;
 //   }
 
 //   @override
-//   List<ContactPoint> get contactPoints {
-//     throw new UnsupportedError('Unsupported by MockKafkaSession.');
-//   }
-
-//   @override
 //   Future<GroupCoordinatorResponse> getConsumerMetadata(String consumerGroup) {
 //     return new Future.value(
 //         new GroupCoordinatorResponse(0, 1, '127.0.0.1', 9092));

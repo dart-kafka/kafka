@@ -6,17 +6,14 @@ void main() {
     String _topic = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
-    Metadata metadata = new Metadata(session);
+    Session session = new Session(['127.0.0.1:9092']);
     int partition;
 
     setUp(() async {
-      var data = await metadata.fetchTopics([_topic]);
-
+      var data = await session.metadata.fetchTopics([_topic]);
       partition = data[_topic].partitions[0].id;
       var leaderId = data[_topic].partitions[0].leader;
-      var brokers = await metadata.listBrokers();
-      broker = brokers.firstWhere((_) => _.id == leaderId);
+      broker = data.brokers[leaderId];
     });
 
     tearDownAll(() async {

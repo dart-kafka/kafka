@@ -6,23 +6,24 @@ void main() {
     String topic = 'dartKafkaTest';
     int partition;
     Broker broker;
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
-    Metadata metadata = new Metadata(session);
+    Session session = new Session(['127.0.0.1:9092']);
     int _offset;
 
     setUp(() async {
-      var meta = await metadata.fetchTopics([topic]);
+      var meta = await session.metadata.fetchTopics([topic]);
       var p = meta[topic].partitions[0];
       partition = p.id;
       var leaderId = p.leader;
-      var brokers = await metadata.listBrokers();
-      broker = brokers.firstWhere((_) => _.id == leaderId);
+      broker = meta.brokers[leaderId];
 
-      var producer =
-          new Producer(new StringSerializer(), new StringSerializer(), session);
+      var producer = new Producer(
+          new StringSerializer(),
+          new StringSerializer(),
+          new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
       var result = await producer
           .send(new ProducerRecord(topic, partition, 'key', 'value'));
       _offset = result.offset;
+      await producer.close();
     });
 
     tearDownAll(() async {

@@ -3,15 +3,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('Consumer:', () {
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session(['127.0.0.1:9092']);
     var date = new DateTime.now().millisecondsSinceEpoch;
     String topic = 'testTopic-${date}';
     Map<int, int> expectedOffsets = new Map();
     String group = 'cg:${date}';
 
     setUp(() async {
-      var producer =
-          new Producer(new StringSerializer(), new StringSerializer(), session);
+      var producer = new Producer(
+          new StringSerializer(),
+          new StringSerializer(),
+          new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
       var res =
           await producer.send(new ProducerRecord(topic, 0, 'akey', 'avalue'));
       expectedOffsets[res.topicPartition.partition] = res.offset;
@@ -19,6 +21,7 @@ void main() {
       expectedOffsets[res.topicPartition.partition] = res.offset;
       res = await producer.send(new ProducerRecord(topic, 2, 'ckey', 'cvalue'));
       expectedOffsets[res.topicPartition.partition] = res.offset;
+      await producer.close();
     });
 
     tearDownAll(() async {

@@ -365,9 +365,8 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
 
   Future<Map<Broker, List<ConsumerOffset>>> _fetchPartitionLeaders(
       GroupSubscription subscription, List<ConsumerOffset> offsets) async {
-    var meta = new Metadata(session);
     var topics = subscription.assignment.topics;
-    var topicsMeta = await meta.fetchTopics(topics);
+    var topicsMeta = await session.metadata.fetchTopics(topics);
     var brokerOffsets = offsets
         .where((_) =>
             subscription.assignment.partitionsAsList.contains(_.topicPartition))

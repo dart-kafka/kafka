@@ -5,15 +5,13 @@ void main() {
   group('FetchApi:', () {
     String topic = 'dartKafkaTest';
     Broker host;
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
+    Session session = new Session(['127.0.0.1:9092']);
     String message;
 
     setUp(() async {
-      var metadata = new Metadata(session);
-      var meta = await metadata.fetchTopics([topic]);
+      var meta = await session.metadata.fetchTopics([topic]);
       var leaderId = meta[topic].partitions[0].leader;
-      var brokers = await metadata.listBrokers();
-      host = brokers.firstWhere((_) => _.id == leaderId);
+      host = meta.brokers[leaderId];
     });
 
     tearDownAll(() async {
@@ -23,8 +21,10 @@ void main() {
     test('it fetches messages from Kafka topic', () async {
       var now = new DateTime.now();
       message = 'test:' + now.toIso8601String();
-      var producer =
-          new Producer(new StringSerializer(), new StringSerializer(), session);
+      var producer = new Producer(
+          new StringSerializer(),
+          new StringSerializer(),
+          new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
       var result =
           await producer.send(new ProducerRecord(topic, 0, 'key', message));
 

@@ -5,8 +5,7 @@ import 'package:kafka/ng.dart';
 void main() {
   group('OffsetCommitApi:', () {
     String _topic = 'dartKafkaTest';
-    Session session = new Session([new ContactPoint('127.0.0.1:9092')]);
-    Metadata metadata = new Metadata(session);
+    Session session = new Session(['127.0.0.1:9092']);
     Broker coordinator;
     int _offset;
     String testGroup;
@@ -16,14 +15,17 @@ void main() {
     });
 
     setUp(() async {
-      var producer =
-          new Producer(new StringSerializer(), new StringSerializer(), session);
+      var producer = new Producer(
+          new StringSerializer(),
+          new StringSerializer(),
+          new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
       var result = await producer.send(new ProducerRecord(_topic, 0, 'a', 'b'));
 
       _offset = result.offset;
       var date = new DateTime.now();
       testGroup = 'group:' + date.millisecondsSinceEpoch.toString();
-      coordinator = await metadata.fetchGroupCoordinator(testGroup);
+      coordinator = await session.metadata.fetchGroupCoordinator(testGroup);
+      await producer.close();
     });
 
     tearDownAll(() async {

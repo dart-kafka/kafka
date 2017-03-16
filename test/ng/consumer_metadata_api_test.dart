@@ -8,7 +8,7 @@ void main() {
 
     setUpAll(() async {
       try {
-        session = new Session([new ContactPoint('127.0.0.1:9092')]);
+        session = new Session(['127.0.0.1:9092']);
         var request = new GroupCoordinatorRequest('testGroup');
         await session.send(request, '127.0.0.1', 9092);
       } catch (error) {

@@ -7,7 +7,7 @@ Future main() async {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen(print);
 
-  var session = new Session([new ContactPoint('127.0.0.1:9092')]);
+  var session = new Session(['127.0.0.1:9092']);
   var consumer = new Consumer<String, String>('simple_consumer',
       new StringDeserializer(), new StringDeserializer(), session);
 

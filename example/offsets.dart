@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:kafka/ng.dart';
 
 Future main() async {
-  var session = new Session([new ContactPoint('127.0.0.1:9092')]);
+  var session = new Session(['127.0.0.1:9092']);
   var master = new OffsetMaster(session);
   var offsets = await master.fetchEarliest([
     new TopicPartition('simple_topic', 0),

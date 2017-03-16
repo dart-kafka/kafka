@@ -17,12 +17,14 @@ final Logger _logger = new Logger('Producer');
 /// send messages to.
 abstract class Producer<K, V> {
   factory Producer(Serializer<K> keySerializer, Serializer<V> valueSerializer,
-      Session session) {
-    return new _ProducerImpl(keySerializer, valueSerializer, session);
-  }
+          ProducerConfig config) =>
+      new _Producer(keySerializer, valueSerializer, config);
 
   /// Sends [record] to Kafka cluster.
   Future<ProduceResult> send(ProducerRecord<K, V> record);
+
+  /// Closes this producer's connections to Kafka cluster.
+  Future close();
 }
 
 class ProducerRecord<K, V> {
@@ -48,35 +50,43 @@ class ProduceResult {
       'ProduceResult{${topicPartition}, offset: $offset, timestamp: $timestamp}';
 }
 
-class _ProducerImpl<K, V> implements Producer<K, V> {
-  final Session session;
+class _Producer<K, V> implements Producer<K, V> {
+  final ProducerConfig config;
   final Serializer<K> keySerializer;
   final Serializer<V> valueSerializer;
+  final Session session;
 
-  _ProducerImpl(this.keySerializer, this.valueSerializer, this.session);
+  _Producer(this.keySerializer, this.valueSerializer, this.config)
+      : session = new Session(config.bootstrapServers) {
+    _logger.info('Producer created with config:');
+    _logger.info(config);
+  }
 
   @override
   Future<ProduceResult> send(ProducerRecord<K, V> record) async {
-    final key = keySerializer.serialize(record.key);
-    final value = valueSerializer.serialize(record.value);
-    final timestamp =
+    var key = keySerializer.serialize(record.key);
+    var value = valueSerializer.serialize(record.value);
+    var timestamp =
         record.timestamp ?? new DateTime.now().millisecondsSinceEpoch;
-    final message = new Message(value, key: key, timestamp: timestamp);
-    final messages = {
+    var message = new Message(value, key: key, timestamp: timestamp);
+    var messages = {
       record.topic: {
         record.partition: [message]
       }
     };
-    final req = new ProduceRequest(1, 1000, messages);
-    final metadata = new Metadata(session);
-    final meta = await metadata.fetchTopics([record.topic]);
-    final leaderId = meta[record.topic].partitions[record.partition].leader;
-    final broker = meta.brokers[leaderId];
-    final response = await session.send(req, broker.host, broker.port);
-    final result = response.results.first;
+    var req = new ProduceRequest(config.acks, config.timeoutMs, messages);
+    var meta = await session.metadata.fetchTopics([record.topic]);
+    var leaderId = meta[record.topic].partitions[record.partition].leader;
+    var broker = meta.brokers[leaderId];
+    var response = await session.send(req, broker.host, broker.port);
+    var result = response.results.first;
+
     return new Future.value(new ProduceResult(
         result.topicPartition, result.offset, result.timestamp));
   }
+
+  @override
+  Future close() => session.close();
 }
 
 /// Configuration for [Producer].
@@ -144,4 +154,17 @@ class ProducerConfig {
   }) {
     assert(bootstrapServers != null);
   }
+
+  @override
+  String toString() => '''
+ProducerConfig(
+  bootstrapServers: $bootstrapServers, 
+  acks: $acks, 
+  timeoutMs: $timeoutMs,
+  retries: $retries,
+  clientId: $clientId,
+  maxRequestSize: $maxRequestSize,
+  maxInFlightRequestsPerConnection: $maxInFlightRequestsPerConnection
+)
+''';
 }

@@ -29,14 +29,14 @@ class OffsetMaster {
 
   Future<List<TopicOffset>> _fetch(
       List<TopicPartition> partitions, int time) async {
-    var metadata = new Metadata(session);
     var topics = partitions.map((_) => _.topic).toSet();
-    var meta = await metadata.fetchTopics(topics.toList(growable: false));
+    var meta =
+        await session.metadata.fetchTopics(topics.toList(growable: false));
     var requests = new Map<Broker, List<TopicPartition>>();
-    var brokers = await metadata.listBrokers();
+    var brokers = meta.brokers;
     for (var p in partitions) {
       var leaderId = meta[p.topic].partitions[p.partition].leader;
-      var broker = brokers.firstWhere((_) => _.id == leaderId);
+      var broker = brokers[leaderId];
       requests.putIfAbsent(broker, () => new List());
       requests[broker].add(p);
     }
