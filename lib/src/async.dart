@@ -3,9 +3,10 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:async';
+
 import 'common.dart';
-import 'consumer_offset_api.dart';
 import 'consumer.dart';
+import 'consumer_offset_api.dart';
 
 /**
  * Extended version of built-in [StreamIterator] implementation.

@@ -1,0 +1,21 @@
+library kafka;
+
+export 'src/common.dart';
+export 'src/consumer.dart';
+export 'src/consumer_metadata_api.dart';
+export 'src/consumer_offset_api.dart';
+export 'src/errors.dart';
+export 'src/fetch_api.dart';
+export 'src/group_membership_api.dart';
+export 'src/list_offset_api.dart';
+export 'src/messages.dart';
+export 'src/metadata.dart';
+export 'src/metadata_api.dart';
+export 'src/offset_commit_api.dart';
+export 'src/offset_master.dart';
+export 'src/partition_assignor.dart';
+export 'src/produce_api.dart';
+export 'src/producer.dart';
+export 'src/serialization.dart';
+export 'src/session.dart';
+export 'src/versions_api.dart';

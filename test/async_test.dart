@@ -4,8 +4,8 @@
 
 import "dart:async";
 import "package:test/test.dart";
-import "package:kafka/src/ng/async.dart";
-import "package:kafka/src/ng/consumer.dart";
+import "package:kafka/src/async.dart";
+import "package:kafka/src/consumer.dart";
 
 main() {
   test("stream iterator basic", () async {

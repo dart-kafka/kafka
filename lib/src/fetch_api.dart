@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 
-import '../util/crc32.dart';
 import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
+import 'util/crc32.dart';
 
 final _logger = new Logger('FetchApi');
 

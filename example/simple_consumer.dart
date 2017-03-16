@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 import 'package:logging/logging.dart';
 
 Future main() async {

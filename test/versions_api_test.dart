@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 
 void main() {
   group('Versions API', () {

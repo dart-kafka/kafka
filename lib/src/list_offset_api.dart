@@ -1,8 +1,8 @@
-import '../util/group_by.dart';
-import '../util/tuple.dart';
 import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
+import 'util/group_by.dart';
+import 'util/tuple.dart';
 
 /// Kafka ListOffsetRequest.
 class ListOffsetRequest extends KRequest<ListOffsetResponse> {

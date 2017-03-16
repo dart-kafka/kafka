@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 
-import '../util/group_by.dart';
 import 'async.dart';
 import 'common.dart';
 import 'consumer_group.dart';
@@ -10,10 +9,10 @@ import 'consumer_offset_api.dart';
 import 'errors.dart';
 import 'fetch_api.dart';
 import 'group_membership_api.dart';
-import 'metadata.dart';
 import 'offset_master.dart';
 import 'serialization.dart';
 import 'session.dart';
+import 'util/group_by.dart';
 
 final Logger _logger = new Logger('Consumer');
 

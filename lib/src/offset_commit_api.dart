@@ -1,8 +1,8 @@
-import '../util/group_by.dart';
 import 'common.dart';
 import 'consumer_offset_api.dart';
 import 'errors.dart';
 import 'io.dart';
+import 'util/group_by.dart';
 
 /// Kafka OffsetCommitRequest.
 class OffsetCommitRequest extends KRequest<OffsetCommitResponse> {

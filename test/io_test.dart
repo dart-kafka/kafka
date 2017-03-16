@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:kafka/src/ng/io.dart';
+import 'package:kafka/src/io.dart';
 import 'package:test/test.dart';
 
 void main() {

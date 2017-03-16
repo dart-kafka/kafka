@@ -1,5 +1,5 @@
+import 'package:kafka/kafka.dart';
 import 'package:test/test.dart';
-import 'package:kafka/ng.dart';
 
 void main() {
   group('Kafka.NG Metadata API: ', () {

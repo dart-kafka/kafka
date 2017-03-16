@@ -1,6 +1,6 @@
 import 'package:quiver/core.dart';
 
-import '../util/tuple.dart';
+import 'util/tuple.dart';
 
 /// Numeric codes of Kafka API requests.
 class ApiKey {

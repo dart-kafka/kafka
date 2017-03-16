@@ -1,6 +1,6 @@
 // TODO: move to consumer_offset_api_test.dart
+import 'package:kafka/kafka.dart';
 import 'package:test/test.dart';
-import 'package:kafka/ng.dart';
 
 void main() {
   group('OffsetCommitApi:', () {

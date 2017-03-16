@@ -1,4 +1,4 @@
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 import 'package:test/test.dart';
 
 void main() {

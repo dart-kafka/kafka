@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 
 Future main() async {
   var session = new Session(['127.0.0.1:9092']);

@@ -1,8 +1,8 @@
-import '../util/crc32.dart';
 import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
+import 'util/crc32.dart';
 
 class ProduceRequest extends KRequest<ProduceResponse> {
   @override

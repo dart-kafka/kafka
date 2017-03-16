@@ -1,7 +1,7 @@
-import 'io.dart';
-import 'errors.dart';
 import 'common.dart';
-import '../util/group_by.dart';
+import 'errors.dart';
+import 'io.dart';
+import 'util/group_by.dart';
 
 /// Consumer position in particular [topic] and [partition].
 class ConsumerOffset {

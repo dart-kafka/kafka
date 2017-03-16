@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 
 Future main() async {
   var config = new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']);

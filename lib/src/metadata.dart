@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 
-import '../util/retry.dart';
 import 'common.dart';
 import 'consumer_metadata_api.dart';
 import 'errors.dart';
 import 'metadata_api.dart';
 import 'session.dart';
+import 'util/retry.dart';
 
 final Logger _logger = new Logger('Metadata');
 
