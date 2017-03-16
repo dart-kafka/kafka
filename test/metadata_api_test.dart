@@ -2,7 +2,7 @@ import 'package:kafka/kafka.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Kafka.NG Metadata API: ', () {
+  group('Metadata API: ', () {
     Session session = new Session(['127.0.0.1:9092']);
 
     tearDownAll(() async {

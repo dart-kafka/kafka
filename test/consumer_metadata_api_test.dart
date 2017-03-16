@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:test/test.dart';
+
 import 'package:kafka/kafka.dart';
+import 'package:test/test.dart';
 
 void main() {
-  group('Kafka.NG Consumer Metadata API: ', () {
+  group('Consumer Metadata API: ', () {
     Session session;
 
     setUpAll(() async {

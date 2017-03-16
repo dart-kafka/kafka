@@ -23,10 +23,10 @@ To be updated with first release.
 New producer API is trying to follow interface of official Java client library:
 
 ```dart
-import 'package:kafka/ng.dart';
+import 'package:kafka/kafka.dart';
 
 void main() {
-  var producer = new KProducer<String, String>(
+  var producer = new Producer<String, String>(
       new StringSerializer(), new StringSerializer(), session);
   var result = await producer
       .send(new ProducerRecord('testProduce', 0, 'key', 'value'));

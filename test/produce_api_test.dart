@@ -1,8 +1,8 @@
-import 'package:test/test.dart';
 import 'package:kafka/kafka.dart';
+import 'package:test/test.dart';
 
 void main() {
-  group('Kafka.NG Produce API: ', () {
+  group('Produce API: ', () {
     String _topic = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
     Broker broker;
