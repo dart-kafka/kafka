@@ -13,10 +13,14 @@ final Logger _logger = new Logger('Metadata');
 
 /// Provides access to Kafka cluster metadata like list of nodes
 /// in the cluster, topics and coordinators for consumer groups.
-///
-/// List of [bootstrapServers] is used to establish connection with a
-/// Kafka cluster.
 abstract class Metadata {
+  /// Creates new instance of [Metadata] provider.
+  ///
+  /// Users shouldn't normally need to create a new instance themselves since
+  /// [Session] provides access to one already via `metadata` field.
+  ///
+  /// List of [bootstrapServers] is used to establish connection with
+  /// Kafka cluster. Each value in this list must be of format `host:port`.
   factory Metadata(List<String> bootstrapServers, Session session) {
     assert(bootstrapServers != null && bootstrapServers.isNotEmpty);
 

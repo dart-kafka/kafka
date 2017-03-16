@@ -4,7 +4,6 @@ import 'package:logging/logging.dart';
 
 import 'common.dart';
 import 'messages.dart';
-import 'metadata.dart';
 import 'produce_api.dart';
 import 'serialization.dart';
 import 'session.dart';
