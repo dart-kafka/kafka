@@ -42,6 +42,9 @@ class ProduceResponse {
       throw new KafkaError.fromCode(errorResult.error, this);
     }
   }
+
+  @override
+  String toString() => 'ProduceResponse{$results}';
 }
 
 /// Data structure representing result of producing messages with
@@ -87,6 +90,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
   List<int> encode(ProduceRequest request, int version) {
     assert(
         version == 2, 'Only v2 of Produce request is supported by the client.');
+
     var builder = new KafkaBytesBuilder();
     builder.addInt16(request.requiredAcks);
     builder.addInt32(request.timeout);
