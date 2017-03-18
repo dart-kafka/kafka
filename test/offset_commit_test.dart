@@ -19,7 +19,9 @@ void main() {
           new StringSerializer(),
           new StringSerializer(),
           new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
-      var result = await producer.send(new ProducerRecord(_topic, 0, 'a', 'b'));
+      var rec = new ProducerRecord(_topic, 0, 'a', 'b');
+      producer.add(rec);
+      var result = await rec.result;
 
       _offset = result.offset;
       var date = new DateTime.now();

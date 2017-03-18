@@ -52,6 +52,7 @@ class _SessionImpl implements Session {
   }
 
   Future<T> send<T>(KRequest<T> request, String host, int port) {
+    /// TODO: Find a way to perform `socket.sendPacket()` without async gap
     Future<KSocket> result;
     if (_apiVersions == null) {
       /// TODO: resolve versions for each node separately

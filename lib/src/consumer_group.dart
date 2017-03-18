@@ -77,7 +77,7 @@ class ConsumerGroup {
     }
   }
 
-  /// Commits provided [results] to the server for this consumer group.
+  /// Commits provided [partitions] to the server for this consumer group.
   Future commitOffsets(List<ConsumerOffset> offsets,
       {GroupSubscription subscription}) {
     return _commitOffsets(offsets, subscription: subscription, retries: 3);

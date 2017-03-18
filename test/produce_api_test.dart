@@ -28,10 +28,11 @@ void main() {
       });
 
       var res = await session.send(req, broker.host, broker.port);
+      var p = new TopicPartition(_topic, partition);
       expect(res.results, hasLength(1));
-      expect(res.results.first.topic, equals(_topic));
-      expect(res.results.first.error, equals(0));
-      expect(res.results.first.offset, greaterThanOrEqualTo(0));
+      expect(res.results[p].topic, equals(_topic));
+      expect(res.results[p].error, equals(0));
+      expect(res.results[p].offset, greaterThanOrEqualTo(0));
     });
 
     // test('it publishes GZip encoded messages to Kafka topic', () async {

@@ -31,14 +31,14 @@ class ProduceRequest extends KRequest<ProduceResponse> {
 
 class ProduceResponse {
   /// List of produce results for each topic-partition.
-  final List<TopicProduceResult> results;
+  final PartitionResults results;
   final int throttleTime;
 
   ProduceResponse(this.results, this.throttleTime) {
-    var errorResult = results.firstWhere((_) => _.error != Errors.NoError,
-        orElse: () => null);
+    var errorResult = results.partitions
+        .firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
 
-    if (errorResult is TopicProduceResult) {
+    if (errorResult is PartitionResult) {
       throw new KafkaError.fromCode(errorResult.error, this);
     }
   }
@@ -47,14 +47,38 @@ class ProduceResponse {
   String toString() => 'ProduceResponse{$results}';
 }
 
+class PartitionResults {
+  final List<PartitionResult> partitions;
+
+  PartitionResults(this.partitions);
+
+  Map<TopicPartition, PartitionResult> _asMap;
+  Map<TopicPartition, PartitionResult> get asMap {
+    if (_asMap != null) return _asMap;
+    _asMap = new Map.fromIterable(partitions,
+        key: (PartitionResult _) => _.partition);
+    return _asMap;
+  }
+
+  PartitionResult operator [](TopicPartition partition) => asMap[partition];
+
+  Map<TopicPartition, int> _offsets;
+  Map<TopicPartition, int> get offsets {
+    if (_offsets != null) return _offsets;
+    _offsets = new Map.fromIterable(partitions,
+        key: (PartitionResult _) => _.partition,
+        value: (PartitionResult _) => _.offset);
+    return _offsets;
+  }
+
+  int get length => partitions.length;
+}
+
 /// Data structure representing result of producing messages with
 /// [ProduceRequest].
-class TopicProduceResult {
-  /// The name of the topic.
-  final String topic;
-
-  /// The ID of the partition.
-  final int partition;
+class PartitionResult {
+  /// The topic-parition of this result.
+  final TopicPartition partition;
 
   /// Error code returned by the server.
   final int error;
@@ -73,14 +97,13 @@ class TopicProduceResult {
   /// by the broker if there is no error code returned.
   final int timestamp;
 
-  TopicProduceResult(
-      this.topic, this.partition, this.error, this.offset, this.timestamp);
+  PartitionResult(this.partition, this.error, this.offset, this.timestamp);
 
-  TopicPartition get topicPartition => new TopicPartition(topic, partition);
+  String get topic => partition.topic;
 
   @override
   String toString() =>
-      'TopicProduceResult{${topic}:${partition}, error: ${error}, offset: ${offset}, timestamp: $timestamp}';
+      'PartitionResult{${partition}, error: ${error}, offset: ${offset}, timestamp: $timestamp}';
 }
 
 class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
@@ -159,7 +182,7 @@ class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
   @override
   ProduceResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
-    var results = new List<TopicProduceResult>();
+    var results = new List<PartitionResult>();
     var topicCount = reader.readInt32();
     while (topicCount > 0) {
       var topic = reader.readString();
@@ -169,13 +192,13 @@ class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
         var error = reader.readInt16();
         var offset = reader.readInt64();
         var timestamp = reader.readInt64();
-        results.add(
-            new TopicProduceResult(topic, partition, error, offset, timestamp));
+        results.add(new PartitionResult(
+            new TopicPartition(topic, partition), error, offset, timestamp));
         partitionCount--;
       }
       topicCount--;
     }
     var throttleTime = reader.readInt32();
-    return new ProduceResponse(results, throttleTime);
+    return new ProduceResponse(new PartitionResults(results), throttleTime);
   }
 }

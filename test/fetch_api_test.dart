@@ -25,10 +25,12 @@ void main() {
           new StringSerializer(),
           new StringSerializer(),
           new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
-      var result =
-          await producer.send(new ProducerRecord(topic, 0, 'key', message));
-
+      var rec = new ProducerRecord(topic, 0, 'key', message);
+      producer.add(rec);
+      var result = await rec.result;
       var offset = result.offset;
+      await producer.close();
+
       FetchRequest request = new FetchRequest(100, 1);
       request.add(new TopicPartition(topic, 0), new FetchData(offset, 35656));
       var response = await session.send(request, host.host, host.port);

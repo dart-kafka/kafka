@@ -20,8 +20,9 @@ void main() {
           new StringSerializer(),
           new StringSerializer(),
           new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
-      var result = await producer
-          .send(new ProducerRecord(topic, partition, 'key', 'value'));
+      var rec = new ProducerRecord(topic, partition, 'key', 'value');
+      producer.add(rec);
+      var result = await rec.result;
       _offset = result.offset;
       await producer.close();
     });

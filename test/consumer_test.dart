@@ -14,13 +14,16 @@ void main() {
           new StringSerializer(),
           new StringSerializer(),
           new ProducerConfig(bootstrapServers: ['127.0.0.1:9092']));
-      var res =
-          await producer.send(new ProducerRecord(topic, 0, 'akey', 'avalue'));
-      expectedOffsets[res.topicPartition.partition] = res.offset;
-      res = await producer.send(new ProducerRecord(topic, 1, 'bkey', 'bvalue'));
-      expectedOffsets[res.topicPartition.partition] = res.offset;
-      res = await producer.send(new ProducerRecord(topic, 2, 'ckey', 'cvalue'));
-      expectedOffsets[res.topicPartition.partition] = res.offset;
+      var rec1 = new ProducerRecord(topic, 0, 'akey', 'avalue');
+      var rec2 = new ProducerRecord(topic, 1, 'bkey', 'bvalue');
+      var rec3 = new ProducerRecord(topic, 2, 'ckey', 'cvalue');
+      producer..add(rec1)..add(rec2)..add(rec3);
+      var res1 = await rec1.result;
+      expectedOffsets[res1.topicPartition.partition] = res1.offset;
+      var res2 = await rec2.result;
+      expectedOffsets[res2.topicPartition.partition] = res2.offset;
+      var res3 = await rec3.result;
+      expectedOffsets[res3.topicPartition.partition] = res3.offset;
       await producer.close();
     });
 

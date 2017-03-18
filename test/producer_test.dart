@@ -13,8 +13,9 @@ void main() {
     });
 
     test('it can produce messages to Kafka', () async {
-      var result = await producer
-          .send(new ProducerRecord('testProduce', 0, 'key', 'value'));
+      var rec = new ProducerRecord('testProduce', 0, 'key', 'value');
+      producer.add(rec);
+      var result = await rec.result;
       expect(result, new isInstanceOf<ProduceResult>());
       expect(result.topicPartition, new TopicPartition('testProduce', 0));
       expect(result.offset, greaterThanOrEqualTo(0));

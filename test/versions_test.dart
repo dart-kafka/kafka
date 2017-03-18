@@ -18,6 +18,7 @@ void main() {
       var result = resolveApiVersions(server, client);
       expect(result[0], 2);
     });
+
     test('pick max server version if client max is higher', () {
       var server = [new ApiVersion(0, 0, 1)];
       var client = [new ApiVersion(0, 0, 3)];

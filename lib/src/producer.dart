@@ -19,9 +19,6 @@ abstract class Producer<K, V> implements StreamSink<ProducerRecord<K, V>> {
   factory Producer(Serializer<K> keySerializer, Serializer<V> valueSerializer,
           ProducerConfig config) =>
       new _Producer(keySerializer, valueSerializer, config);
-
-  /// Sends [record] to Kafka cluster.
-  Future<ProduceResult> send(ProducerRecord<K, V> record);
 }
 
 class ProducerRecord<K, V> {
@@ -31,10 +28,26 @@ class ProducerRecord<K, V> {
   final V value;
   final int timestamp;
 
+  final Completer<ProduceResult> _completer = new Completer();
+
   ProducerRecord(this.topic, this.partition, this.key, this.value,
       {this.timestamp});
 
   TopicPartition get topicPartition => new TopicPartition(topic, partition);
+
+  /// The result of publishing this record.
+  ///
+  /// Returned `Future` is completed with [ProduceResult] on success, otherwise
+  /// completed with the produce error.
+  Future<ProduceResult> get result => _completer.future;
+
+  void _complete(ProduceResult result) {
+    _completer.complete(result);
+  }
+
+  void _completeError(error) {
+    _completer.completeError(error);
+  }
 }
 
 class ProduceResult {
@@ -62,29 +75,6 @@ class _Producer<K, V> implements Producer<K, V> {
       : session = new Session(config.bootstrapServers) {
     _logger.info('Producer created with config:');
     _logger.info(config);
-  }
-
-  @override
-  Future<ProduceResult> send(ProducerRecord<K, V> record) async {
-    var key = keySerializer.serialize(record.key);
-    var value = valueSerializer.serialize(record.value);
-    var timestamp =
-        record.timestamp ?? new DateTime.now().millisecondsSinceEpoch;
-    var message = new Message(value, key: key, timestamp: timestamp);
-    var messages = {
-      record.topic: {
-        record.partition: [message]
-      }
-    };
-    var req = new ProduceRequest(config.acks, config.timeoutMs, messages);
-    var meta = await session.metadata.fetchTopics([record.topic]);
-    var leaderId = meta[record.topic].partitions[record.partition].leader;
-    var broker = meta.brokers[leaderId];
-    var response = await session.send(req, broker.host, broker.port);
-    var result = response.results.first;
-
-    return new Future.value(new ProduceResult(
-        result.topicPartition, result.offset, result.timestamp));
   }
 
   Future _closeFuture;
@@ -163,15 +153,29 @@ class _Producer<K, V> implements Producer<K, V> {
         pools[leader] = new Pool(config.maxInFlightRequestsPerConnection);
         var requests = _buildRequests(leaders[leader]);
         for (var req in requests) {
-          pools[leader].withResource(() =>
-              session.send(req, leader.host, leader.port).then((response) {
-                print(response);
-              }));
+          pools[leader].withResource(() => _send(leader, req, leaders[leader]));
         }
       }
       var futures = pools.values.map((_) => _.close());
       await Future.wait(futures);
     }
+  }
+
+  Future _send(Broker broker, ProduceRequest request,
+      List<ProducerRecord<K, V>> records) {
+    return session.send(request, broker.host, broker.port).then((response) {
+      Map<TopicPartition, int> offsets = new Map.from(response.results.offsets);
+      for (var rec in records) {
+        var p = rec.topicPartition;
+        rec._complete(
+            new ProduceResult(p, offsets[p], response.results[p].timestamp));
+        offsets[p]++;
+      }
+    }).catchError((error) {
+      records.forEach((_) {
+        _._completeError(error);
+      });
+    });
   }
 
   List<ProduceRequest> _buildRequests(List<ProducerRecord<K, V>> records) {
@@ -187,7 +191,6 @@ class _Producer<K, V> implements Producer<K, V> {
       messages[rec.topic].putIfAbsent(rec.partition, () => new List());
       messages[rec.topic][rec.partition].add(message);
     }
-    print(messages);
     var request = new ProduceRequest(config.acks, config.timeoutMs, messages);
     return [request];
   }
