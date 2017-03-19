@@ -87,7 +87,7 @@ class _Metadata implements Metadata {
               res.coordinatorId, res.coordinatorHost, res.coordinatorPort));
     }
 
-    return retryAsync(fetch, 5, new Duration(milliseconds: 500),
+    return retryAsync(fetch, 5, new Duration(milliseconds: 1000),
         test: (err) => err is ConsumerCoordinatorNotAvailableError);
   }
 }
