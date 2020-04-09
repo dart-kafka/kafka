@@ -7,7 +7,7 @@ abstract class Serializer<T> {
 /// Serializer for `String` objects. Defaults to UTF8 encoding.
 class StringSerializer implements Serializer<String> {
   @override
-  List<int> serialize(String data) => UTF8.encode(data);
+  List<int> serialize(String data) => utf8.encode(data);
 }
 
 class CodecSerializer<S> implements Serializer<S> {
@@ -28,5 +28,5 @@ abstract class Deserializer<T> {
 /// Deserializer for `String` objects. Defaults to UTF8 encoding.
 class StringDeserializer implements Deserializer<String> {
   @override
-  String deserialize(List<int> data) => UTF8.decode(data);
+  String deserialize(List<int> data) => utf8.decode(data);
 }

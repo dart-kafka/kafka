@@ -26,7 +26,7 @@ void main() {
           new JoinGroupRequest(group, 15000, 1000, '', 'consumer', protocols);
       JoinGroupResponse joinResponse =
           await _session.send(joinRequest, _broker.host, _broker.port);
-      expect(joinResponse, new isInstanceOf<JoinGroupResponse>());
+      expect(joinResponse, isA<JoinGroupResponse>());
       expect(joinResponse.error, 0);
       expect(joinResponse.generationId, greaterThanOrEqualTo(1));
       expect(joinResponse.groupProtocol, 'roundrobin');

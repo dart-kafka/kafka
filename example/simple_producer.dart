@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:kafka/kafka.dart';
-import 'package:logging/logging.dart';
 
 Future main() async {
   // Logger.root.level = Level.ALL;

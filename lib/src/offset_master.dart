@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'common.dart';
 import 'session.dart';
-import 'metadata.dart';
 import 'list_offset_api.dart';
 
 /// Master of Offsets.
@@ -44,7 +43,7 @@ class OffsetMaster {
     var offsets = new List<TopicOffset>();
     for (var host in requests.keys) {
       var fetchInfo = new Map<TopicPartition, int>.fromIterable(requests[host],
-          value: (TopicPartition _) => time);
+          value: (partition) => partition.time);
       var request = new ListOffsetRequest(fetchInfo);
       ListOffsetResponse response =
           await session.send(request, host.host, host.port);

@@ -16,7 +16,7 @@ class MetadataRequest extends KRequest<MetadataResponse> {
 
   final List<String> topics;
 
-  /// Creates new MetadataRequest.
+  /// Creates MetadataRequest.
   ///
   /// If [topics] is not set it fetches information about all existing
   /// topics in the Kafka cluster.
@@ -35,7 +35,7 @@ class MetadataResponse {
         .firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
     // TODO: also loop through partitions to find errors on a partition level.
     if (errorTopic is Topic) {
-      throw new KafkaError.fromCode(errorTopic.error, this);
+      throw KafkaError.fromCode(errorTopic.error, this);
     }
   }
 }
@@ -51,18 +51,18 @@ class Topics {
 
   Topic operator [](String topic) => asMap[topic];
 
-  List<Topic> get asList => new List.unmodifiable(_topics);
+  List<Topic> get asList => List.unmodifiable(_topics);
 
   Map<String, Topic> _asMap;
 
   /// Returns a map where keys are topic names.
   Map<String, Topic> get asMap {
     if (_asMap != null) return _asMap;
-    var map = new Map.fromIterable(
+    var map = Map.fromIterable(
       _topics,
-      key: (Topic _) => _.name,
+      key: (topic) => topic.name,
     );
-    _asMap = new Map.unmodifiable(map);
+    _asMap = Map.unmodifiable(map);
     return _asMap;
   }
 
@@ -81,7 +81,7 @@ class Topics {
     if (_topicPartitions != null) return _topicPartitions;
     _topicPartitions = _topics.expand<TopicPartition>((topic) {
       return topic.partitions._partitions
-          .map((partition) => new TopicPartition(topic.name, partition.id));
+          .map((partition) => TopicPartition(topic.name, partition.id));
     }).toList(growable: false);
     return _topicPartitions;
   }
@@ -98,8 +98,8 @@ class Brokers {
   Map<int, Broker> _asMap;
   Map<int, Broker> get asMap {
     if (_asMap != null) return _asMap;
-    var map = new Map.fromIterable(_brokers, key: (Broker _) => _.id);
-    _asMap = new Map.unmodifiable(map);
+    var map = Map.fromIterable(_brokers, key: (broker) => broker.id);
+    _asMap = Map.unmodifiable(map);
     return _asMap;
   }
 }
@@ -125,7 +125,7 @@ class Partitions {
   Map<int, Partition> _asMap;
   Map<int, Partition> get asMap {
     if (_asMap != null) return _asMap;
-    _asMap = new Map.fromIterable(_partitions, key: (Partition _) => _.id);
+    _asMap = Map.fromIterable(_partitions, key: (partition) => partition.id);
     return _asMap;
   }
 
@@ -155,8 +155,8 @@ class _MetadataRequestEncoder implements RequestEncoder<MetadataRequest> {
   List<int> encode(MetadataRequest request, int version) {
     assert(version == 0,
         'Only v0 of Metadata request is supported by the client, $version given.');
-    var builder = new KafkaBytesBuilder();
-    List<String> topics = request.topics ?? new List();
+    var builder = KafkaBytesBuilder();
+    List<String> topics = request.topics ?? List();
     builder.addStringArray(topics);
     return builder.takeBytes();
   }
@@ -167,24 +167,23 @@ class _MetadataResponseDecoder implements ResponseDecoder<MetadataResponse> {
 
   @override
   MetadataResponse decode(List<int> data) {
-    var reader = new KafkaBytesReader.fromBytes(data);
+    var reader = KafkaBytesReader.fromBytes(data);
     List<Broker> brokers = reader.readObjectArray((r) {
-      return new Broker(r.readInt32(), r.readString(), r.readInt32());
+      return Broker(r.readInt32(), r.readString(), r.readInt32());
     });
 
     var topics = reader.readObjectArray((r) {
       var error = reader.readInt16();
       var topic = reader.readString();
 
-      List<Partition> partitions = reader.readObjectArray((r) => new Partition(
+      List<Partition> partitions = reader.readObjectArray((r) => Partition(
           r.readInt16(),
           r.readInt32(),
           r.readInt32(),
           r.readInt32Array(),
           r.readInt32Array()));
-      return new Topic(error, topic, new Partitions(partitions));
+      return Topic(error, topic, Partitions(partitions));
     });
-    return new MetadataResponse(
-        brokers, new Topics(topics, new Brokers(brokers)));
+    return MetadataResponse(brokers, Topics(topics, Brokers(brokers)));
   }
 }
