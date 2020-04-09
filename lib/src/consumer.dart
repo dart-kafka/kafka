@@ -169,7 +169,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         'No topics set for subscription. Must first call subscribe().');
     assert(_streamController == null, 'Already polling.');
 
-    _streamController = new StreamController<ConsumerRecords>(
+    _streamController = new StreamController<ConsumerRecords<K, V>>(
         onListen: onListen, onCancel: onCancel);
     _streamIterator =
         new ConsumerStreamIterator<K, V>(_streamController.stream);

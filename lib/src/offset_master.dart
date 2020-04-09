@@ -43,7 +43,7 @@ class OffsetMaster {
     var offsets = new List<TopicOffset>();
     for (var host in requests.keys) {
       var fetchInfo = new Map<TopicPartition, int>.fromIterable(requests[host],
-          value: (partition) => partition.time);
+          value: (partition) => time);
       var request = new ListOffsetRequest(fetchInfo);
       ListOffsetResponse response =
           await session.send(request, host.host, host.port);
