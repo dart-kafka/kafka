@@ -169,7 +169,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         'No topics set for subscription. Must first call subscribe().');
     assert(_streamController == null, 'Already polling.');
 
-    _streamController = new StreamController<ConsumerRecords>(
+    _streamController = new StreamController<ConsumerRecords<K, V>>(
         onListen: onListen, onCancel: onCancel);
     _streamIterator =
         new ConsumerStreamIterator<K, V>(_streamController.stream);
@@ -274,9 +274,9 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   final Map<Broker, ConsumerRecords> _waitingRecords = new Map();
 
   Future _pollBroker(Broker broker, List<ConsumerOffset> initialOffsets) async {
-    Map<TopicPartition, ConsumerOffset> currentOffsets = new Map.fromIterable(
+    Map<TopicPartition, ConsumerOffset> currentOffsets = Map.fromIterable(
         initialOffsets,
-        key: (ConsumerOffset _) => _.topicPartition);
+        key: (offset) => offset.topicPartition);
 
     while (true) {
       if (_isCanceled || _resubscriptionNeeded) {

@@ -30,9 +30,9 @@ const List<ApiVersion> supportedVersions = const [
 Map<int, int> resolveApiVersions(
     List<ApiVersion> serverVersions, List<ApiVersion> clientVersions) {
   Map<int, ApiVersion> serverMap =
-      new Map.fromIterable(serverVersions, key: (ApiVersion v) => v.key);
+      new Map.fromIterable(serverVersions, key: (v) => v.key);
   Map<int, ApiVersion> clientMap =
-      new Map.fromIterable(clientVersions, key: (ApiVersion v) => v.key);
+      new Map.fromIterable(clientVersions, key: (v) => v.key);
   Map<int, int> result = new Map();
   for (var key in clientMap.keys) {
     var client = clientMap[key];

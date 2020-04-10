@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -59,7 +60,7 @@ class KafkaBytesBuilder {
   /// Kafka string type starts with int16 indicating size of the string
   /// followed by the actual string value.
   void addString(String value) {
-    List<int> data = UTF8.encode(value);
+    List<int> data = utf8.encode(value);
     addInt16(data.length);
     _builder.add(data);
   }
@@ -184,7 +185,7 @@ class KafkaBytesReader {
   String readString() {
     var length = readInt16();
     var value = _data.buffer.asInt8List(_offset, length).toList();
-    var valueAsString = UTF8.decode(value);
+    var valueAsString = utf8.decode(value);
     _offset += length;
 
     return valueAsString;
@@ -232,7 +233,7 @@ class KafkaBytesReader {
 }
 
 class PacketStreamTransformer
-    implements StreamTransformer<List<int>, List<int>> {
+    implements StreamTransformer<Uint8List, List<int>> {
   List<int> _data = new List<int>();
   StreamController<List<int>> _controller = new StreamController<List<int>>();
 
@@ -270,6 +271,9 @@ class PacketStreamTransformer
   void _onDone() {
     _controller.close();
   }
+
+  @override
+  StreamTransformer<RS, RT> cast<RS, RT>() => StreamTransformer.castFrom(this);
 }
 
 /// Handles Kafka channel multiplexing.
@@ -287,8 +291,8 @@ class KSocket {
   Map<int, Completer<List<int>>> _inflightRequests = new Map();
 
   KSocket._(this._ioSocket) {
-    _ioSocket.setOption(SocketOption.TCP_NODELAY, true);
-    _stream = _ioSocket.transform(new PacketStreamTransformer());
+    _ioSocket.setOption(SocketOption.tcpNoDelay, true);
+    _stream = _ioSocket.transform(PacketStreamTransformer());
     _subscription = _stream.listen(_onPacket);
   }
 
