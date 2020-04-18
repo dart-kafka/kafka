@@ -6,7 +6,6 @@ import 'common.dart';
 import 'consumer_offset_api.dart';
 import 'errors.dart';
 import 'group_membership_api.dart';
-import 'metadata.dart';
 import 'offset_commit_api.dart';
 import 'offset_master.dart';
 import 'partition_assignor.dart';

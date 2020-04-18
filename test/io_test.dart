@@ -59,7 +59,7 @@ void main() {
       var result = _builder.toBytes();
       expect(result, hasLength(equals(12))); // 2 bytes = size, 10 bytes = value
       var encodedString = result.getRange(2, 12).toList();
-      var value = UTF8.decode(encodedString);
+      var value = utf8.decode(encodedString);
       expect(value, equals('dart-kafka'));
     });
 

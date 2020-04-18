@@ -16,7 +16,7 @@ void main() {
       var rec = new ProducerRecord('testProduce', 0, 'key', 'value');
       producer.add(rec);
       var result = await rec.result;
-      expect(result, new isInstanceOf<ProduceResult>());
+      expect(result, isA<ProduceResult>());
       expect(result.topicPartition, new TopicPartition('testProduce', 0));
       expect(result.offset, greaterThanOrEqualTo(0));
     });

@@ -71,7 +71,7 @@ class _SessionImpl implements Session {
       var payload = request.encoder.encode(request, version);
       return socket.sendPacket(request.apiKey, version, payload);
     }).then((responseData) {
-      var version = _apiVersions[request.apiKey];
+      // var version = _apiVersions[request.apiKey];
 
       /// TODO: supply api version to response decoders.
       return request.decoder.decode(responseData);

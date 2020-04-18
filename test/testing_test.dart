@@ -1,6 +1,3 @@
-import 'package:kafka/testing.dart';
-import 'package:test/test.dart';
-
 void main() {
   // group('MockKafkaSession: ', () {
   //   test('it returns cluster and topic metadata', () async {

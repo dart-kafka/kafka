@@ -26,7 +26,7 @@ main() {
     var stream = createStream();
     ConsumerStreamIterator<String, String> iterator =
         new ConsumerStreamIterator<String, String>(stream);
-    await new Future.delayed(Duration.ZERO);
+    await new Future.delayed(Duration.zero);
     expect(iterator.current, isNull);
     expect(await iterator.moveNext(), isTrue);
     expect(iterator.current.records.first.key, 'k1');

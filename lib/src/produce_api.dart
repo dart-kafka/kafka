@@ -39,7 +39,7 @@ class ProduceResponse {
         .firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
 
     if (errorResult is PartitionResult) {
-      throw new KafkaError.fromCode(errorResult.error, this);
+      throw KafkaError.fromCode(errorResult.error, this);
     }
   }
 
@@ -55,8 +55,7 @@ class PartitionResults {
   Map<TopicPartition, PartitionResult> _asMap;
   Map<TopicPartition, PartitionResult> get asMap {
     if (_asMap != null) return _asMap;
-    _asMap = new Map.fromIterable(partitions,
-        key: (PartitionResult _) => _.partition);
+    _asMap = Map.fromIterable(partitions, key: (result) => result.partition);
     return _asMap;
   }
 
@@ -65,9 +64,8 @@ class PartitionResults {
   Map<TopicPartition, int> _offsets;
   Map<TopicPartition, int> get offsets {
     if (_offsets != null) return _offsets;
-    _offsets = new Map.fromIterable(partitions,
-        key: (PartitionResult _) => _.partition,
-        value: (PartitionResult _) => _.offset);
+    _offsets = Map.fromIterable(partitions,
+        key: (result) => result.partition, value: (result) => result.offset);
     return _offsets;
   }
 
@@ -114,7 +112,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
     assert(
         version == 2, 'Only v2 of Produce request is supported by the client.');
 
-    var builder = new KafkaBytesBuilder();
+    var builder = KafkaBytesBuilder();
     builder.addInt16(request.requiredAcks);
     builder.addInt32(request.timeout);
 
@@ -132,7 +130,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
   }
 
   List<int> _messageSetToBytes(List<Message> messages) {
-    var builder = new KafkaBytesBuilder();
+    var builder = KafkaBytesBuilder();
     messages.asMap().forEach((offset, message) {
       var messageData = _messageToBytes(message);
       builder.addInt64(offset);
@@ -146,7 +144,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
   }
 
   List<int> _messageToBytes(Message message) {
-    var builder = new KafkaBytesBuilder();
+    var builder = KafkaBytesBuilder();
     builder.addInt8(1); // magicByte
     builder.addInt8(_encodeAttributes(message.attributes));
     builder.addInt64(message.timestamp);
@@ -170,7 +168,7 @@ class _ProduceRequestEncoder implements RequestEncoder<ProduceRequest> {
       case Compression.snappy:
         return 2;
       default:
-        throw new ArgumentError(
+        throw ArgumentError(
             'Invalid compression value ${attributes.compression}.');
     }
   }
@@ -181,8 +179,8 @@ class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
 
   @override
   ProduceResponse decode(List<int> data) {
-    var reader = new KafkaBytesReader.fromBytes(data);
-    var results = new List<PartitionResult>();
+    var reader = KafkaBytesReader.fromBytes(data);
+    var results = List<PartitionResult>();
     var topicCount = reader.readInt32();
     while (topicCount > 0) {
       var topic = reader.readString();
@@ -192,13 +190,13 @@ class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
         var error = reader.readInt16();
         var offset = reader.readInt64();
         var timestamp = reader.readInt64();
-        results.add(new PartitionResult(
-            new TopicPartition(topic, partition), error, offset, timestamp));
+        results.add(PartitionResult(
+            TopicPartition(topic, partition), error, offset, timestamp));
         partitionCount--;
       }
       topicCount--;
     }
     var throttleTime = reader.readInt32();
-    return new ProduceResponse(new PartitionResults(results), throttleTime);
+    return ProduceResponse(PartitionResults(results), throttleTime);
   }
 }

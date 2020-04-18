@@ -12,7 +12,7 @@ void main() {
 
     test('it can fetch specific topic metadata', () async {
       var topics = await metadata.fetchTopics(['testTopic']);
-      expect(topics, new isInstanceOf<Topics>());
+      expect(topics, isA<Topics>());
       expect(topics, hasLength(1));
       expect(topics['testTopic'], isNotNull);
       expect(topics['testTopic'].toString(),
@@ -35,7 +35,7 @@ void main() {
       var group =
           'testGroup' + (new DateTime.now()).millisecondsSinceEpoch.toString();
       var broker = await metadata.fetchGroupCoordinator(group);
-      expect(broker, new isInstanceOf<Broker>());
+      expect(broker, isA<Broker>());
       expect(broker.id, isNotNull);
       expect(broker.host, isNotNull);
       expect(broker.port, isNotNull);
@@ -43,10 +43,10 @@ void main() {
 
     // test('it can fetch topic metadata', () async {
     //   var response = await _session.getMetadata([_topicName].toSet());
-    //   expect(response, new isInstanceOf<ClusterMetadata>());
+    //   expect(response, isA<ClusterMetadata>());
     //   expect(response.brokers, isNotEmpty);
     //   var topic = response.getTopicMetadata(_topicName);
-    //   expect(topic, new isInstanceOf<TopicMetadata>());
+    //   expect(topic, isA<TopicMetadata>());
     //   response = await _session.getMetadata([_topicName].toSet());
     //   var newTopic = response.getTopicMetadata(_topicName);
     //   expect(newTopic, same(topic));
