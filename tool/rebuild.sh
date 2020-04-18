@@ -3,7 +3,7 @@
 docker kill kafka zookeeper
 docker rm kafka zookeeper
 
-docker run -d --name zookeeper --publish 2181:2181 jplock/zookeeper:3.4.6
+docker run -d --name zookeeper --publish 2181:2181 zookeeper:3.6.0
 
 docker build -t kafka tool/kafka-0.10.1.0/
 
