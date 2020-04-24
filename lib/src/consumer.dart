@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:logging/logging.dart';
-
-import 'async.dart';
+import 'consumer_streamiterator.dart';
 import 'common.dart';
 import 'consumer_group.dart';
 import 'consumer_offset_api.dart';
@@ -233,6 +231,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
       // Check if resubscription is needed in case there were rebalance
       // errors from either offset commit or heartbeat requests.
       if (_resubscriptionNeeded) {
+        _logger.fine("switch to resubscribe state");
         // Switch to resubscribe state.
         _activeState = _resubscribeState;
         // Create new stream controller and attach to the stream iterator.
@@ -243,7 +242,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         // Remove onCancel callback on existing controller.
         _streamController.onCancel = null;
         _streamController =
-            new StreamController<ConsumerRecords>(onCancel: onCancel);
+            StreamController<ConsumerRecords<K, V>>(onCancel: onCancel);
         _streamIterator.attachStream(_streamController.stream);
       }
     });
@@ -271,7 +270,7 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
   /// consumer is currently waiting to be processed.
   /// The `onCancel` callback acknowledges all of these so that polling can
   /// shutdown gracefully.
-  final Map<Broker, ConsumerRecords> _waitingRecords = new Map();
+  final Map<Broker, ConsumerRecords<K, V>> _waitingRecords = Map();
 
   Future _pollBroker(Broker broker, List<ConsumerOffset> initialOffsets) async {
     Map<TopicPartition, ConsumerOffset> currentOffsets = Map.fromIterable(
@@ -284,14 +283,21 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         break;
       }
 
+      _logger.fine('Sending poll request on $broker');
       var request =
           _buildRequest(currentOffsets.values.toList(growable: false));
       var response = await session.send(request, broker.host, broker.port);
+
       var records = recordsFromResponse(response.results);
+
+      _logger
+          .fine('response from $broker has ${records.records.length} records');
+
       if (records.records.isEmpty) continue; // empty response, continue polling
+
       for (var rec in records.records) {
         currentOffsets[rec.topicPartition] =
-            new ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
+            ConsumerOffset(rec.topic, rec.partition, rec.offset, '');
       }
 
       _waitingRecords[broker] = records;
@@ -306,11 +312,11 @@ class _ConsumerImpl<K, V> implements Consumer<K, V> {
         var message = result.messages[offset];
         var key = keyDeserializer.deserialize(message.key);
         var value = valueDeserializer.deserialize(message.value);
-        return new ConsumerRecord<K, V>(result.topic, result.partition, offset,
-            key, value, message.timestamp);
+        return ConsumerRecord<K, V>(result.topic, result.partition, offset, key,
+            value, message.timestamp);
       });
     }).toList(growable: false);
-    return new ConsumerRecords(records);
+    return ConsumerRecords<K, V>(records);
   }
 
   /// Fetches current consumer offsets from the server.
