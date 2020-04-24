@@ -4,7 +4,7 @@
 
 import "dart:async";
 import "package:test/test.dart";
-import "package:kafka/src/async.dart";
+import "package:kafka/src/consumer_streamiterator.dart";
 import "package:kafka/src/consumer.dart";
 
 main() {
