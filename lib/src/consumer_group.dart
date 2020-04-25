@@ -94,6 +94,9 @@ class ConsumerGroup {
       var retentionInMsecs = retentionTime?.inMilliseconds ?? -1;
       var request = new OffsetCommitRequest(
           name, offsets, generationId, memberId, retentionInMsecs);
+
+      _logger.fine(
+          "commiting offsets: group_id: $name on $host member_id: $memberId");
       await session.send(request, host.host, host.port);
     } on NotCoordinatorForConsumerError {
       if (retries > 1) {
