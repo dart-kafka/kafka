@@ -10,3 +10,4 @@ coverage/
 .vscode/
 .idea/
 package_config.json
+.DS_Store
