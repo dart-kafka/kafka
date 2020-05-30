@@ -1,4 +1,4 @@
-FROM ches/kafka:latest
+FROM larryaasen/kafka:latest
 
 USER root
 

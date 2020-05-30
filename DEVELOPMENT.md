@@ -32,7 +32,7 @@ We're using `ches/kafka` base image so instructions are a bit different.
 docker run -d --name zookeeper --publish 2181:2181 jplock/zookeeper:3.4.6
 
 # Build our image
-docker build -t kafka tool/kafka-0.10.1.0/
+docker build -t kafka tool/kafka/
 
 ZK_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' zookeeper)
 

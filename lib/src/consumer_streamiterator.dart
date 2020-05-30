@@ -1,9 +1,4 @@
-// Copyright (c) 2012, the Dart project authors.  Please see the AUTHORS file
-// for details. All rights reserved. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'dart:async';
-
 import 'common.dart';
 import 'consumer.dart';
 import 'consumer_offset_api.dart';
@@ -111,7 +106,7 @@ class ConsumerStreamIterator<K, V>
     Object records;
     if (_subscription != null) {
       _subscription.cancel();
-      _subscription == null;
+      _subscription = null;
       if (!_isPaused) {
         // User  waits for `moveNext` to complete.
         completer = _stateData as Completer<bool>;
