@@ -4,13 +4,13 @@ import 'package:test/test.dart';
 void main() {
   group('FetchApi:', () {
     String topic = 'dartKafkaTest';
-    Broker host;
+    Broker? host;
     Session session = new Session(['127.0.0.1:9092']);
     String message;
 
     setUp(() async {
-      var meta = await session.metadata.fetchTopics([topic]);
-      var leaderId = meta[topic].partitions[0].leader;
+      var meta = await session.metadata!.fetchTopics([topic]);
+      var leaderId = meta[topic]!.partitions[0]!.leader;
       host = meta.brokers[leaderId];
     });
 
@@ -33,13 +33,13 @@ void main() {
 
       FetchRequest request = new FetchRequest(100, 1);
       request.add(new TopicPartition(topic, 0), new FetchData(offset, 35656));
-      var response = await session.send(request, host.host, host.port);
+      var response = await session.send(request, host!.host, host!.port);
 
       expect(response.results, hasLength(1));
       expect(
           response.results.first.messages, hasLength(greaterThanOrEqualTo(1)));
-      var keyData = response.results.first.messages[offset].key;
-      var valueData = response.results.first.messages[offset].value;
+      var keyData = response.results.first.messages[offset]!.key!;
+      var valueData = response.results.first.messages[offset]!.value!;
       var deser = new StringDeserializer();
       var value = deser.deserialize(valueData);
       expect(value, equals(message));

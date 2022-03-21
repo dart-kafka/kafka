@@ -4,14 +4,14 @@ import 'package:test/test.dart';
 void main() {
   group('OffsetApi:', () {
     String topic = 'dartKafkaTest';
-    int partition;
-    Broker broker;
+    late int partition;
+    Broker? broker;
     Session session = new Session(['127.0.0.1:9092']);
-    int _offset;
+    int? _offset;
 
     setUp(() async {
-      var meta = await session.metadata.fetchTopics([topic]);
-      var p = meta[topic].partitions[0];
+      var meta = await session.metadata!.fetchTopics([topic]);
+      var p = meta[topic]!.partitions[0]!;
       partition = p.id;
       var leaderId = p.leader;
       broker = meta.brokers[leaderId];
@@ -35,12 +35,12 @@ void main() {
       var request =
           new ListOffsetRequest({new TopicPartition(topic, partition): -1});
       ListOffsetResponse response =
-          await session.send(request, broker.host, broker.port);
+          await session.send(request, broker!.host, broker!.port);
 
       expect(response.offsets, hasLength(1));
       var offset = response.offsets.first;
       expect(offset.error, equals(0));
-      expect(offset.offset, equals(_offset + 1));
+      expect(offset.offset, equals(_offset! + 1));
     });
   });
 }

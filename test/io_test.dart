@@ -24,7 +24,7 @@ void main() {
   });
 
   group('BytesBuilder:', () {
-    KafkaBytesBuilder _builder;
+    late KafkaBytesBuilder _builder;
 
     setUp(() {
       _builder = new KafkaBytesBuilder();
@@ -105,7 +105,7 @@ void main() {
   });
 
   group('BytesReader:', () {
-    KafkaBytesReader _reader;
+    late KafkaBytesReader _reader;
     List<int> _data;
 
     setUp(() {

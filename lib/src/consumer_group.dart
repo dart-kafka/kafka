@@ -22,15 +22,15 @@ class ConsumerGroup {
 
   /// Optional retention time for committed offsets. If `null` then broker's
   /// offset retention time will be used as default.
-  final Duration retentionTime;
+  final Duration? retentionTime;
 
-  Future<Broker> _coordinatorHost;
+  Future<Broker>? _coordinatorHost;
 
   ConsumerGroup(this.session, this.name, {this.retentionTime});
 
   /// Sends heartbeat for the member specified by [subscription].
   Future heartbeat(GroupSubscription subscription) async {
-    var host = await _getCoordinator();
+    var host = await _getCoordinator()!;
     var request = new HeartbeatRequest(
         name, subscription.generationId, subscription.memberId);
     _logger.fine(
@@ -40,14 +40,14 @@ class ConsumerGroup {
 
   /// Retrieves offsets of this consumer group for specified [partitions].
   Future<List<ConsumerOffset>> fetchOffsets(
-      List<TopicPartition> partitions) async {
+      List<TopicPartition>? partitions) async {
     return _fetchOffsets(partitions, retries: 3);
   }
 
   /// Internal method for fetching offsets with retries.
-  Future<List<ConsumerOffset>> _fetchOffsets(List<TopicPartition> partitions,
+  Future<List<ConsumerOffset>> _fetchOffsets(List<TopicPartition>? partitions,
       {int retries: 0, bool refresh: false}) async {
-    var broker = await _getCoordinator(refresh: refresh);
+    var broker = await _getCoordinator(refresh: refresh)!;
     var request = new OffsetFetchRequest(name, partitions);
     try {
       var response = await session.send(request, broker.host, broker.port);
@@ -78,17 +78,17 @@ class ConsumerGroup {
 
   /// Commits provided [partitions] to the server for this consumer group.
   Future commitOffsets(List<ConsumerOffset> offsets,
-      {GroupSubscription subscription}) {
+      {GroupSubscription? subscription}) {
     return _commitOffsets(offsets, subscription: subscription, retries: 3);
   }
 
   /// Internal method for commiting offsets with retries.
   Future _commitOffsets(List<ConsumerOffset> offsets,
-      {GroupSubscription subscription,
+      {GroupSubscription? subscription,
       int retries: 0,
       bool refresh: false}) async {
     try {
-      var host = await _getCoordinator(refresh: refresh);
+      var host = await _getCoordinator(refresh: refresh)!;
       var generationId = subscription?.generationId ?? -1;
       var memberId = subscription?.memberId ?? '';
       var retentionInMsecs = retentionTime?.inMilliseconds ?? -1;
@@ -112,10 +112,10 @@ class ConsumerGroup {
   }
 
   Future resetOffsetsToEarliest(List<TopicPartition> topicPartitions,
-      {GroupSubscription subscription}) async {
+      {GroupSubscription? subscription}) async {
     var offsetMaster = new OffsetMaster(session);
     var earliestOffsets = await offsetMaster.fetchEarliest(topicPartitions);
-    var offsets = new List<ConsumerOffset>();
+    List<ConsumerOffset> offsets = [];
     for (var earliest in earliestOffsets) {
       // When consuming we always pass `currentOffset + 1` to fetch next
       // message so here we need to substract 1 from earliest offset, otherwise
@@ -143,14 +143,14 @@ class ConsumerGroup {
   // }
 
   /// Returns instance of coordinator host for this consumer group.
-  Future<Broker> _getCoordinator({bool refresh: false}) {
+  Future<Broker>? _getCoordinator({bool refresh: false}) {
     if (refresh) {
       _coordinatorHost = null;
     }
 
     if (_coordinatorHost == null) {
       _coordinatorHost =
-          session.metadata.fetchGroupCoordinator(name).catchError((error) {
+          session.metadata!.fetchGroupCoordinator(name).catchError((error) {
         _coordinatorHost = null;
         _logger.severe('Error fetching consumer coordinator.', error);
         throw error;
@@ -166,15 +166,15 @@ class ConsumerGroup {
       String memberId,
       String protocolType,
       Iterable<GroupProtocol> groupProtocols) async {
-    var broker = await _getCoordinator();
+    var broker = await _getCoordinator()!;
     var joinRequest = new JoinGroupRequest(name, sessionTimeout,
-        rebalanceTimeout, memberId, protocolType, groupProtocols);
+        rebalanceTimeout, memberId, protocolType, groupProtocols as List<GroupProtocol>);
     JoinGroupResponse joinResponse =
         await session.send(joinRequest, broker.host, broker.port);
     var protocol = joinResponse.groupProtocol;
     var isLeader = joinResponse.leaderId == joinResponse.memberId;
 
-    var groupAssignments = new List<GroupAssignment>();
+    List<GroupAssignment> groupAssignments = [];
     if (isLeader) {
       groupAssignments = await _assignPartitions(protocol, joinResponse);
     }
@@ -205,7 +205,7 @@ class ConsumerGroup {
 
   Future<List<GroupAssignment>> _assignPartitions(
       String protocol, JoinGroupResponse joinResponse) async {
-    var groupAssignments = new List<GroupAssignment>();
+    List<GroupAssignment> groupAssignments = [];
     var assignor = new PartitionAssignor.forStrategy(protocol);
     var topics = new Set<String>();
     Map<String, Set<String>> subscriptions = new Map();
@@ -215,18 +215,18 @@ class ConsumerGroup {
     });
     subscriptions.values.forEach(topics.addAll);
 
-    var meta = await session.metadata.fetchTopics(topics.toList());
-    var partitionsPerTopic = new Map<String, int>.fromIterable(meta.asList,
+    var meta = await session.metadata!.fetchTopics(topics.toList());
+    var partitionsPerTopic = new Map<String?, int?>.fromIterable(meta.asList,
         key: (_) => _.name, value: (_) => _.partitions.length);
 
     Map<String, List<TopicPartition>> assignments =
         assignor.assign(partitionsPerTopic, subscriptions);
     for (var memberId in assignments.keys) {
-      var partitionAssignment = new Map<String, List<int>>();
-      assignments[memberId].forEach((topicPartition) {
+      var partitionAssignment = new Map<String?, List<int>>();
+      assignments[memberId]!.forEach((topicPartition) {
         partitionAssignment.putIfAbsent(
-            topicPartition.topic, () => new List<int>());
-        partitionAssignment[topicPartition.topic].add(topicPartition.partition);
+            topicPartition.topic, () => []);
+        partitionAssignment[topicPartition.topic]!.add(topicPartition.partition);
       });
       groupAssignments.add(new GroupAssignment(
           memberId, new MemberAssignment(0, partitionAssignment, null)));
@@ -250,7 +250,7 @@ class ConsumerGroup {
 class GroupSubscription {
   final String memberId;
   final String leaderId;
-  final MemberAssignment assignment;
+  final MemberAssignment? assignment;
   final int generationId;
   final String groupProtocol;
 

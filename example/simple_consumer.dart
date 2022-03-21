@@ -12,9 +12,9 @@ Future main() async {
       'simple_consumer', StringDeserializer(), StringDeserializer(), session);
 
   await consumer.subscribe(['simple_topic']);
-  var queue = consumer.poll();
+  var queue = consumer.poll()!;
   while (await queue.moveNext()) {
-    var records = queue.current;
+    var records = queue.current!;
     for (var record in records.records) {
       print(
           "[${record.topic}:${record.partition}], offset: ${record.offset}, ${record.key}, ${record.value}, ts: ${record.timestamp}");

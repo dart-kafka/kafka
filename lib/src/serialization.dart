@@ -22,11 +22,11 @@ class CodecSerializer<S> implements Serializer<S> {
 }
 
 abstract class Deserializer<T> {
-  T deserialize(List<int> data);
+  T deserialize(List<int>? data);
 }
 
 /// Deserializer for `String` objects. Defaults to UTF8 encoding.
 class StringDeserializer implements Deserializer<String> {
   @override
-  String deserialize(List<int> data) => utf8.decode(data);
+  String deserialize(List<int>? data) => utf8.decode(data!);
 }

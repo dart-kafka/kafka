@@ -27,16 +27,16 @@ const List<ApiVersion> supportedVersions = const [
 ///
 /// This function throws `UnsupportedError` if any of API versions
 /// between server and client don't have an overlap.
-Map<int, int> resolveApiVersions(
+Map<int?, int> resolveApiVersions(
     List<ApiVersion> serverVersions, List<ApiVersion> clientVersions) {
-  Map<int, ApiVersion> serverMap =
+  Map<int?, ApiVersion> serverMap =
       new Map.fromIterable(serverVersions, key: (v) => v.key);
-  Map<int, ApiVersion> clientMap =
+  Map<int?, ApiVersion> clientMap =
       new Map.fromIterable(clientVersions, key: (v) => v.key);
-  Map<int, int> result = new Map();
+  Map<int?, int> result = new Map();
   for (var key in clientMap.keys) {
-    var client = clientMap[key];
-    var server = serverMap[key];
+    var client = clientMap[key]!;
+    var server = serverMap[key]!;
 
     /// Check if version ranges overlap. If they don't then client
     /// can't communicate with this Kafka broker.

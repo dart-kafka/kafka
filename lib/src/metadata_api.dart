@@ -1,6 +1,7 @@
 import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
+import 'package:collection/collection.dart' show IterableExtension;
 
 /// Kafka MetadataRequest.
 class MetadataRequest extends KRequest<MetadataResponse> {
@@ -14,7 +15,7 @@ class MetadataRequest extends KRequest<MetadataResponse> {
   final ResponseDecoder<MetadataResponse> decoder =
       const _MetadataResponseDecoder();
 
-  final List<String> topics;
+  final List<String?>? topics;
 
   /// Creates MetadataRequest.
   ///
@@ -32,7 +33,7 @@ class MetadataResponse {
 
   MetadataResponse(this.brokers, this.topics) {
     var errorTopic = topics._topics
-        .firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
+        .firstWhereOrNull((_) => _.error != Errors.NoError);
     // TODO: also loop through partitions to find errors on a partition level.
     if (errorTopic is Topic) {
       throw KafkaError.fromCode(errorTopic.error, this);
@@ -49,14 +50,14 @@ class Topics {
 
   Topics(this._topics, this.brokers);
 
-  Topic operator [](String topic) => asMap[topic];
+  Topic? operator [](String? topic) => asMap![topic!];
 
   List<Topic> get asList => List.unmodifiable(_topics);
 
-  Map<String, Topic> _asMap;
+  Map<String, Topic>? _asMap;
 
   /// Returns a map where keys are topic names.
-  Map<String, Topic> get asMap {
+  Map<String, Topic>? get asMap {
     if (_asMap != null) return _asMap;
     var map = Map.fromIterable(
       _topics,
@@ -68,16 +69,16 @@ class Topics {
 
   /// The list of topic names.
   List<String> get names {
-    return asMap.keys.toList(growable: false);
+    return asMap!.keys.toList(growable: false);
   }
 
   /// The size of this topics set.
   int get length => _topics.length;
 
-  List<TopicPartition> _topicPartitions;
+  List<TopicPartition>? _topicPartitions;
 
   /// List of topic-partitions accross all topics in this set.
-  List<TopicPartition> get topicPartitions {
+  List<TopicPartition>? get topicPartitions {
     if (_topicPartitions != null) return _topicPartitions;
     _topicPartitions = _topics.expand<TopicPartition>((topic) {
       return topic.partitions._partitions
@@ -93,10 +94,10 @@ class Brokers {
 
   Brokers(this._brokers);
 
-  Broker operator [](int id) => asMap[id];
+  Broker? operator [](int id) => asMap![id];
 
-  Map<int, Broker> _asMap;
-  Map<int, Broker> get asMap {
+  Map<int, Broker>? _asMap;
+  Map<int, Broker>? get asMap {
     if (_asMap != null) return _asMap;
     var map = Map.fromIterable(_brokers, key: (broker) => broker.id);
     _asMap = Map.unmodifiable(map);
@@ -120,10 +121,10 @@ class Partitions {
 
   Partitions(this._partitions);
 
-  Partition operator [](int id) => asMap[id];
+  Partition? operator [](int id) => asMap![id];
 
-  Map<int, Partition> _asMap;
-  Map<int, Partition> get asMap {
+  Map<int?, Partition>? _asMap;
+  Map<int?, Partition>? get asMap {
     if (_asMap != null) return _asMap;
     _asMap = Map.fromIterable(_partitions, key: (partition) => partition.id);
     return _asMap;
@@ -156,7 +157,7 @@ class _MetadataRequestEncoder implements RequestEncoder<MetadataRequest> {
     assert(version == 0,
         'Only v0 of Metadata request is supported by the client, $version given.');
     var builder = KafkaBytesBuilder();
-    List<String> topics = request.topics ?? List();
+    List<String?> topics = request.topics ?? [];
     builder.addStringArray(topics);
     return builder.takeBytes();
   }

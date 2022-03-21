@@ -2,6 +2,7 @@ import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
 import 'messages.dart';
+import 'package:collection/collection.dart' show IterableExtension;
 import 'util/crc32.dart';
 
 class ProduceRequest extends KRequest<ProduceResponse> {
@@ -36,7 +37,7 @@ class ProduceResponse {
 
   ProduceResponse(this.results, this.throttleTime) {
     var errorResult = results.partitions
-        .firstWhere((_) => _.error != Errors.NoError, orElse: () => null);
+        .firstWhereOrNull((_) => _.error != Errors.NoError);
 
     if (errorResult is PartitionResult) {
       throw KafkaError.fromCode(errorResult.error, this);
@@ -52,17 +53,17 @@ class PartitionResults {
 
   PartitionResults(this.partitions);
 
-  Map<TopicPartition, PartitionResult> _asMap;
-  Map<TopicPartition, PartitionResult> get asMap {
+  Map<TopicPartition?, PartitionResult>? _asMap;
+  Map<TopicPartition?, PartitionResult>? get asMap {
     if (_asMap != null) return _asMap;
     _asMap = Map.fromIterable(partitions, key: (result) => result.partition);
     return _asMap;
   }
 
-  PartitionResult operator [](TopicPartition partition) => asMap[partition];
+  PartitionResult? operator [](TopicPartition partition) => asMap![partition];
 
-  Map<TopicPartition, int> _offsets;
-  Map<TopicPartition, int> get offsets {
+  Map<TopicPartition?, int?>? _offsets;
+  Map<TopicPartition?, int?>? get offsets {
     if (_offsets != null) return _offsets;
     _offsets = Map.fromIterable(partitions,
         key: (result) => result.partition, value: (result) => result.offset);
@@ -97,7 +98,7 @@ class PartitionResult {
 
   PartitionResult(this.partition, this.error, this.offset, this.timestamp);
 
-  String get topic => partition.topic;
+  String? get topic => partition.topic;
 
   @override
   String toString() =>
@@ -180,7 +181,7 @@ class _ProduceResponseDecoder implements ResponseDecoder<ProduceResponse> {
   @override
   ProduceResponse decode(List<int> data) {
     var reader = KafkaBytesReader.fromBytes(data);
-    var results = List<PartitionResult>();
+    List<PartitionResult> results = [];
     var topicCount = reader.readInt32();
     while (topicCount > 0) {
       var topic = reader.readString();

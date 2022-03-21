@@ -2,6 +2,7 @@ import 'common.dart';
 import 'consumer_offset_api.dart';
 import 'errors.dart';
 import 'io.dart';
+import 'package:collection/collection.dart' show IterableExtension;
 import 'util/group_by.dart';
 
 /// Kafka OffsetCommitRequest.
@@ -41,8 +42,7 @@ class OffsetCommitResponse {
   final List<OffsetCommitResult> results;
 
   OffsetCommitResponse(this.results) {
-    var errorResult = results.firstWhere((_) => _.error != Errors.NoError,
-        orElse: () => null);
+    var errorResult = results.firstWhereOrNull((_) => _.error != Errors.NoError);
     if (errorResult != null)
       throw new KafkaError.fromCode(errorResult.error, this);
   }

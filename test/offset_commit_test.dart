@@ -6,9 +6,9 @@ void main() {
   group('OffsetCommitApi:', () {
     String _topic = 'dartKafkaTest';
     Session session = new Session(['127.0.0.1:9092']);
-    Broker coordinator;
-    int _offset;
-    String testGroup;
+    late Broker coordinator;
+    int? _offset;
+    late String testGroup;
 
     tearDownAll(() async {
       await session.close();
@@ -26,7 +26,7 @@ void main() {
       _offset = result.offset;
       var date = new DateTime.now();
       testGroup = 'group:' + date.millisecondsSinceEpoch.toString();
-      coordinator = await session.metadata.fetchGroupCoordinator(testGroup);
+      coordinator = await session.metadata!.fetchGroupCoordinator(testGroup);
       await producer.close();
     });
 
@@ -35,7 +35,7 @@ void main() {
     });
 
     test('it commits consumer offsets', () async {
-      var offsets = [new ConsumerOffset(_topic, 0, _offset, 'helloworld')];
+      var offsets = [new ConsumerOffset(_topic, 0, _offset!, 'helloworld')];
 
       OffsetCommitRequest request =
           new OffsetCommitRequest(testGroup, offsets, -1, '', -1);
