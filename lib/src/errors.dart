@@ -56,7 +56,7 @@ class KafkaError {
 
   KafkaError._(this.code, this.response);
 
-  factory KafkaError.fromCode(int code, response) {
+  factory KafkaError.fromCode(int? code, response) {
     switch (code) {
       case Errors.Unknown:
         return new UnknownError(response);
@@ -146,7 +146,7 @@ class UnknownError extends KafkaError {
 }
 
 class OffsetOutOfRangeError extends KafkaError {
-  final List<TopicPartition> topicPartitions;
+  final List<TopicPartition>? topicPartitions;
   OffsetOutOfRangeError(response, this.topicPartitions)
       : super._(Errors.OffsetOutOfRange, response);
 }

@@ -59,8 +59,8 @@ class KafkaBytesBuilder {
   ///
   /// Kafka string type starts with int16 indicating size of the string
   /// followed by the actual string value.
-  void addString(String value) {
-    List<int> data = utf8.encode(value);
+  void addString(String? value) {
+    List<int> data = utf8.encode(value!);
     addInt16(data.length);
     _builder.add(data);
   }
@@ -88,8 +88,8 @@ class KafkaBytesBuilder {
     _addArray<int>(items, addInt64);
   }
 
-  void addStringArray(List<String> items) {
-    _addArray<String>(items, addString);
+  void addStringArray(List<String?> items) {
+    _addArray<String?>(items, addString);
   }
 
   void addBytesArray(List<List<int>> items) {
@@ -100,7 +100,7 @@ class KafkaBytesBuilder {
   ///
   /// Kafka Bytes type starts with int32 indicating size of the value following
   /// by actual value bytes.
-  void addBytes(List<int> value) {
+  void addBytes(List<int>? value) {
     if (value == null) {
       addInt32(-1);
     } else {
@@ -126,7 +126,7 @@ class KafkaBytesBuilder {
 /// Provides convenience methods to read Kafka specific data types from a
 /// stream of bytes.
 class KafkaBytesReader {
-  Int8List _data;
+  late Int8List _data;
   int _offset = 0;
 
   /// Current position in this buffer.
@@ -193,7 +193,7 @@ class KafkaBytesReader {
 
   T readObject<T>(T readFunc(KafkaBytesReader reader)) => readFunc(this);
 
-  List<int> readBytes() {
+  List<int>? readBytes() {
     var length = readInt32();
     if (length == -1) {
       return null;
@@ -209,14 +209,14 @@ class KafkaBytesReader {
   List<int> readInt32Array() => _readArray(readInt32);
   List<int> readInt64Array() => _readArray(readInt64);
   List<String> readStringArray() => _readArray(readString);
-  List<List<int>> readBytesArray() => _readArray(readBytes);
+  List<List<int>?> readBytesArray() => _readArray(readBytes);
   List<T> readObjectArray<T>(T readFunc(KafkaBytesReader reader)) {
     return _readArray<T>(() => readFunc(this));
   }
 
   List<T> _readArray<T>(T reader()) {
     var length = readInt32();
-    var items = new List<T>();
+    List<T> items = [];
     for (var i = 0; i < length; i++) {
       items.add(reader());
     }
@@ -234,7 +234,7 @@ class KafkaBytesReader {
 
 class PacketStreamTransformer
     implements StreamTransformer<Uint8List, List<int>> {
-  List<int> _data = new List<int>();
+  List<int> _data = [];
   StreamController<List<int>> _controller = new StreamController<List<int>>();
 
   @override
@@ -282,8 +282,8 @@ class KSocket {
   static Logger _logger = new Logger('KSocket');
 
   final Socket _ioSocket;
-  Stream<List<int>> _stream;
-  StreamSubscription<List<int>> _subscription;
+  late Stream<List<int>> _stream;
+  late StreamSubscription<List<int>> _subscription;
 
   int _nextCorrelationId = 1;
   int get nextCorrelationId => _nextCorrelationId++;
@@ -296,7 +296,7 @@ class KSocket {
     _subscription = _stream.listen(_onPacket);
   }
 
-  static Future<KSocket> connect(String host, int port) {
+  static Future<KSocket> connect(String? host, int port) {
     return Socket.connect(host, port).then((socket) => new KSocket._(socket));
   }
 
@@ -326,7 +326,7 @@ class KSocket {
   void _onPacket(List<int> packet) {
     var r = new KafkaBytesReader.fromBytes(packet.sublist(0, 4));
     var correlationId = r.readInt32();
-    var completer = _inflightRequests[correlationId];
+    var completer = _inflightRequests[correlationId]!;
     if (completer.isCompleted) {
       _logger.warning('Received packet for already completed request.');
     } else {

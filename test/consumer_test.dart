@@ -6,7 +6,7 @@ void main() {
     Session session = new Session(['127.0.0.1:9092']);
     var date = new DateTime.now().millisecondsSinceEpoch;
     String topic = 'testTopic-${date}';
-    Map<int, int> expectedOffsets = new Map();
+    Map<int, int?> expectedOffsets = new Map();
     String group = 'cg:${date}';
 
     setUp(() async {
@@ -34,12 +34,12 @@ void main() {
     test('it can consume messages from multiple brokers', () async {
       var consumer = new Consumer<String, String>(
           group, new StringDeserializer(), new StringDeserializer(), session);
-      await consumer.subscribe([topic]);
-      var iterator = consumer.poll();
+      consumer.subscribe([topic]);
+      var iterator = consumer.poll()!;
       int i = 0;
       var consumedOffsets = new Map();
       while (await iterator.moveNext()) {
-        var records = iterator.current;
+        var records = iterator.current!;
         records.records.forEach((record) {
           consumedOffsets[record.partition] = record.offset;
           print("Record: [${record.key}, ${record.value}]");

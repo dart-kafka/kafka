@@ -46,13 +46,13 @@ class FetchRequest implements KRequest<FetchResponse> {
   @override
   RequestEncoder<KRequest> get encoder => const _FetchRequestEncoder();
 
-  Map<String, Map<int, FetchData>> _fetchDataByTopic;
-  Map<String, Map<int, FetchData>> get fetchDataByTopic {
+  Map<String?, Map<int, FetchData?>>? _fetchDataByTopic;
+  Map<String?, Map<int, FetchData?>>? get fetchDataByTopic {
     if (_fetchDataByTopic == null) {
-      var result = new Map<String, Map<int, FetchData>>();
+      var result = new Map<String?, Map<int, FetchData?>>();
       fetchData.keys.forEach((_) {
         result.putIfAbsent(_.topic, () => new Map());
-        result[_.topic][_.partition] = fetchData[_];
+        result[_.topic]![_.partition] = fetchData[_];
       });
       _fetchDataByTopic = result;
     }
@@ -61,7 +61,7 @@ class FetchRequest implements KRequest<FetchResponse> {
 }
 
 class FetchData {
-  final int fetchOffset;
+  final int? fetchOffset;
   final int maxBytes;
   FetchData(this.fetchOffset, this.maxBytes);
 }
@@ -79,13 +79,13 @@ class _FetchRequestEncoder implements RequestEncoder<FetchRequest> {
     builder.addInt32(request.maxWaitTime);
     builder.addInt32(request.minBytes);
 
-    builder.addInt32(request.fetchDataByTopic.length);
-    request.fetchDataByTopic.forEach((topic, partitions) {
+    builder.addInt32(request.fetchDataByTopic!.length);
+    request.fetchDataByTopic!.forEach((topic, partitions) {
       builder.addString(topic);
       builder.addInt32(partitions.length);
       partitions.forEach((partition, data) {
         builder.addInt32(partition);
-        builder.addInt64(data.fetchOffset);
+        builder.addInt64(data!.fetchOffset!);
         builder.addInt32(data.maxBytes);
       });
     });
@@ -131,7 +131,7 @@ class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
     var reader = new KafkaBytesReader.fromBytes(data);
     var throttleTime = reader.readInt32();
     var count = reader.readInt32();
-    var results = new List<FetchResult>();
+    List<FetchResult> results = [];
     while (count > 0) {
       var topic = reader.readString();
       var partitionCount = reader.readInt32();
@@ -183,7 +183,7 @@ class _FetchResponseDecoder implements ResponseDecoder<FetchResponse> {
 
           var codec = new GZipCodec();
           var innerReader =
-              new KafkaBytesReader.fromBytes(codec.decode(message.value));
+              new KafkaBytesReader.fromBytes(codec.decode(message.value!));
           var innerMessageSet = _readMessageSet(innerReader);
           messages.addAll(innerMessageSet);
         }

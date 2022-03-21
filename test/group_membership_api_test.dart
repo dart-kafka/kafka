@@ -3,15 +3,15 @@ import 'package:test/test.dart';
 
 void main() {
   group('GroupMembershipApi:', () {
-    String group;
+    late String group;
     String _topic = 'dartKafkaTest';
-    Broker _broker;
+    late Broker _broker;
     Session _session = new Session(['127.0.0.1:9092']);
 
     setUp(() async {
       var now = new DateTime.now().millisecondsSinceEpoch.toString();
       group = 'test-group-' + now;
-      _broker = await _session.metadata.fetchGroupCoordinator(group);
+      _broker = await _session.metadata!.fetchGroupCoordinator(group);
     });
 
     tearDownAll(() async {
@@ -45,7 +45,7 @@ void main() {
       SyncGroupResponse syncResponse =
           await _session.send(syncRequest, _broker.host, _broker.port);
       expect(syncResponse.error, Errors.NoError);
-      expect(syncResponse.assignment.partitions, topics);
+      expect(syncResponse.assignment!.partitions, topics);
 
       var heartbeatRequest = new HeartbeatRequest(
           group, joinResponse.generationId, joinResponse.memberId);

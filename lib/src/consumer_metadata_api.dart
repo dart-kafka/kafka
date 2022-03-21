@@ -23,9 +23,9 @@ class GroupCoordinatorRequest extends KRequest<GroupCoordinatorResponse> {
 
 class GroupCoordinatorResponse {
   final int error;
-  final int coordinatorId;
-  final String coordinatorHost;
-  final int coordinatorPort;
+  final int? coordinatorId;
+  final String? coordinatorHost;
+  final int? coordinatorPort;
 
   GroupCoordinatorResponse(this.error, this.coordinatorId, this.coordinatorHost,
       this.coordinatorPort) {

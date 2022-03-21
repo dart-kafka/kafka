@@ -4,14 +4,14 @@ import 'package:test/test.dart';
 void main() {
   group('Metadata:', () {
     Session session = new Session(['127.0.0.1:9092']);
-    Metadata metadata = session.metadata;
+    Metadata? metadata = session.metadata;
 
     tearDownAll(() async {
       await session.close();
     });
 
     test('it can fetch specific topic metadata', () async {
-      var topics = await metadata.fetchTopics(['testTopic']);
+      var topics = await metadata!.fetchTopics(['testTopic']);
       expect(topics, isA<Topics>());
       expect(topics, hasLength(1));
       expect(topics['testTopic'], isNotNull);
@@ -20,13 +20,13 @@ void main() {
     });
 
     test('it can list existing topics', () async {
-      var topics = await metadata.listTopics();
+      var topics = await metadata!.listTopics();
       expect(topics, isList);
       expect(topics, isNotEmpty);
     });
 
     test('it can list Kafka brokers within cluster', () async {
-      var brokers = await metadata.listBrokers();
+      var brokers = await metadata!.listBrokers();
       expect(brokers, isList);
       expect(brokers, hasLength(2));
     });
@@ -34,7 +34,7 @@ void main() {
     test('it can fetch group coordinator', () async {
       var group =
           'testGroup' + (new DateTime.now()).millisecondsSinceEpoch.toString();
-      var broker = await metadata.fetchGroupCoordinator(group);
+      var broker = await metadata!.fetchGroupCoordinator(group);
       expect(broker, isA<Broker>());
       expect(broker.id, isNotNull);
       expect(broker.host, isNotNull);

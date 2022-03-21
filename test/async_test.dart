@@ -14,9 +14,9 @@ main() {
         new ConsumerStreamIterator<String, String>(stream);
     expect(iterator.current, isNull);
     expect(await iterator.moveNext(), isTrue);
-    expect(iterator.current.records.first.key, 'k1');
+    expect(iterator.current!.records.first.key, 'k1');
     expect(await iterator.moveNext(), isTrue);
-    expect(iterator.current.records.first.key, 'k2');
+    expect(iterator.current!.records.first.key, 'k2');
     expect(await iterator.moveNext(), isFalse);
     expect(iterator.current, isNull);
     expect(await iterator.moveNext(), isFalse);
@@ -29,9 +29,9 @@ main() {
     await new Future.delayed(Duration.zero);
     expect(iterator.current, isNull);
     expect(await iterator.moveNext(), isTrue);
-    expect(iterator.current.records.first.key, 'k1');
+    expect(iterator.current!.records.first.key, 'k1');
     expect(await iterator.moveNext(), isTrue);
-    expect(iterator.current.records.first.key, 'k2');
+    expect(iterator.current!.records.first.key, 'k2');
     expect(await iterator.moveNext(), isFalse);
     expect(iterator.current, isNull);
     expect(await iterator.moveNext(), isFalse);
@@ -42,7 +42,7 @@ main() {
     ConsumerStreamIterator<String, String> iterator =
         new ConsumerStreamIterator<String, String>(stream);
     expect(await iterator.moveNext(), isTrue);
-    expect(iterator.current.records.first.key, 'k1');
+    expect(iterator.current!.records.first.key, 'k1');
     var hasNext = iterator.moveNext();
     expect(hasNext, throwsA("BAD")); // This is an async expectation,
     await hasNext.catchError((_) {}); // so we have to wait for the future too.
@@ -58,7 +58,7 @@ main() {
     var hasNext = iterator.moveNext();
     expect(iterator.moveNext, throwsA(isStateError));
     expect(await hasNext, isTrue);
-    expect(iterator.current.records.first.key, 'k1');
+    expect(iterator.current!.records.first.key, 'k1');
     iterator.cancel();
   });
 
@@ -68,7 +68,7 @@ main() {
         new ConsumerStreamIterator(stream);
     for (int i = 0; i < 10; i++) {
       expect(await iterator.moveNext(), isTrue);
-      expect(iterator.current.records.first.offset, i);
+      expect(iterator.current!.records.first.offset, i);
     }
     var hasNext = iterator.moveNext(); // active moveNext will be completed.
     var cancel = iterator.cancel();

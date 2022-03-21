@@ -35,7 +35,7 @@ abstract class Metadata {
     return new _Metadata(session, bootstrapUris);
   }
 
-  Future<Topics> fetchTopics(List<String> topics);
+  Future<Topics> fetchTopics(List<String?>? topics);
   Future<List<String>> listTopics();
   Future<List<Broker>> listBrokers();
   Future<Broker> fetchGroupCoordinator(String groupName);
@@ -48,7 +48,7 @@ class _Metadata implements Metadata {
 
   _Metadata(this.session, this.bootstrapUris);
 
-  Future<Topics> fetchTopics(List<String> topics) {
+  Future<Topics> fetchTopics(List<String?>? topics) {
     Future<Topics> fetch() {
       var req = new MetadataRequest(topics);
       var broker = bootstrapUris.first;

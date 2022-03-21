@@ -9,7 +9,7 @@ import 'consumer_offset_api.dart';
  * Pauses the stream between calls to [moveNext].
  */
 class ConsumerStreamIterator<K, V>
-    implements StreamIterator<ConsumerRecords<K, V>> {
+    implements StreamIterator<ConsumerRecords<K, V>?> {
   // The stream iterator is always in one of four states.
   // The value of the [_stateData] field depends on the state.
   //
@@ -37,7 +37,7 @@ class ConsumerStreamIterator<K, V>
   /// Subscription being listened to.
   ///
   /// Set to `null` when the stream subscription is done or canceled.
-  StreamSubscription<ConsumerRecords<K, V>> _subscription;
+  StreamSubscription<ConsumerRecords<K, V>>? _subscription;
 
   /// Data value depending on the current state.
   ///
@@ -51,7 +51,7 @@ class ConsumerStreamIterator<K, V>
   ///
   /// After calling [moveNext] and the returned future has completed
   /// with `false`, or after calling [cancel]: `null`.
-  Object _stateData;
+  Object? _stateData;
 
   /// Whether the iterator is between calls to `moveNext`.
   /// This will usually cause the [_subscription] to be paused, but as an
@@ -87,9 +87,9 @@ class ConsumerStreamIterator<K, V>
     }
   }
 
-  ConsumerRecords<K, V> get current {
+  ConsumerRecords<K, V>? get current {
     if (_subscription != null && _isPaused) {
-      return _stateData as ConsumerRecords<K, V>;
+      return _stateData as ConsumerRecords<K, V>?;
     }
     return null;
   }
@@ -102,14 +102,14 @@ class ConsumerStreamIterator<K, V>
   /// Subscription to the new [stream] is created immediately and current state
   /// of the listener is preserved.
   void attachStream(Stream<ConsumerRecords<K, V>> stream) {
-    Completer<bool> completer;
-    Object records;
+    Completer<bool>? completer;
+    Object? records;
     if (_subscription != null) {
-      _subscription.cancel();
+      _subscription!.cancel();
       _subscription = null;
       if (!_isPaused) {
         // User  waits for `moveNext` to complete.
-        completer = _stateData as Completer<bool>;
+        completer = _stateData as Completer<bool>?;
       } else {
         records = _stateData;
       }
@@ -121,10 +121,10 @@ class ConsumerStreamIterator<K, V>
     _initializeOrDone();
     // Restore state after initialize.
     if (_isPaused) {
-      _subscription.pause();
+      _subscription!.pause();
       _stateData = records;
     } else {
-      _subscription.resume();
+      _subscription!.resume();
       _stateData = completer;
     }
   }
@@ -139,7 +139,7 @@ class ConsumerStreamIterator<K, V>
         var completer = new Completer<bool>();
         _stateData = completer;
         _isPaused = false;
-        _subscription.resume();
+        _subscription!.resume();
         return completer.future;
       }
       throw new StateError("Already waiting for next.");
@@ -168,8 +168,8 @@ class ConsumerStreamIterator<K, V>
   }
 
   Future cancel() {
-    StreamSubscription<ConsumerRecords<K, V>> subscription = _subscription;
-    Object stateData = _stateData;
+    StreamSubscription<ConsumerRecords<K, V>>? subscription = _subscription;
+    Object? stateData = _stateData;
     _stateData = null;
     if (subscription != null) {
       _subscription = null;
@@ -189,10 +189,10 @@ class ConsumerStreamIterator<K, V>
     _isPaused = true;
     _updateOffsets(data);
     moveNextFuture.complete(true);
-    if (_subscription != null && _isPaused) _subscription.pause();
+    if (_subscription != null && _isPaused) _subscription!.pause();
   }
 
-  void _onError(Object error, [StackTrace stackTrace]) {
+  void _onError(Object error, [StackTrace? stackTrace]) {
     assert(_subscription != null && !_isPaused);
     Completer<bool> moveNextFuture = _stateData as Completer<bool>;
     _subscription = null;

@@ -15,18 +15,18 @@ class ConsumerOffset {
   final int offset;
 
   /// User-defined metadata associated with this offset.
-  final String metadata;
+  final String? metadata;
 
   /// The error code returned by the server.
-  final int error;
+  final int? error;
 
   ConsumerOffset(this.topic, this.partition, this.offset, this.metadata,
       [this.error]);
 
-  TopicPartition get topicPartition => new TopicPartition(topic, partition);
+  TopicPartition get topicPartition => TopicPartition(topic, partition);
 
   /// Copies this offset and overwrites [offset] and [metadata] if provided.
-  ConsumerOffset copy({int offset, String metadata}) {
+  ConsumerOffset copy({required int offset, String? metadata}) {
     assert(offset != null);
     return new ConsumerOffset(topic, partition, offset, metadata);
   }
@@ -49,7 +49,7 @@ class OffsetFetchRequest extends KRequest<OffsetFetchResponse> {
   final String group;
 
   /// Map of topic names and partition IDs to fetch offsets for.
-  final List<TopicPartition> partitions;
+  final List<TopicPartition>? partitions;
 
   /// Creates new instance of [OffsetFetchRequest].
   OffsetFetchRequest(this.group, this.partitions);
@@ -72,8 +72,8 @@ class _OffsetFetchRequestEncoder implements RequestEncoder<OffsetFetchRequest> {
     var builder = new KafkaBytesBuilder();
 
     builder.addString(request.group);
-    Map<String, List<TopicPartition>> grouped = groupBy<String, TopicPartition>(
-        request.partitions, (partition) => partition.topic);
+    Map<String?, List<TopicPartition>> grouped = groupBy<String?, TopicPartition>(
+        request.partitions!, (partition) => partition.topic);
 
     builder.addInt32(grouped.length);
     grouped.forEach((topic, partitions) {

@@ -30,25 +30,25 @@ class ApiKey {
 /// Represents single broker in Kafka cluster.
 class Broker {
   /// The unique identifier of this broker.
-  final int id;
+  final int? id;
 
   /// The hostname of this broker.
-  final String host;
+  final String? host;
 
   /// The port number this broker accepts connections on.
-  final int port;
+  final int? port;
 
   Broker._(this.id, this.host, this.port);
 
   static final Map<Tuple3, Broker> _cache = new Map();
 
-  factory Broker(int id, String host, int port) {
+  factory Broker(int? id, String? host, int? port) {
     var key = tuple3(id, host, port);
     if (!_cache.containsKey(key)) {
       _cache[key] = new Broker._(id, host, port);
     }
 
-    return _cache[key];
+    return _cache[key]!;
   }
 
   @override
@@ -65,7 +65,7 @@ class Broker {
 /// Represents one partition in a topic.
 class TopicPartition {
   /// The name of Kafka topic.
-  final String topic;
+  final String? topic;
 
   /// The partition ID.
   final int partition;
@@ -74,13 +74,13 @@ class TopicPartition {
 
   TopicPartition._(this.topic, this.partition);
 
-  factory TopicPartition(String topic, int partition) {
+  factory TopicPartition(String? topic, int partition) {
     var key = hash2(topic, partition);
     if (!_cache.containsKey(key)) {
       _cache[key] = new TopicPartition._(topic, partition);
     }
 
-    return _cache[key];
+    return _cache[key]!;
   }
 
   @override

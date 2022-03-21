@@ -59,10 +59,10 @@ abstract class GroupProtocol {
     return new RoundRobinGroupProtocol(version, topics);
   }
 
-  factory GroupProtocol.fromBytes(String name, List<int> data) {
+  factory GroupProtocol.fromBytes(String name, List<int>? data) {
     switch (name) {
       case 'roundrobin':
-        return new RoundRobinGroupProtocol.fromBytes(data);
+        return new RoundRobinGroupProtocol.fromBytes(data!);
       default:
         throw new StateError('Unsupported group protocol "$name"');
     }
@@ -115,7 +115,7 @@ class JoinGroupResponse {
 
 class GroupMember {
   final String id;
-  final List<int> metadata;
+  final List<int>? metadata;
 
   GroupMember(this.id, this.metadata);
 }
@@ -191,26 +191,26 @@ class GroupAssignment {
 
 class MemberAssignment {
   final int version;
-  final Map<String, List<int>> partitions;
-  final List<int> userData;
+  final Map<String?, List<int>> partitions;
+  final List<int>? userData;
 
   MemberAssignment(this.version, this.partitions, this.userData);
 
-  List<TopicPartition> _partitionsList;
-  List<TopicPartition> get partitionsAsList {
+  List<TopicPartition>? _partitionsList;
+  List<TopicPartition>? get partitionsAsList {
     if (_partitionsList != null) return _partitionsList;
-    var result = new List<TopicPartition>();
+    List<TopicPartition> result = [];
     for (var topic in partitions.keys) {
-      result.addAll(partitions[topic].map((p) => new TopicPartition(topic, p)));
+      result.addAll(partitions[topic]!.map((p) => new TopicPartition(topic, p)));
     }
     _partitionsList = result.toList(growable: false);
     return _partitionsList;
   }
 
-  List<String> _topics;
+  List<String?>? _topics;
 
   /// List of topic names in this member assignment.
-  List<String> get topics {
+  List<String?>? get topics {
     if (_topics != null) return _topics;
     _topics = partitions.keys.toList(growable: false);
     return _topics;
@@ -223,7 +223,7 @@ class MemberAssignment {
 
 class SyncGroupResponse {
   final int error;
-  final MemberAssignment assignment;
+  final MemberAssignment? assignment;
 
   SyncGroupResponse(this.error, this.assignment) {
     if (error != Errors.NoError) throw new KafkaError.fromCode(error, this);
@@ -257,7 +257,7 @@ class _SyncGroupRequestEncoder implements RequestEncoder<SyncGroupRequest> {
     builder.addInt32(assignment.partitions.length);
     for (var topic in assignment.partitions.keys) {
       builder.addString(topic);
-      builder.addInt32Array(assignment.partitions[topic]);
+      builder.addInt32Array(assignment.partitions[topic]!);
     }
     builder.addBytes(assignment.userData);
     return builder.takeBytes();
@@ -271,8 +271,8 @@ class _SyncGroupResponseDecoder implements ResponseDecoder<SyncGroupResponse> {
   SyncGroupResponse decode(List<int> data) {
     var reader = new KafkaBytesReader.fromBytes(data);
     var error = reader.readInt16();
-    var assignmentData = reader.readBytes();
-    MemberAssignment assignment;
+    var assignmentData = reader.readBytes()!;
+    MemberAssignment? assignment;
     if (assignmentData.isNotEmpty) {
       var reader = new KafkaBytesReader.fromBytes(assignmentData);
       var version = reader.readInt16();

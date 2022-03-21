@@ -5,14 +5,14 @@ void main() {
   group('Produce API: ', () {
     String _topic = 'dartKafkaTest' +
         (new DateTime.now()).millisecondsSinceEpoch.toString();
-    Broker broker;
+    Broker? broker;
     Session session = new Session(['127.0.0.1:9092']);
-    int partition;
+    late int partition;
 
     setUp(() async {
-      var data = await session.metadata.fetchTopics([_topic]);
-      partition = data[_topic].partitions[0].id;
-      var leaderId = data[_topic].partitions[0].leader;
+      var data = await session.metadata!.fetchTopics([_topic]);
+      partition = data[_topic]!.partitions[0]!.id;
+      var leaderId = data[_topic]!.partitions[0]!.leader;
       broker = data.brokers[leaderId];
     });
 
@@ -27,12 +27,12 @@ void main() {
         }
       });
 
-      var res = await session.send(req, broker.host, broker.port);
+      var res = await session.send(req, broker!.host, broker!.port);
       var p = new TopicPartition(_topic, partition);
       expect(res.results, hasLength(1));
-      expect(res.results[p].topic, equals(_topic));
-      expect(res.results[p].error, equals(0));
-      expect(res.results[p].offset, greaterThanOrEqualTo(0));
+      expect(res.results[p]!.topic, equals(_topic));
+      expect(res.results[p]!.error, equals(0));
+      expect(res.results[p]!.offset, greaterThanOrEqualTo(0));
     });
 
     // test('it publishes GZip encoded messages to Kafka topic', () async {

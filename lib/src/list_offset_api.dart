@@ -1,6 +1,7 @@
 import 'common.dart';
 import 'errors.dart';
 import 'io.dart';
+import 'package:collection/collection.dart' show IterableExtension;
 import 'util/group_by.dart';
 import 'util/tuple.dart';
 
@@ -39,8 +40,7 @@ class ListOffsetResponse {
   final List<TopicOffset> offsets;
 
   ListOffsetResponse(this.offsets) {
-    var errorOffset = offsets.firstWhere((_) => _.error != Errors.NoError,
-        orElse: () => null);
+    var errorOffset = offsets.firstWhereOrNull((_) => _.error != Errors.NoError);
     if (errorOffset != null) {
       throw new KafkaError.fromCode(errorOffset.error, this);
     }
@@ -75,11 +75,11 @@ class _ListOffsetRequestEncoder implements RequestEncoder<ListOffsetRequest> {
     builder.addInt32(ListOffsetRequest.replicaId);
 
     // <topic, partition, timestamp>
-    List<Tuple3<String, int, int>> items = request.topics.keys.map((_) {
+    List<Tuple3<String?, int, int?>> items = request.topics.keys.map((_) {
       return tuple3(_.topic, _.partition, request.topics[_]);
     }).toList(growable: false);
 
-    Map<String, List<Tuple3<String, int, int>>> groupedByTopic =
+    Map<String?, List<Tuple3<String?, int, int?>>> groupedByTopic =
         groupBy(items, (_) => _.$1);
 
     builder.addInt32(groupedByTopic.length);
@@ -88,7 +88,7 @@ class _ListOffsetRequestEncoder implements RequestEncoder<ListOffsetRequest> {
       builder.addInt32(partitions.length);
       partitions.forEach((p) {
         builder.addInt32(p.$2);
-        builder.addInt64(p.$3);
+        builder.addInt64(p.$3!);
       });
     });
 
@@ -105,7 +105,7 @@ class _ListOffsetResponseDecoder
     var reader = new KafkaBytesReader.fromBytes(data);
 
     var count = reader.readInt32();
-    var offsets = new List<TopicOffset>();
+    List<TopicOffset> offsets = [];
     while (count > 0) {
       var topic = reader.readString();
       var partitionCount = reader.readInt32();
