@@ -1,4 +1,4 @@
-name: 'kafka'
+name: 'driver_pms'
 version: 0.1.0
 description: Kafka Client library for Dartlang
 homepage: https://github.com/pulyaevskiy/dart-kafka
